@@ -1,4 +1,4 @@
-import type { GraphExtractStore } from '@baishou/database/shared'
+import type { GraphExtractStore, GraphNodeRow } from '@baishou/database/shared'
 import {
   logger,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
@@ -14,6 +14,7 @@ import {
   normalizeGraphExtractConfidence,
   normalizeGraphFilePath,
   graphExtractPhaseProgress,
+  uniqueNonEmptyIds,
   type GraphExtractQueuePhase,
   type GraphExtractQueueProgressUpdate
 } from '@baishou/shared'
@@ -313,6 +314,35 @@ export class GraphLlmExtractionService {
             discriminator: hit.discriminator
           }))
         },
+        findCandidatesByNamesOrAliasesBatch:
+          typeof this.repo.findNodesByNamesOrAliasesBatch === 'function'
+            ? async (queries) => {
+                const batch = await this.repo.findNodesByNamesOrAliasesBatch!(vaultId, queries)
+                const out = new Map<
+                  string,
+                  Array<{
+                    id: string
+                    name: string
+                    aliases: string[]
+                    summary?: string
+                    discriminator?: string
+                  }>
+                >()
+                for (const [key, hits] of batch) {
+                  out.set(
+                    key,
+                    hits.map((hit) => ({
+                      id: hit.id,
+                      name: hit.name,
+                      aliases: hit.aliases,
+                      summary: hit.summary,
+                      discriminator: hit.discriminator
+                    }))
+                  )
+                }
+                return out
+              }
+            : undefined,
         searchByVector: this.alignDeps?.embedQuery
           ? async (vector, type, topK) => {
               const hits = await this.repo.searchNodesByVector(vaultId, vector, topK ?? 5, {
@@ -368,7 +398,48 @@ export class GraphLlmExtractionService {
     const alignedEmbeddings: Array<{ id: string; embedding: number[]; text: string }> = []
     const shardMonths = new Set<string>()
     let anyRemovedFromShard = false
-    const persistCtx = { repo: this.repo, graphManager: this.graphManager }
+    const hasBatchSupersede =
+      typeof this.graphManager.supersedeAiEdgesBySourceRefsBatch === 'function'
+    const pendingSupersedes: Array<{
+      sourceRef: string
+      exceptIds: Set<string>
+      shardMonth: string
+    }> = []
+
+    let nodeCache: Map<string, GraphNodeRow | null> | undefined
+    if (typeof this.repo.getNodesByIds === 'function') {
+      const candidateIds: string[] = []
+      for (const hit of aligned.values()) {
+        if (hit.id) candidateIds.push(hit.id)
+      }
+      for (const draft of drafts) {
+        candidateIds.push(
+          entryNodeIdForFilePath(draft.filePath, vaultId),
+          legacyEntryNodeIdForFilePath(draft.filePath)
+        )
+        for (const ent of draft.entities) {
+          candidateIds.push(graphNodeIdForEntity(vaultId, ent.type, ent.name))
+        }
+      }
+      const uniqueCandidateIds = uniqueNonEmptyIds(candidateIds)
+      nodeCache = new Map<string, GraphNodeRow | null>()
+      for (const id of uniqueCandidateIds) {
+        nodeCache.set(id, null)
+      }
+      if (uniqueCandidateIds.length > 0) {
+        const existingRows = await this.repo.getNodesByIds(vaultId, uniqueCandidateIds)
+        for (const row of existingRows) {
+          nodeCache.set(row.id, row)
+        }
+      }
+    }
+
+    const persistCtx = {
+      repo: this.repo,
+      graphManager: this.graphManager,
+      nodeCache,
+      deferSupersede: hasBatchSupersede
+    }
 
     for (const draft of drafts) {
       throwIfGraphExtractAborted(signal)
@@ -377,6 +448,7 @@ export class GraphLlmExtractionService {
         touchedNodeIds.push(...persisted.nodeIds)
         alignedEmbeddings.push(...persisted.embeddings)
         if (persisted.removedFromShard) anyRemovedFromShard = true
+        if (persisted.supersede) pendingSupersedes.push(persisted.supersede)
         shardMonths.add(draft.shardMonth)
         results.push({ filePath: draft.filePath })
       } catch (e) {
@@ -384,6 +456,12 @@ export class GraphLlmExtractionService {
         results.push({ filePath: draft.filePath, error: message })
         logger.warn(`[GraphExtract] commit failed ${draft.filePath}:`, e as Error)
       }
+    }
+
+    if (hasBatchSupersede && pendingSupersedes.length > 0) {
+      await this.graphManager.supersedeAiEdgesBySourceRefsBatch!(pendingSupersedes, {
+        skipCompact: true
+      })
     }
 
     logStage('persist-done', { failed: results.filter((r) => r.error).length })
@@ -406,15 +484,52 @@ export class GraphLlmExtractionService {
     if (touchedNodeIds.length > 0) {
       const uniqueIds = [...new Set(touchedNodeIds)]
       await this.repo.recountMentions(vaultId, uniqueIds)
-      await writeMentionCountsToJsonl(persistCtx, vaultId, drafts[0]!.vaultName, uniqueIds)
+      const mentionMonths = await writeMentionCountsToJsonl(
+        persistCtx,
+        vaultId,
+        drafts[0]!.vaultName,
+        uniqueIds
+      )
+      if (typeof this.graphManager.commitIndexed === 'function' && mentionMonths.size > 0) {
+        for (const month of mentionMonths) {
+          const compacted = (await this.graphManager.compactShard('nodes', month)) as
+            | { relativePath?: string; contentHash?: string }
+            | undefined
+          if (compacted?.relativePath && compacted.contentHash) {
+            await this.graphManager.commitIndexed(
+              'nodes',
+              compacted.relativePath,
+              compacted.contentHash
+            )
+          }
+        }
+      }
     }
     logStage('mentions-done')
     const draftByPath = new Map(drafts.map((draft) => [draft.filePath, draft]))
+    const reextractItems: Array<{ filePath: string; contentHash: string }> = []
     for (const result of results) {
       if (result.error) continue
       const draft = draftByPath.get(result.filePath)
       if (!draft) continue
-      await this.freshness.commitReextract(normalizeFilePath(draft.filePath), draft.hash)
+      reextractItems.push({
+        filePath: normalizeFilePath(draft.filePath),
+        contentHash: draft.hash
+      })
+    }
+    const commitReextractBatch = (
+      this.freshness as {
+        commitReextractBatch?: (
+          items: ReadonlyArray<{ filePath: string; contentHash: string }>
+        ) => Promise<void>
+      }
+    ).commitReextractBatch
+    if (typeof commitReextractBatch === 'function') {
+      await commitReextractBatch.call(this.freshness, reextractItems)
+    } else {
+      for (const item of reextractItems) {
+        await this.freshness.commitReextract(item.filePath, item.contentHash)
+      }
     }
     logStage('extract-state-done')
     return results

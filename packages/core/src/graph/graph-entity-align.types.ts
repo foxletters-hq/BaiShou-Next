@@ -129,6 +129,9 @@ export type EntityAlignNameJudgeInput = {
 
 export type EntityAlignLookup = {
   findCandidatesByNameOrAlias: (name: string, type: string) => Promise<AlignedEntityHit[]>
+  findCandidatesByNamesOrAliasesBatch?: (
+    queries: ReadonlyArray<{ name: string; type: string }>
+  ) => Promise<Map<string, AlignedEntityHit[]>>
   searchByVector?: (
     vector: number[],
     type: string,
