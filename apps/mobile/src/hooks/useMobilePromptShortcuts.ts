@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AppState } from 'react-native'
 import type { PromptShortcut } from '@baishou/shared'
 import {
   logger,
@@ -8,7 +9,10 @@ import {
   findShortcutCommandConflict,
   promptShortcutToSkillInput
 } from '@baishou/shared'
-import { mobileListSkillShortcuts } from '../services/mobile-agent-skills.service'
+import {
+  invalidateMobileSkillsCache,
+  mobileListSkillShortcuts
+} from '../services/mobile-agent-skills.service'
 import {
   subscribeMobileSkillsChanged,
   notifyMobileSkillsChanged
@@ -24,6 +28,13 @@ const PROMPT_SHORTCUT_ORDER_KEY = 'prompt_shortcut_order_v1'
 
 function isSkillShortcut(shortcut: PromptShortcut): boolean {
   return shortcut.source === 'software' || shortcut.source === 'workspace'
+}
+
+function normalizeShortcutKey(shortcut: Pick<PromptShortcut, 'id' | 'command' | 'name'>): string {
+  return (shortcut.command || shortcut.name || shortcut.id || '')
+    .trim()
+    .replace(/^\/+/, '')
+    .toLowerCase()
 }
 
 function mergeShortcutLists(skills: PromptShortcut[], user: PromptShortcut[]): PromptShortcut[] {
@@ -81,6 +92,7 @@ export function useMobilePromptShortcuts() {
               await services.settingsManager.set(PROMPT_SHORTCUTS_KEY, legacy)
             }
           }
+          invalidateMobileSkillsCache()
           const skills = await mobileListSkillShortcuts().catch(() => [])
           const savedOrder =
             (await services.settingsManager.get<string[]>(PROMPT_SHORTCUT_ORDER_KEY)) ?? null
@@ -122,6 +134,17 @@ export function useMobilePromptShortcuts() {
       }),
     [loadShortcuts]
   )
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        void loadShortcuts()
+      }
+    })
+    return () => {
+      subscription.remove()
+    }
+  }, [loadShortcuts])
 
   const persistShortcuts = useCallback(
     async (updater: (prev: PromptShortcut[]) => PromptShortcut[], nextOrderIds?: string[]) => {
@@ -183,14 +206,30 @@ export function useMobilePromptShortcuts() {
   )
 
   const syncSkillToDisk = useCallback(
-    async (shortcut: PromptShortcut) => {
+    async (shortcut: PromptShortcut, previousName?: string) => {
       try {
         if (!services) return
         // 用户技能统一放存储根 .agents/skills，跨端同步与 skill_read 共用同一目录
         const root = await services.pathService.getRootDirectory()
         if (!root) return
         const input = promptShortcutToSkillInput(shortcut)
-        await writeMobileUserSkill(root, input, services.fileSystem)
+        try {
+          await writeMobileUserSkill(
+            root,
+            previousName ? { ...input, previousName } : input,
+            services.fileSystem
+          )
+        } catch (error) {
+          if (
+            previousName &&
+            error instanceof Error &&
+            error.message.startsWith('Skill not found:')
+          ) {
+            await writeMobileUserSkill(root, input, services.fileSystem)
+          } else {
+            throw error
+          }
+        }
         notifyMobileSkillsChanged()
       } catch (err) {
         logger.warn('[MobilePromptShortcuts] sync skill to disk failed:', err as Error)
@@ -221,10 +260,16 @@ export function useMobilePromptShortcuts() {
         toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
         throw new Error('DUPLICATE_SHORTCUT_COMMAND')
       }
-      await persistShortcuts((prev) => [...prev, shortcut])
-      await syncSkillToDisk(shortcut)
+      const normalizedId = promptShortcutToSkillInput(shortcut).name
+      const nextShortcut =
+        shortcut.id.startsWith('custom-') && normalizedId
+          ? { ...shortcut, id: normalizedId }
+          : shortcut
+      await persistShortcuts((prev) => [...prev, nextShortcut])
+      await syncSkillToDisk(nextShortcut)
+      await loadShortcuts()
     },
-    [persistShortcuts, syncSkillToDisk, t, toast]
+    [loadShortcuts, persistShortcuts, syncSkillToDisk, t, toast]
   )
 
   const updateShortcut = useCallback(
@@ -233,30 +278,69 @@ export function useMobilePromptShortcuts() {
         toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
         throw new Error('DUPLICATE_SHORTCUT_COMMAND')
       }
-      await persistShortcuts((prev) =>
-        prev.map((item) => (item.id === shortcut.id ? shortcut : item))
+      const previousTarget = shortcutsRef.current.find((item) => item.id === shortcut.id)
+      const previousKey = normalizeShortcutKey(previousTarget ?? shortcut)
+      const previousName = previousTarget?.command || previousTarget?.name || shortcut.id
+      const prevSkills = skillShortcutsRef.current
+      skillShortcutsRef.current = prevSkills.map((item) =>
+        item.id === shortcut.id || (previousKey && normalizeShortcutKey(item) === previousKey)
+          ? { ...item, ...shortcut }
+          : item
       )
-      await syncSkillToDisk(shortcut)
+      try {
+        await persistShortcuts((prev) =>
+          prev.map((item) =>
+            item.id === shortcut.id || (previousKey && normalizeShortcutKey(item) === previousKey)
+              ? { ...item, ...shortcut, id: item.id }
+              : item
+          )
+        )
+      } catch (error) {
+        skillShortcutsRef.current = prevSkills
+        throw error
+      }
+      await syncSkillToDisk(shortcut, previousName)
+      await loadShortcuts()
     },
-    [persistShortcuts, syncSkillToDisk, t, toast]
+    [loadShortcuts, persistShortcuts, syncSkillToDisk, t, toast]
   )
 
   const deleteShortcut = useCallback(
     async (id: string) => {
       const target = shortcutsRef.current.find((item) => item.id === id)
-      await persistShortcuts((prev) => prev.filter((item) => item.id !== id))
-      if (target) {
-        await deleteSkillFromDisk(target.name || target.id)
+      const targetKey = target ? normalizeShortcutKey(target) : ''
+      const prevSkills = skillShortcutsRef.current
+      skillShortcutsRef.current = prevSkills.filter(
+        (item) => item.id !== id && (!targetKey || normalizeShortcutKey(item) !== targetKey)
+      )
+      try {
+        await persistShortcuts((prev) =>
+          prev.filter(
+            (item) => item.id !== id && (!targetKey || normalizeShortcutKey(item) !== targetKey)
+          )
+        )
+      } catch (error) {
+        skillShortcutsRef.current = prevSkills
+        throw error
       }
+      if (target) {
+        await deleteSkillFromDisk(target.command || target.name || target.id)
+      }
+      await loadShortcuts()
     },
-    [deleteSkillFromDisk, persistShortcuts]
+    [deleteSkillFromDisk, loadShortcuts, persistShortcuts]
   )
 
   const reorderShortcuts = useCallback(
     async (next: PromptShortcut[]) => {
+      const orderIds = next.map((item) => item.id)
       await persistShortcuts(
-        () => next.filter((item) => !isSkillShortcut(item)),
-        next.map((item) => item.id)
+        (prev) =>
+          applyShortcutDisplayOrder(
+            dedupePromptShortcuts([...prev, ...next.filter((item) => !isSkillShortcut(item))]),
+            orderIds
+          ),
+        orderIds
       )
     },
     [persistShortcuts]
@@ -267,6 +351,7 @@ export function useMobilePromptShortcuts() {
     addShortcut,
     updateShortcut,
     deleteShortcut,
-    reorderShortcuts
+    reorderShortcuts,
+    reloadShortcuts: loadShortcuts
   }
 }

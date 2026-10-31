@@ -26,4 +26,13 @@ describe('applyShortcutDisplayOrder', () => {
     expect(applyShortcutDisplayOrder(items, [])).toBe(items)
     expect(applyShortcutDisplayOrder(items, null)).toBe(items)
   })
+
+  it('should match by command when order was saved before skill id normalization', () => {
+    const items = [
+      { id: 'builtin', command: 'create-skill', name: 'create-skill' },
+      { id: '18', command: '18', name: '18' }
+    ]
+    const next = applyShortcutDisplayOrder(items, ['18', 'builtin'])
+    expect(next.map((item) => item.id)).toEqual(['18', 'builtin'])
+  })
 })

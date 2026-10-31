@@ -84,17 +84,40 @@ private fun addMcpCorsHeaders(response: NanoHTTPD.Response) {
         "Access-Control-Allow-Headers",
         "Content-Type, Authorization, Accept, mcp-session-id, Mcp-Session-Id, Last-Event-ID, mcp-protocol-version, MCP-Protocol-Version"
     )
+    response.addHeader(
+        "Access-Control-Expose-Headers",
+        "mcp-session-id, Mcp-Session-Id, mcp-protocol-version, MCP-Protocol-Version"
+    )
+}
+
+private fun resolveHeaderIgnoreCase(headers: Map<String, String>, targetKey: String): String? {
+    for ((key, value) in headers) {
+        if (key.equals(targetKey, ignoreCase = true)) {
+            return value
+        }
+    }
+    return null
 }
 
 private fun buildFixedMcpResponse(res: McpHttpResponse): NanoHTTPD.Response {
     val status = NanoHTTPD.Response.Status.lookup(res.statusCode) ?: NanoHTTPD.Response.Status.INTERNAL_ERROR
-    val contentType = res.headers["content-type"] ?: "application/json"
+    val explicitContentType = resolveHeaderIgnoreCase(res.headers, "content-type")
+    val contentType = when {
+        !explicitContentType.isNullOrBlank() -> explicitContentType
+        res.body.isBlank() -> "text/plain; charset=utf-8"
+        res.body.trimStart().let { it.startsWith("{") || it.startsWith("[") } -> "application/json"
+        else -> "text/plain; charset=utf-8"
+    }
     val response = NanoHTTPD.newFixedLengthResponse(status, contentType, res.body)
+    response.setGzipEncoding(false)
     addMcpCorsHeaders(response)
     val skipKeys = setOf(
+        "content-type",
+        "content-length",
         "access-control-allow-origin",
         "access-control-allow-methods",
-        "access-control-allow-headers"
+        "access-control-allow-headers",
+        "access-control-expose-headers"
     )
     for ((key, value) in res.headers) {
         if (key.lowercase() !in skipKeys) {
@@ -106,13 +129,18 @@ private fun buildFixedMcpResponse(res: McpHttpResponse): NanoHTTPD.Response {
 
 private fun buildStreamMcpResponse(meta: McpDispatchMeta.Stream, pipeIn: PipedInputStream): NanoHTTPD.Response {
     val status = NanoHTTPD.Response.Status.lookup(meta.statusCode) ?: NanoHTTPD.Response.Status.OK
-    val contentType = meta.headers["content-type"] ?: "text/event-stream"
+    val contentType = resolveHeaderIgnoreCase(meta.headers, "content-type") ?: "text/event-stream"
     val response = NanoHTTPD.newChunkedResponse(status, contentType, pipeIn)
+    response.setGzipEncoding(false)
     addMcpCorsHeaders(response)
     val skipKeys = setOf(
+        "content-type",
+        "content-length",
+        "transfer-encoding",
         "access-control-allow-origin",
         "access-control-allow-methods",
-        "access-control-allow-headers"
+        "access-control-allow-headers",
+        "access-control-expose-headers"
     )
     for ((key, value) in meta.headers) {
         if (key.lowercase() !in skipKeys) {
@@ -130,6 +158,13 @@ internal class BaishouHttpServer(
     /** MCP server 传入分发器；LAN server 传 null，避免 LAN 端口暴露 MCP 路由 */
     private val dispatchMcpRequest: ((McpHttpRequest) -> NanoHTTPD.Response)? = null
 ) : NanoHTTPD(port) {
+
+    /**
+     * 禁用 NanoHTTPD 默认的 GZIP 包装：
+     * NanoHTTPD 对 text/* 与 */json 默认开启 GZIPOutputStream（非 syncFlush），
+     * 当客户端携带 Accept-Encoding: gzip 时会导致 SSE 流（text/event-stream）的事件块被压缩缓冲区挂起而无法实时送达。
+     */
+    override fun useGzipWhenAccepted(r: Response?): Boolean = false
 
     private fun isAuthorized(session: IHTTPSession): Boolean {
         val token = authToken?.trim().orEmpty()
@@ -158,6 +193,10 @@ internal class BaishouHttpServer(
         response.addHeader(
             "Access-Control-Allow-Headers",
             "Content-Type, Authorization, Accept, mcp-session-id, Mcp-Session-Id, Last-Event-ID, mcp-protocol-version, MCP-Protocol-Version"
+        )
+        response.addHeader(
+            "Access-Control-Expose-Headers",
+            "mcp-session-id, Mcp-Session-Id, mcp-protocol-version, MCP-Protocol-Version"
         )
     }
 
@@ -203,8 +242,10 @@ internal class BaishouHttpServer(
         if (uri.isNullOrEmpty()) return false
         return uri == "/mcp" ||
             uri == "/mcp/" ||
+            uri.startsWith("/mcp/") ||
             uri == "/sse" ||
             uri == "/sse/" ||
+            uri.startsWith("/sse/") ||
             uri == "/message" ||
             uri.startsWith("/message?")
     }
@@ -414,7 +455,7 @@ class ExpoBaishouServerModule : Module() {
         val latch = CountDownLatch(1)
         val dispatchMeta = AtomicReference<McpDispatchMeta?>(null)
         val pipeOut = PipedOutputStream()
-        val pipeIn = PipedInputStream(pipeOut)
+        val pipeIn = PipedInputStream(pipeOut, 64 * 1024)
         pendingMcpRequests[requestId] = PendingMcpRequest(latch, dispatchMeta, pipeOut, pipeIn)
 
         sendEvent(
