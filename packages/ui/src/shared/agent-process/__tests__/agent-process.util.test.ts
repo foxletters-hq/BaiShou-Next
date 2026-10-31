@@ -289,4 +289,91 @@ describe('coalesceTimelineItemsForDisplay', () => {
       expect(coalesced[1]!.text).toBe('已经回复给用户的一半正文内容')
     }
   })
+
+  it('should keep reply segments after the last tool outside process even when reasoning appears between them', () => {
+    const items: AssistantDisplayTimelineItem[] = [
+      { kind: 'reasoning', key: 'r1', text: '先查图谱' },
+      {
+        kind: 'tools',
+        key: 't1',
+        invocations: [],
+        completedTools: [{ name: 'companion_ask', durationMs: 80900 }]
+      },
+      { kind: 'reasoning', key: 'r2', text: '用户选了先不补，整理测试结论' },
+      {
+        kind: 'text',
+        key: 'txt1',
+        text: '好，那就先让它空着。反正测试的目的已经达到了：数据库读得到，节点建得进。'
+      },
+      { kind: 'reasoning', key: 'r3', text: '调用 emoji_send 后的续轮思考' },
+      {
+        kind: 'text',
+        key: 'txt2',
+        text: '对了，上一条里写的“535 验证”是我手滑，本来想写的是“写入”。'
+      }
+    ]
+
+    const coalesced = coalesceTimelineItemsForDisplay(items)
+    expect(coalesced).toHaveLength(3)
+    expect(coalesced[0]!.kind).toBe('process')
+    if (coalesced[0]!.kind === 'process') {
+      expect(coalesced[0]!.hasSubsequentText).toBe(true)
+      expect(coalesced[0]!.textItems).toHaveLength(0)
+      expect(coalesced[0]!.reasoningItems).toHaveLength(3)
+      expect(coalesced[0]!.toolsItems).toHaveLength(1)
+    }
+    expect(coalesced[1]!.kind).toBe('text')
+    if (coalesced[1]!.kind === 'text') {
+      expect(coalesced[1]!.text).toContain('好，那就先让它空着')
+    }
+    expect(coalesced[2]!.kind).toBe('text')
+    if (coalesced[2]!.kind === 'text') {
+      expect(coalesced[2]!.text).toContain('本来想写的是“写入”')
+    }
+  })
+
+  it('should keep substantial structured report before companion_ask outside process while folding short commentary before normal tools', () => {
+    const structuredReport = [
+      '测完了，结论有点好笑：库是通的，但里面几乎什么都没有。',
+      '一、日记关系图（生命图谱）——能查，但是空的',
+      '- 查「武志红」：直接回我“未找到”。',
+      '- 查「深度关系」的网络：返回了 5 个节点，它们之间当前一条边都没有。',
+      '二、笔记本图谱——还是被拒',
+      '要不要我把这座孤岛连起来？'
+    ].join('\n')
+
+    const items: AssistantDisplayTimelineItem[] = [
+      { kind: 'reasoning', key: 'r1', text: '先查图数据库' },
+      {
+        kind: 'tools',
+        key: 't1',
+        invocations: [],
+        completedTools: [{ name: 'graph_search', durationMs: 36 }]
+      },
+      { kind: 'text', key: 'txt1', text: structuredReport },
+      {
+        kind: 'tools',
+        key: 't2',
+        invocations: [],
+        completedTools: [{ name: 'companion_ask', durationMs: 80900 }]
+      },
+      { kind: 'reasoning', key: 'r2', text: '收到回答' },
+      { kind: 'text', key: 'txt2', text: '好，那就先让它空着。' }
+    ]
+
+    const coalesced = coalesceTimelineItemsForDisplay(items)
+    expect(coalesced).toHaveLength(3)
+    expect(coalesced[0]!.kind).toBe('process')
+    if (coalesced[0]!.kind === 'process') {
+      expect(coalesced[0]!.textItems).toHaveLength(0)
+    }
+    expect(coalesced[1]!.kind).toBe('text')
+    if (coalesced[1]!.kind === 'text') {
+      expect(coalesced[1]!.text).toContain('一、日记关系图')
+    }
+    expect(coalesced[2]!.kind).toBe('text')
+    if (coalesced[2]!.kind === 'text') {
+      expect(coalesced[2]!.text).toBe('好，那就先让它空着。')
+    }
+  })
 })

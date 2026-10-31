@@ -97,9 +97,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = React.memo(
 
     const hasReasoning = cleanReasoning.length > 0 || isReasoning
     const hasText = cleanText.length > 0
-    const hasGateParts = gateParts.length > 0
-    const hasBody =
-      useTimeline || hasText || hasTools || hasReasoning || showStickerAttachments || hasGateParts
+    const hasBody = useTimeline || hasText || hasTools || hasReasoning || showStickerAttachments
 
     return (
       <div className={styles.container}>

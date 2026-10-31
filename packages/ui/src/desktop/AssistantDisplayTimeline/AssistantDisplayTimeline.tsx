@@ -111,10 +111,12 @@ function AssistantDisplayTimelineInner(props: {
                   const cited = citedByKey.get(item.key) ?? visibleAnswerText(item.text)
                   if (!cited?.trim()) return null
                   return (
-                    <AgentThinkSection
+                    <AgentMarkdownRenderer
                       key={item.key}
                       content={cited}
+                      variant="ancillary"
                       isStreaming={isTextStreaming && stepStreamingHere}
+                      wrapXProvider={false}
                     />
                   )
                 }

@@ -299,4 +299,20 @@ describe('agent-gate-inbox.store', () => {
     expect(selectQueueNeighborId(state, 's1', 'q1', -1)).toBeNull()
     expect(selectQueueNeighborId(state, 's1', 'q3', 1)).toBeNull()
   })
+
+  it('clears resolvedLive for a specific session without touching other sessions', () => {
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(req({ id: 'a', sessionId: 's1', createdAt: 1, action: 'recall_relations' }))
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(req({ id: 'b', sessionId: 's2', createdAt: 2, action: 'recall_relations' }))
+    useAgentGateInboxStore.getState().removeReplied('a')
+    useAgentGateInboxStore.getState().removeReplied('b')
+
+    useAgentGateInboxStore.getState().clearResolvedLiveForSession('s1')
+    const state = useAgentGateInboxStore.getState()
+    expect(selectResolvedLiveForSession(state, 's1')).toEqual([])
+    expect(selectResolvedLiveForSession(state, 's2').map((item) => item.request.id)).toEqual(['b'])
+  })
 })
