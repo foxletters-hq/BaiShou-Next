@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { LanguageModel, EmbeddingModel } from 'ai'
-import { AiProviderModel } from '@baishou/shared'
+import { AiProviderModel, normalizeModelId } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
 import { assertAsciiApiKey, createSanitizedFetch, sanitizeApiKeyForHttp } from './fetch-header.util'
@@ -22,12 +22,14 @@ export class GeminiAdaptedProvider implements IAIProvider {
   }
 
   getLanguageModel(modelId?: string): LanguageModel {
-    const targetModel = modelId || this.config.defaultDialogueModel || 'gemini-1.5-pro'
+    const rawModel = modelId || this.config.defaultDialogueModel || 'gemini-1.5-pro'
+    const targetModel = normalizeModelId(rawModel)
     return this._getSdk()(targetModel) as unknown as LanguageModel
   }
 
   getEmbeddingModel(modelId?: string): EmbeddingModel {
-    const targetModel = modelId || 'text-embedding-004'
+    const rawModel = modelId || 'text-embedding-004'
+    const targetModel = normalizeModelId(rawModel)
     return this._getSdk().textEmbeddingModel(targetModel) as unknown as EmbeddingModel
   }
 
@@ -64,7 +66,7 @@ export class GeminiAdaptedProvider implements IAIProvider {
 
   async testConnection(testModelId?: string): Promise<void> {
     // 优先使用用户选择的模型，然后才是配置中已有的模型，最后才用稳定保底值
-    const modelToTest =
+    const rawModelToTest =
       testModelId ||
       this.config.defaultDialogueModel ||
       (this.config.enabledModels && this.config.enabledModels.length > 0
@@ -72,6 +74,7 @@ export class GeminiAdaptedProvider implements IAIProvider {
         : null) ||
       (this.config.models && this.config.models.length > 0 ? this.config.models[0] : null) ||
       'gemini-2.0-flash' // Gemini 最新稳定保底
+    const modelToTest = normalizeModelId(rawModelToTest)
 
     assertAsciiApiKey(getRotatedApiKey(this.config) || this.config.apiKey)
 

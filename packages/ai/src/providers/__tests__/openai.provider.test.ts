@@ -166,5 +166,31 @@ describe('OpenAIAdaptedProvider', () => {
       const models = await provider.fetchAvailableModels()
       expect(models).toEqual(['gpt-4o'])
     })
+
+    it('strips jina-ai/ prefix from fetched models list', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            { id: 'jina-ai/jina-embeddings-v3' },
+            { id: 'jina-ai/jina-clip-v2' },
+            { id: 'jina-ai/reader-lm-1.5b' }
+          ]
+        })
+      } as Response)
+
+      const provider = new OpenAIAdaptedProvider(
+        createAiProvider({
+          id: 'jina',
+          name: 'Jina AI',
+          type: ProviderType.Custom,
+          apiKey: 'test-key',
+          baseUrl: 'https://api.jina.ai/v1'
+        })
+      )
+
+      const models = await provider.fetchAvailableModels()
+      expect(models).toEqual(['jina-embeddings-v3', 'jina-clip-v2', 'reader-lm-1.5b'])
+    })
   })
 })

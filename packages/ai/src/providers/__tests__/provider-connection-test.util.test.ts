@@ -28,7 +28,8 @@ describe('provider-connection-test.util', () => {
       expect.objectContaining({
         model,
         prompt: CONNECTION_TEST_PROMPT,
-        maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS
+        maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS,
+        experimental_telemetry: { isEnabled: false }
       })
     )
   })
@@ -86,7 +87,9 @@ describe('provider-connection-test.util', () => {
       expect.objectContaining({
         model,
         prompt: CONNECTION_TEST_PROMPT,
-        maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS
+        maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS,
+        experimental_telemetry: { isEnabled: false },
+        onError: expect.any(Function)
       })
     )
   })

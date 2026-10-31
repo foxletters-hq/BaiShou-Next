@@ -6,6 +6,8 @@ import {
   isChatModelForConnectionTest,
   isOpenAiStyleReasoningModel,
   mergeZhipuKnownEmbeddingModels,
+  normalizeModelId,
+  normalizeRemoteModelIds,
   resolveProviderBaseUrl,
   sanitizeSurrogatesDeep
 } from '@baishou/shared'
@@ -160,23 +162,7 @@ function createOpenAICompatFetchInterceptor(
       }
     }
 
-    if (!isDeepSeek) {
-      return fetchImpl(url, safeInit)
-    }
-
-    const response = await fetchImpl(url, safeInit)
-    if (!response.ok) {
-      const errorBody = await response.text()
-      console.error(
-        `[FetchDebug] DeepSeek error status=${response.status} body=${errorBody.slice(0, 800)}`
-      )
-      return new Response(errorBody, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      })
-    }
-    return response
+    return fetchImpl(url, safeInit)
   }
 }
 
@@ -225,7 +211,8 @@ export class OpenAIAdaptedProvider implements IAIProvider {
   }
 
   getLanguageModel(modelId?: string): LanguageModel {
-    const targetModel = modelId || this.config.defaultDialogueModel || 'gpt-4o'
+    const rawModel = modelId || this.config.defaultDialogueModel || 'gpt-4o'
+    const targetModel = normalizeModelId(rawModel)
     const ctx = {
       modelId: targetModel,
       providerType: this.config.type,
@@ -242,7 +229,8 @@ export class OpenAIAdaptedProvider implements IAIProvider {
   }
 
   getEmbeddingModel(modelId?: string): EmbeddingModel {
-    const targetModel = modelId || 'text-embedding-3-small'
+    const rawModel = modelId || 'text-embedding-3-small'
+    const targetModel = normalizeModelId(rawModel)
     if (
       shouldUseOpenAiCompatibleChatSdk({
         providerType: this.config.type,
@@ -274,7 +262,8 @@ export class OpenAIAdaptedProvider implements IAIProvider {
       }
       const data = await response.json()
       if (data && data.data && Array.isArray(data.data)) {
-        const remoteIds = data.data.map((m: any) => m.id as string)
+        let remoteIds = data.data.map((m: any) => m.id as string).filter(Boolean)
+        remoteIds = normalizeRemoteModelIds(remoteIds)
         if (this.config.type.toLowerCase() === 'zhipu') {
           return mergeZhipuKnownEmbeddingModels(remoteIds)
         }
@@ -292,7 +281,7 @@ export class OpenAIAdaptedProvider implements IAIProvider {
   }
 
   private async resolveTestModelId(testModelId?: string): Promise<string> {
-    const selected = testModelId?.trim()
+    const selected = normalizeModelId(testModelId?.trim() || '')
     if (!selected) {
       throw new Error('No chat model selected for connection test.')
     }

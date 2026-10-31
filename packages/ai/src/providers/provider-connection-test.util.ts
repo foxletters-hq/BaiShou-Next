@@ -51,11 +51,16 @@ export async function probeProviderConnection(
         prompt: CONNECTION_TEST_PROMPT,
         maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS,
         abortSignal: abortController.signal,
+        experimental_telemetry: { isEnabled: false },
         ...(built?.providerOptions ? { providerOptions: built.providerOptions as never } : {})
       }
 
       if (params.streaming) {
-        for await (const part of streamText(options).fullStream) {
+        const streamResult = streamText({
+          ...options,
+          onError: () => {}
+        })
+        for await (const part of streamResult.fullStream) {
           // streamText 不会在 API 错误时 reject，而是把错误作为流事件发出
           if (part.type === 'error') throw part.error
         }
