@@ -63,6 +63,7 @@ export function GraphReviewScreen() {
       <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: tokens.spacing.md, paddingTop: tokens.spacing.md }}>
           <SegmentedControl
+            size="small"
             value={tab}
             onChange={(value) => setTab(value as ReviewTab)}
             options={[

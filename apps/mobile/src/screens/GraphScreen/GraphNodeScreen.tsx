@@ -25,21 +25,36 @@ export function GraphNodeScreen() {
   const { onSelectNode } = search
   const [loading, setLoading] = useState(true)
   const loadedOnceRef = useRef(false)
+  const loadedTargetKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!nodeId || !m.dbReady) return
+    const targetKey = `${m.vaultId}:${nodeId}`
+    if (loadedTargetKeyRef.current === targetKey) return
+    loadedTargetKeyRef.current = targetKey
+    loadedOnceRef.current = false
     let cancelled = false
     setLoading(true)
-    void onSelectNode(nodeId).then(() => {
-      if (!cancelled) {
-        loadedOnceRef.current = true
-        setLoading(false)
-      }
-    })
+    void onSelectNode(nodeId)
+      .then(() => {
+        if (!cancelled) {
+          loadedOnceRef.current = true
+          setLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          loadedOnceRef.current = true
+          setLoading(false)
+        }
+      })
     return () => {
       cancelled = true
+      if (!loadedOnceRef.current) {
+        loadedTargetKeyRef.current = null
+      }
     }
-  }, [nodeId, m.dbReady, onSelectNode])
+  }, [nodeId, m.dbReady, m.vaultId, onSelectNode])
 
   useEffect(() => {
     if (loadedOnceRef.current && !loading && !search.selectedNode) {

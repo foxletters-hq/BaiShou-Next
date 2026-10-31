@@ -33,6 +33,8 @@ export function useAgentScreenInteractions(deps: {
   setShowShortcutSheet: (open: boolean) => void
   currentSessionId: string | null
   currentAssistantName: string | undefined
+  refreshSessionList?: () => void
+  handleSelectSession?: (sessionId: string) => Promise<void> | void
   streamError: string | null
   isStreaming: boolean
   toast: Toast
@@ -51,16 +53,30 @@ export function useAgentScreenInteractions(deps: {
     setShowShortcutSheet,
     currentSessionId,
     currentAssistantName,
+    refreshSessionList,
+    handleSelectSession,
     streamError,
     isStreaming,
     toast
   } = deps
 
-  const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
-    useMobilePromptShortcuts()
+  const {
+    shortcuts,
+    addShortcut,
+    updateShortcut,
+    deleteShortcut,
+    reorderShortcuts,
+    reloadShortcuts
+  } = useMobilePromptShortcuts()
   const { ttsPlayingMsgId, handleTtsReadAloud } = useTTS()
   const { branchSession } = useBranchSession()
   useStreamError(streamError, isStreaming)
+
+  useEffect(() => {
+    if (showShortcutSheet) {
+      void reloadShortcuts?.()
+    }
+  }, [showShortcutSheet, reloadShortcuts])
 
   const handleInputBarFocus = useCallback(() => {
     handleComposerFocus()
@@ -79,10 +95,12 @@ export function useAgentScreenInteractions(deps: {
         fileRefs?: unknown[]
       }
     ): Promise<boolean> => {
+      resetKeyboardInset()
+      Keyboard.dismiss()
       beginFollowIfAtBottom(flatListRef)
       return handleSend(text, attachments, sendSearchMode, meta)
     },
-    [beginFollowIfAtBottom, handleSend, flatListRef]
+    [resetKeyboardInset, beginFollowIfAtBottom, handleSend, flatListRef]
   )
 
   useEffect(() => {
@@ -110,6 +128,8 @@ export function useAgentScreenInteractions(deps: {
       try {
         const newSessionId = await branchSession(currentSessionId, messageId, currentAssistantName)
         if (newSessionId) {
+          refreshSessionList?.()
+          await handleSelectSession?.(newSessionId)
           toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'))
         }
       } catch (e: unknown) {
@@ -117,7 +137,15 @@ export function useAgentScreenInteractions(deps: {
         toast.showError(msg)
       }
     },
-    [currentSessionId, branchSession, currentAssistantName, t, toast]
+    [
+      currentSessionId,
+      branchSession,
+      currentAssistantName,
+      refreshSessionList,
+      handleSelectSession,
+      t,
+      toast
+    ]
   )
 
   return {

@@ -1,14 +1,16 @@
-import React from 'react'
-import { Pressable, Text, TextInput, View } from 'react-native'
+import React, { useMemo, useState } from 'react'
+import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import {
+  formatLocalDate,
   GRAPH_EXTRACT_CONCURRENCY_MAX,
   GRAPH_EXTRACT_CONCURRENCY_MIN,
+  safeParseDate,
   type UserGender
 } from '@baishou/shared'
 import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
-import { Select, useNativeTheme } from '@baishou/ui/native'
+import { DatePickerFloatingModal, Select, useNativeTheme } from '@baishou/ui/native'
 import { GraphExtractHelpButton } from './GraphExtractHelpButton'
 import { styles } from './GraphScreen.styles'
 import type { GraphScreenSettingsSection } from './graph-screen.types'
@@ -52,6 +54,11 @@ export function GraphScreenSettingsOrganize(props: {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const router = useRouter()
+  const [extractPickerOpen, setExtractPickerOpen] = useState(false)
+  const extractDateValue = useMemo(
+    () => safeParseDate(props.extractDate),
+    [props.extractDate]
+  )
 
   return (
     <View style={styles.settingsBody}>
@@ -141,6 +148,10 @@ export function GraphScreenSettingsOrganize(props: {
                 }
               }
             )}
+            textStyle={{
+              textAlign: 'center',
+              paddingLeft: sharedTokens.spacing.xsPlus
+            }}
             triggerStyle={{
               minHeight: 30,
               paddingVertical: 2,
@@ -165,23 +176,31 @@ export function GraphScreenSettingsOrganize(props: {
           {t('graph.extract_one_date', '日记日期')}
         </Text>
         <View style={{ flexDirection: 'row', gap: sharedTokens.spacing.sm, alignItems: 'center' }}>
-          <TextInput
-            value={props.extractDate}
-            onChangeText={props.onExtractDateChange}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.textSecondary}
+          <Pressable
+            onPress={() => setExtractPickerOpen(true)}
             style={{
               flex: 1,
-              color: colors.textPrimary,
+              height: 38,
               borderWidth: 1,
               borderColor: colors.borderControl,
               borderRadius: sharedTokens.radius.md,
               backgroundColor: colors.bgSurface,
-              height: 38,
               paddingHorizontal: sharedTokens.spacing.md,
-              fontSize: mobileTypography.secondary.fontSize
+              justifyContent: 'center'
             }}
-          />
+            accessibilityRole="button"
+            accessibilityLabel={t('graph.extract_one_date', '日记日期')}
+          >
+            <Text
+              style={{
+                color: props.extractDate ? colors.textPrimary : colors.textSecondary,
+                fontSize: mobileTypography.secondary.fontSize
+              }}
+              numberOfLines={1}
+            >
+              {props.extractDate || t('graph.select_diary_date', '选择日记日期')}
+            </Text>
+          </Pressable>
           <Pressable
             onPress={props.onRunExtractOne}
             disabled={props.busy}
@@ -209,6 +228,15 @@ export function GraphScreenSettingsOrganize(props: {
             </Text>
           </Pressable>
         </View>
+        <DatePickerFloatingModal
+          visible={extractPickerOpen}
+          value={extractDateValue}
+          onClose={() => setExtractPickerOpen(false)}
+          onConfirm={(date) => {
+            props.onExtractDateChange(formatLocalDate(date))
+            setExtractPickerOpen(false)
+          }}
+        />
       </View>
 
       {/* 新建节点 & 合并节点（统一高度 38px，边框与圆角完全对齐） */}

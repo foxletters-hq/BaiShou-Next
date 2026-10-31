@@ -130,8 +130,17 @@ export function useAgentScreenSession(deps: {
     [aiProviders]
   )
 
-  const { sessions, hasMoreSessions, isLoadingMoreSessions, sessionListScrollKey, loadSessions } =
-    useAgentSessions(currentAssistant?.id)
+  const {
+    sessions,
+    hasMoreSessions,
+    isLoadingMoreSessions,
+    isRefreshingSessions,
+    sessionSearchQuery,
+    setSessionSearchQuery,
+    sessionListScrollKey,
+    loadSessions,
+    refreshSessions
+  } = useAgentSessions(currentAssistant?.id)
 
   const resolvedCurrentAvatarUri = useResolvedAssistantAvatar(currentAssistant?.avatarPath)
   const resolvedUserAvatarUri = useResolvedUserAvatar(userProfile.avatarPath).uri
@@ -189,13 +198,19 @@ export function useAgentScreenSession(deps: {
   }, [currentSessionId, syncWithSession])
 
   const refreshSessionList = useCallback(() => {
-    void loadSessions(true, currentAssistant?.id)
+    void loadSessions(true, currentAssistant?.id, {
+      preserveLoadedCount: true,
+      scrollToTop: false
+    })
   }, [loadSessions, currentAssistant?.id])
 
   useEffect(() => {
     if (!drawerOpen || !dbReady || !currentAssistant?.id) return
     const timer = setTimeout(() => {
-      void loadSessions(true, currentAssistant.id)
+      void loadSessions(true, currentAssistant.id, {
+        preserveLoadedCount: true,
+        scrollToTop: false
+      })
     }, 280)
     return () => clearTimeout(timer)
   }, [drawerOpen, dbReady, currentAssistant?.id, loadSessions])
@@ -259,6 +274,7 @@ export function useAgentScreenSession(deps: {
     isAgentGateReplying,
     replyAgentGate,
     handleSend,
+    steerPendingInput,
     handleStop,
     handleRegenerate,
     handleResend,
@@ -305,8 +321,12 @@ export function useAgentScreenSession(deps: {
     sessions,
     hasMoreSessions,
     isLoadingMoreSessions,
+    isRefreshingSessions,
+    sessionSearchQuery,
+    setSessionSearchQuery,
     sessionListScrollKey,
     loadSessions,
+    refreshSessions,
     currentSessionId,
     hasMore,
     messages,
@@ -342,6 +362,8 @@ export function useAgentScreenSession(deps: {
     isAgentGateReplying,
     replyAgentGate,
     handleSend,
+    steerPendingInput,
+    refreshSessionMessages,
     handleStop,
     handleRegenerate,
     handleResend,

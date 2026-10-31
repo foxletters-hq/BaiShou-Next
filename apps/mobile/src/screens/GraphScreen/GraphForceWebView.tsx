@@ -58,11 +58,73 @@ export const GraphForceWebView: React.FC<{
   const canvasBg = colors.bgApp
   const fp = useMemo(() => topologyFingerprint(nodes, edges), [nodes, edges])
   const metaFp = useMemo(() => graphMetaFingerprint(nodes, edges), [nodes, edges])
+  const webViewSeedRef = useRef<{
+    fp: string
+    scheme: 'light' | 'dark'
+    nodeIds: Set<string>
+    edgeIds: Set<string>
+    nodes: GraphForceNode[]
+    edges: GraphForceEdge[]
+  } | null>(null)
+
+  const liveNodeIds = useMemo(
+    () => new Set(nodes.filter((n) => n.reviewStatus !== 'rejected').map((n) => n.id)),
+    [nodes]
+  )
+  const liveEdgeIds = useMemo(
+    () =>
+      new Set(
+        edges
+          .filter(
+            (e) =>
+              e.reviewStatus !== 'rejected' &&
+              liveNodeIds.has(e.fromId) &&
+              liveNodeIds.has(e.toId)
+          )
+          .map((e) => e.id)
+      ),
+    [edges, liveNodeIds]
+  )
+
+  const canPruneInPlace =
+    webViewSeedRef.current != null &&
+    webViewSeedRef.current.scheme === colorScheme &&
+    liveNodeIds.size > 0 &&
+    liveNodeIds.size <= webViewSeedRef.current.nodeIds.size &&
+    liveEdgeIds.size <= webViewSeedRef.current.edgeIds.size &&
+    Array.from(liveNodeIds).every((id) => webViewSeedRef.current!.nodeIds.has(id)) &&
+    Array.from(liveEdgeIds).every((id) => webViewSeedRef.current!.edgeIds.has(id))
+
+  if (!canPruneInPlace) {
+    webViewSeedRef.current = {
+      fp,
+      scheme: colorScheme,
+      nodeIds: liveNodeIds,
+      edgeIds: liveEdgeIds,
+      nodes,
+      edges
+    }
+  } else {
+    webViewSeedRef.current = {
+      ...webViewSeedRef.current!,
+      nodeIds: liveNodeIds,
+      edgeIds: liveEdgeIds
+    }
+  }
+  const htmlSeed = webViewSeedRef.current!
+  const htmlFp = `${htmlSeed.fp}::${htmlSeed.scheme}`
   const html = useMemo(
-    () => buildGraphForceHtml(nodes, edges, forceSettings, appearanceSettings, colorScheme),
-    // Rebuild only when graph topology or appearance scheme changes.
+    () =>
+      buildGraphForceHtml(
+        htmlSeed.nodes,
+        htmlSeed.edges,
+        forceSettings,
+        appearanceSettings,
+        colorScheme
+      ),
+    // Rebuild only when graph topology adds nodes/edges or appearance scheme changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fp, colorScheme]
+    [htmlFp]
   )
 
   const webRef = useRef<WebView>(null)
@@ -131,7 +193,7 @@ export const GraphForceWebView: React.FC<{
       nodes: nodesRef.current,
       edges: edgesRef.current
     })
-  }, [metaFp])
+  }, [fp, metaFp])
 
   useEffect(() => {
     if (!loadedRef.current) return
@@ -214,7 +276,7 @@ export const GraphForceWebView: React.FC<{
     loadedRef.current = false
     locateReadyRef.current = false
     animReadyRef.current = false
-  }, [fp])
+  }, [htmlFp])
 
   const onMessage = (event: WebViewMessageEvent) => {
     try {

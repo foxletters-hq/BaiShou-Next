@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { type WebSearchConfig } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
@@ -16,10 +16,12 @@ import { useBaishou } from '../../../providers/BaishouProvider'
 import { useAgentUI } from '../../../hooks/useAgentUI'
 import { useAgentChatKeyboardInsets } from '../../../hooks/useAgentChatKeyboardInsets'
 import { useAgentChatScroll } from '../../../hooks/useAgentChatScroll'
+import { useMobilePendingQueue } from '../../../hooks/useMobilePendingQueue'
 import { usePersistedSharedMemoryLookback } from '../../../hooks/usePersistedSharedMemoryLookback'
 import { usePersistedSharedMemoryCopyPrefix } from '../../../hooks/usePersistedSharedMemoryCopyPrefix'
 import { useSharedMemoryCopyPreview } from '../../../hooks/useSharedMemoryCopyPreview'
 import { INPUT_DOCK_HEIGHT } from '../agent-screen.constants'
+import { excludePendingQueuedUserMessages } from '../components/MobileComposerRuntimeQueueBar'
 import { useAgentBubbleEdit } from './useAgentBubbleEdit'
 import { useAgentPendingEmojis } from './useAgentPendingEmojis'
 import { useAgentContextDialog } from './useAgentContextDialog'
@@ -71,45 +73,17 @@ export function useAgentScreenController() {
     userProfile,
     resolvedCurrentAvatarUri,
     resolvedUserAvatarUri,
-    resolvedChatBackgroundUri,
-    chatBackgroundBlur,
-    chatBackgroundOverlay,
     hasChatBackground,
     currentAssistant,
-    currentProviderId,
-    currentModelId,
-    displayModelName,
-    showAssistantPicker,
-    showModelSwitcher,
-    setShowAssistantPicker,
-    setShowModelSwitcher,
-    handleSelectModel,
-    hasConfiguredDialogueModel,
-    currentProviderType,
-    dialogueProviders,
-    sessions,
-    hasMoreSessions,
-    isLoadingMoreSessions,
-    sessionListScrollKey,
-    loadSessions,
     currentSessionId,
     hasMore,
     messages,
     handleLoadMore,
     handleSelectSession,
-    handleCreateSession,
-    handleDeleteSession,
-    handlePinSession,
-    handleRenameSession,
     refreshSessionList,
-    pinnedAssistants,
-    pickerAssistants,
-    handleSelectAssistantWithTracking,
-    loadAssistants,
     isStreaming,
     isStreamBridgeActive,
     streamPresentationLinger,
-    isRetryActionBusy,
     isCompressing,
     compressionPhase,
     compressionText,
@@ -123,34 +97,33 @@ export function useAgentScreenController() {
     activeTool,
     completedTools,
     pendingEmojis,
-    pendingAgentGate,
-    isAgentGateReplying,
-    replyAgentGate,
     handleSend,
-    handleStop,
-    handleRegenerate,
-    handleResend,
-    handleEditMessage,
-    handleSaveAssistantEdit,
-    handleDeleteMessage,
-    activeToolDisplayName,
-    composerDraftKey
+    steerPendingInput,
+    refreshSessionMessages,
+    activeToolDisplayName
   } = session
 
+  const pendingQueueCtl = useMobilePendingQueue({
+    sessionId: currentSessionId,
+    refreshSessionMessages,
+    onSteerSendNow: steerPendingInput
+  })
+
+  const displayMessages = useMemo(
+    () => excludePendingQueuedUserMessages(messages, pendingQueueCtl.pendingQueue),
+    [messages, pendingQueueCtl.pendingQueue]
+  )
+
+  const ui = useAgentUI()
   const {
     showCostDialog,
     showShortcutSheet,
     showRecallSheet,
-    recallItems,
-    isSearchingRecall,
     setShowCostDialog,
     setShowShortcutSheet,
     setShowRecallSheet,
-    handleRecallSearch,
-    handleInjectRecall,
-    recallSearchMode,
-    toggleRecallSearchMode
-  } = useAgentUI()
+    handleInjectRecall
+  } = ui
 
   const injectRecallIntoComposer = useCallback(
     (items: RecallItem[]) => {
@@ -168,6 +141,14 @@ export function useAgentScreenController() {
       locale: i18n.language
     })
 
+  const scroll = useAgentChatScroll({
+    sessionId: currentSessionId,
+    messages: displayMessages,
+    isStreaming,
+    isStreamBridgeActive: isStreamBridgeActive || streamPresentationLinger,
+    activeTool,
+    viewportHeight: listViewportHeight
+  })
   const {
     showScrollButton,
     handleListScroll: handleChatListScroll,
@@ -184,22 +165,12 @@ export function useAgentScreenController() {
     beginContentHandoff,
     finalizeContentHandoff,
     bindFlatList
-  } = useAgentChatScroll({
-    sessionId: currentSessionId,
-    messages,
-    isStreaming,
-    isStreamBridgeActive: isStreamBridgeActive || streamPresentationLinger,
-    activeTool,
-    viewportHeight: listViewportHeight
-  })
+  } = scroll
 
   useEffect(() => {
     bindFlatList(flatListRef)
   }, [bindFlatList])
 
-  // 仅在真正获得焦点时贴底一次。绝不能把 scrollToBottomOnFocus 放进 deps：
-  // 托底 minHeight / 跟随状态变化会换掉回调引用，useFocusEffect 会在仍聚焦时反复重跑，
-  // 表现为流式中不断 focus_bottom 解锁并拽到底（见滚动诊断日志）。
   const scrollToBottomOnFocusRef = useRef(scrollToBottomOnFocus)
   scrollToBottomOnFocusRef.current = scrollToBottomOnFocus
   useFocusEffect(
@@ -256,23 +227,7 @@ export function useAgentScreenController() {
 
   const { ttsMode, toggleTtsMode } = useAgentScreenPreferences()
 
-  const {
-    contextDialogState,
-    setContextDialogState,
-    activeContextSessionId,
-    contextRecompressJob,
-    runContextRecompress,
-    dismissContextRecompressError,
-    handleShowContext,
-    handleRefreshPricing,
-    pricingLastUpdated,
-    totalInputTokens,
-    totalOutputTokens,
-    totalCacheReadInputTokens,
-    totalCacheWriteInputTokens,
-    estimatedCost,
-    totalCostMicros
-  } = useAgentContextDialog({
+  const ctxDialog = useAgentContextDialog({
     currentSessionId,
     services,
     searchMode,
@@ -293,13 +248,13 @@ export function useAgentScreenController() {
       resolvedCurrentAvatarUri,
       resolvedUserAvatarUri,
       userProfile,
-      messages,
+      messages: displayMessages,
       t
     })
 
   const streaming = useAgentStreamingPresentation({
     currentSessionId,
-    messages,
+    messages: displayMessages,
     scrollOffsetRef,
     isStreaming,
     isStreamBridgeActive,
@@ -328,35 +283,20 @@ export function useAgentScreenController() {
     streamError
   })
 
-  const {
-    showLoadMoreBanner,
-    handleListContentSizeChange,
-    handleListIntrinsicContentHeightChange,
-    handleListScroll
-  } = useAgentListScrollHandlers({
+  const listScroll = useAgentListScrollHandlers({
     flatListRef,
     scrollOffsetRef,
     layoutReadyRef,
     handleContentSizeChange,
     handleIntrinsicContentHeightChange,
     handleChatListScroll,
+    handleScrollEndDrag,
+    handleLoadMore,
     hasMore,
     currentSessionId
   })
 
-  const {
-    shortcuts,
-    addShortcut,
-    updateShortcut,
-    deleteShortcut,
-    reorderShortcuts,
-    ttsPlayingMsgId,
-    handleTtsReadAloud,
-    handleInputBarFocus,
-    handleSendWithScroll,
-    handleShortcutSelect,
-    handleBranch
-  } = useAgentScreenInteractions({
+  const interactions = useAgentScreenInteractions({
     drawerOpen,
     showShortcutSheet,
     showRecallSheet,
@@ -369,12 +309,18 @@ export function useAgentScreenController() {
     setShowShortcutSheet,
     currentSessionId,
     currentAssistantName: currentAssistant?.name,
+    refreshSessionList,
+    handleSelectSession,
     streamError,
     isStreaming,
     toast
   })
 
   return {
+    ...session,
+    ...ui,
+    ...ctxDialog,
+    ...interactions,
     router,
     t: tr,
     i18n,
@@ -391,60 +337,25 @@ export function useAgentScreenController() {
     layoutReadyRef,
     listViewportHeight,
     setListViewportHeight,
-    resolvedChatBackgroundUri,
-    chatBackgroundBlur,
-    chatBackgroundOverlay,
-    userProfile,
-    displayModelName,
-    currentProviderId,
-    currentProviderType,
-    dialogueProviders,
-    totalCostMicros,
-    setShowModelSwitcher,
     setShowCostDialog,
     drawerSwipeEnabled,
     streaming,
-    handleListScroll,
+    handleListScroll: listScroll.handleListScroll,
     handleScrollBeginDrag,
-    handleScrollEndDrag,
+    handleScrollEndDrag: listScroll.handleListScrollEndDrag,
     handleMomentumScrollBegin,
     handleMomentumScrollEnd,
-    handleListContentSizeChange,
-    handleListIntrinsicContentHeightChange,
-    messages,
-    hasMore,
-    showLoadMoreBanner,
-    handleLoadMore,
-    isStreaming,
-    pendingAgentGate,
-    isAgentGateReplying,
-    replyAgentGate,
-    isStreamBridgeActive,
-    streamingText,
-    streamingReasoning,
+    handleListContentSizeChange: listScroll.handleListContentSizeChange,
+    handleListIntrinsicContentHeightChange: listScroll.handleListIntrinsicContentHeightChange,
+    messages: displayMessages,
+    pendingQueueCtl,
+    showLoadMoreBanner: listScroll.showLoadMoreBanner,
+    handleLoadMore: listScroll.handleLoadMoreWithAnchor,
     chatUserProfile,
     chatAiProfile,
-    hasChatBackground,
-    compressionPhase,
-    compressionTriggerMessageId,
-    isCompressing,
-    compressionText,
-    compressionReasoning,
     lastMessage,
-    streamError,
-    activeToolDisplayName,
     editingMessageId,
-    handleRegenerate,
-    handleResend,
-    handleEditMessage,
-    handleSaveAssistantEdit,
-    handleDeleteMessage,
-    handleTtsReadAloud,
-    ttsPlayingMsgId,
-    handleShowContext,
-    handleBranch,
     handleBubbleEditingChange,
-    isRetryActionBusy,
     showScrollButton,
     isBubbleEditing,
     scrollButtonAnimatedStyle,
@@ -452,74 +363,19 @@ export function useAgentScreenController() {
     inputDockHeight,
     setInputDockHeight,
     inputDockAnimatedStyle,
-    handleSendWithScroll,
-    handleStop,
-    hasConfiguredDialogueModel,
     toast,
-    composerDraftKey,
-    handleInputBarFocus,
-    shortcuts,
     assistantDisplayName,
     setShowShortcutSheet,
     setShowRecallSheet,
     ttsMode,
     toggleTtsMode,
-    currentAssistant,
-    resolvedCurrentAvatarUri,
-    pinnedAssistants,
-    sessions,
-    sessionListScrollKey,
-    hasMoreSessions,
-    isLoadingMoreSessions,
-    loadSessions,
-    currentSessionId,
-    handleSelectSession,
-    handleCreateSession,
-    refreshSessionList,
-    setShowAssistantPicker,
-    handleSelectAssistantWithTracking,
-    handlePinSession,
-    handleDeleteSession,
-    handleRenameSession,
-    showAssistantPicker,
-    showModelSwitcher,
-    handleSelectModel,
-    currentModelId,
-    showCostDialog,
-    totalInputTokens,
-    totalOutputTokens,
-    totalCacheReadInputTokens,
-    totalCacheWriteInputTokens,
-    estimatedCost,
-    pricingLastUpdated,
-    handleRefreshPricing,
-    showShortcutSheet,
-    handleShortcutSelect,
-    addShortcut,
-    updateShortcut,
-    deleteShortcut,
-    reorderShortcuts,
-    showRecallSheet,
-    recallItems,
-    isSearchingRecall,
-    handleRecallSearch,
     handleInjectRecall: injectRecallIntoComposer,
-    recallSearchMode,
-    toggleRecallSearchMode,
     recallLookbackMonths,
     setRecallLookbackMonths,
     services,
     copyPrefix,
     setCopyPrefix,
     recallCopyPreview,
-    recallCopyPreviewLoading,
-    contextDialogState,
-    setContextDialogState,
-    activeContextSessionId,
-    contextRecompressJob,
-    runContextRecompress,
-    dismissContextRecompressError,
-    loadAssistants,
-    pickerAssistants
+    recallCopyPreviewLoading
   }
 }
