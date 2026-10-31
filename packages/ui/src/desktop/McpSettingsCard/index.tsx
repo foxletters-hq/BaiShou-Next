@@ -7,8 +7,8 @@ import {
 } from '../shared/settingsInlineHelpBlock'
 import { Switch } from '../Switch/Switch'
 import { Input } from '../Input/Input'
-import { Select } from '../Select/Select'
 import { Button } from '../Button/Button'
+import { Pagination } from '../Pagination'
 import { withAppContentOverlay } from '../overlay'
 import styles from './McpSettingsCard.module.css'
 import { McpHelpButton } from './McpHelpButton'
@@ -48,38 +48,44 @@ export { buildMcpUrl, buildMcpSseUrl } from './mcp-url'
 export { McpToolsListPanel } from './McpToolsListPanel'
 export type { McpToolInfo } from './McpToolsListPanel'
 
+export const MCP_WORKSPACE_PAGE_SIZE = 3
+
 export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
   config,
   onChange,
   onRefreshToken,
   standalone = false,
   lanHost = null,
-  workspaces,
-  activeWorkspaceId
+  workspaces
 }) => {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = React.useState(true)
   const [showRefreshConfirm, setShowRefreshConfirm] = React.useState(false)
-  const [selectedVaultId, setSelectedVaultId] = React.useState<string>(
-    () => activeWorkspaceId || workspaces?.[0]?.id || ''
-  )
+  const [workspacePage, setWorkspacePage] = React.useState(1)
   const toast = useToast()
 
+  const totalWorkspacePages = Math.max(
+    1,
+    Math.ceil((workspaces?.length ?? 0) / MCP_WORKSPACE_PAGE_SIZE)
+  )
+  const safeWorkspacePage = Math.min(workspacePage, totalWorkspacePages)
   React.useEffect(() => {
-    if (!workspaces || workspaces.length === 0) return
-    if (selectedVaultId && workspaces.some((w) => w.id === selectedVaultId)) return
-    setSelectedVaultId(activeWorkspaceId || workspaces[0].id)
-  }, [activeWorkspaceId, selectedVaultId, workspaces])
+    if (workspacePage > totalWorkspacePages) {
+      setWorkspacePage(totalWorkspacePages)
+    }
+  }, [workspacePage, totalWorkspacePages])
 
-  const effectiveVaultId =
-    workspaces && workspaces.length > 0 ? selectedVaultId || workspaces[0].id : undefined
+  const pagedWorkspaces = React.useMemo(() => {
+    if (!workspaces) return []
+    const start = (safeWorkspacePage - 1) * MCP_WORKSPACE_PAGE_SIZE
+    return workspaces.slice(start, start + MCP_WORKSPACE_PAGE_SIZE)
+  }, [workspaces, safeWorkspacePage])
+
   const endpointHost = lanHost?.trim() || '127.0.0.1'
-  const mcpUrl = buildMcpUrl(config.mcpPort, endpointHost, effectiveVaultId)
-  const mcpSseUrl = buildMcpSseUrl(config.mcpPort, endpointHost, effectiveVaultId)
-  const localhostUrl = lanHost ? buildMcpUrl(config.mcpPort, '127.0.0.1', effectiveVaultId) : null
-  const localhostSseUrl = lanHost
-    ? buildMcpSseUrl(config.mcpPort, '127.0.0.1', effectiveVaultId)
-    : null
+  const mcpUrl = buildMcpUrl(config.mcpPort, endpointHost)
+  const mcpSseUrl = buildMcpSseUrl(config.mcpPort, endpointHost)
+  const localhostUrl = lanHost ? buildMcpUrl(config.mcpPort, '127.0.0.1') : null
+  const localhostSseUrl = lanHost ? buildMcpSseUrl(config.mcpPort, '127.0.0.1') : null
   const authEnabled = isMcpAuthEnabled(config)
   const authTokenForUi = authEnabled ? config.mcpAuthToken : undefined
 
@@ -110,7 +116,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
               mcpAuthEnabled={authEnabled}
               mcpAuthToken={authTokenForUi}
               lanHost={lanHost}
-              vaultId={effectiveVaultId}
+              workspaces={workspaces}
             />
           </span>
           {config.mcpEnabled ? <span className={styles.statusIndicator} aria-hidden /> : null}
@@ -198,61 +204,132 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
         />
       </div>
       {workspaces && workspaces.length > 0 ? (
-        <>
-          <div className={styles.portRow}>
-            <span className={styles.portLabel}>{t('settings.mcp_workspace', '目标小窝')}</span>
-            <Select
-              className={styles.workspaceSelectHost}
-              options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
-              value={effectiveVaultId}
-              onChange={(e) => setSelectedVaultId(e.target.value)}
-              aria-label={t('settings.mcp_workspace', '目标小窝')}
-            />
+        <div className={styles.workspaceListSection}>
+          <div className={styles.workspaceSectionHeader}>
+            <span className={styles.portLabel}>
+              {t('settings.mcp_workspaces_title', '目标小窝连接地址')}
+            </span>
+            <span className={styles.workspaceHint}>
+              {t(
+                'settings.mcp_workspace_suffix_hint',
+                '所有小窝已同时暴露，每个小窝拥有独立的 ?vault=<小窝ID> 连接地址，支持在外部客户端中同时配置多个小窝，无需切换。'
+              )}
+            </span>
           </div>
-          <div className={styles.workspaceHint}>
-            {t(
-              'settings.mcp_workspace_suffix_hint',
-              '连接地址已自动拼接 ?vault=<小窝ID> 后缀，外部客户端必须保留该后缀才能绑定到所选小窝。'
-            )}
+          <div className={styles.workspaceList}>
+            {pagedWorkspaces.map((w) => {
+              const itemMcpUrl = buildMcpUrl(config.mcpPort, endpointHost, w.id)
+              const itemSseUrl = buildMcpSseUrl(config.mcpPort, endpointHost, w.id)
+              return (
+                <div key={w.id} className={styles.workspaceItemRow}>
+                  <div className={styles.workspaceItemMeta}>
+                    <div className={styles.workspaceItemTitleRow}>
+                      <span className={styles.workspaceItemName}>{w.name}</span>
+                    </div>
+                    <span className={styles.endpointUrl} title={itemMcpUrl}>
+                      {itemMcpUrl}
+                    </span>
+                  </div>
+                  <div className={styles.workspaceItemActions}>
+                    <button
+                      type="button"
+                      className={styles.copyBtn}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void copyText(itemMcpUrl)
+                      }}
+                      aria-label={t(
+                        'settings.mcp_copy_workspace_url',
+                        '复制 {{name}} 的 MCP 地址',
+                        {
+                          name: w.name
+                        }
+                      )}
+                      title={t('settings.mcp_copy_url', '复制 MCP 地址')}
+                    >
+                      <Copy size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.copySseTagBtn}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void copyText(itemSseUrl)
+                      }}
+                      aria-label={t(
+                        'settings.mcp_copy_workspace_sse_url',
+                        '复制 {{name}} 的 SSE 地址',
+                        { name: w.name }
+                      )}
+                      title={itemSseUrl}
+                    >
+                      <span>SSE</span>
+                      <Copy size={13} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {totalWorkspacePages > 1 ? (
+            <div className={styles.workspacePaginationRow}>
+              <span className={styles.workspacePageInfo}>
+                {t('workspace.page_info', '共 {{total}} 个 · 第 {{page}} / {{pages}} 页', {
+                  total: workspaces.length,
+                  page: safeWorkspacePage,
+                  pages: totalWorkspacePages
+                })}
+              </span>
+              <Pagination
+                current={safeWorkspacePage}
+                total={totalWorkspacePages}
+                onChange={setWorkspacePage}
+                siblingCount={1}
+                showJumper={false}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          <div className={styles.endpointRow}>
+            <span className={styles.endpointLabel}>
+              {t('settings.mcp_url_label', '连接地址（推荐）')}
+            </span>
+            <span className={styles.endpointUrl}>{mcpUrl}</span>
+            <button
+              type="button"
+              className={styles.copyBtn}
+              onClick={(e) => {
+                e.stopPropagation()
+                void copyText(mcpUrl)
+              }}
+              aria-label={t('settings.mcp_copy_url', '复制 MCP 地址')}
+              title={t('common.copy', '复制')}
+            >
+              <Copy size={18} />
+            </button>
+          </div>
+          <div className={styles.endpointRow}>
+            <span className={styles.endpointLabel}>
+              {t('settings.mcp_sse_url_label', 'SSE 地址（兼容）')}
+            </span>
+            <span className={styles.endpointUrl}>{mcpSseUrl}</span>
+            <button
+              type="button"
+              className={styles.copyBtn}
+              onClick={(e) => {
+                e.stopPropagation()
+                void copyText(mcpSseUrl)
+              }}
+              aria-label={t('settings.mcp_copy_sse_url', '复制 SSE 地址')}
+              title={t('common.copy', '复制')}
+            >
+              <Copy size={18} />
+            </button>
           </div>
         </>
-      ) : null}
-      <div className={styles.endpointRow}>
-        <span className={styles.endpointLabel}>
-          {t('settings.mcp_url_label', '连接地址（推荐）')}
-        </span>
-        <span className={styles.endpointUrl}>{mcpUrl}</span>
-        <button
-          type="button"
-          className={styles.copyBtn}
-          onClick={(e) => {
-            e.stopPropagation()
-            void copyText(mcpUrl)
-          }}
-          aria-label={t('settings.mcp_copy_url', '复制 MCP 地址')}
-          title={t('common.copy', '复制')}
-        >
-          <Copy size={18} />
-        </button>
-      </div>
-      <div className={styles.endpointRow}>
-        <span className={styles.endpointLabel}>
-          {t('settings.mcp_sse_url_label', 'SSE 地址（兼容）')}
-        </span>
-        <span className={styles.endpointUrl}>{mcpSseUrl}</span>
-        <button
-          type="button"
-          className={styles.copyBtn}
-          onClick={(e) => {
-            e.stopPropagation()
-            void copyText(mcpSseUrl)
-          }}
-          aria-label={t('settings.mcp_copy_sse_url', '复制 SSE 地址')}
-          title={t('common.copy', '复制')}
-        >
-          <Copy size={18} />
-        </button>
-      </div>
+      )}
       {localhostUrl ? (
         <div className={styles.endpointRow}>
           <span className={styles.endpointLabel}>
@@ -355,7 +432,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
                 mcpAuthEnabled={authEnabled}
                 mcpAuthToken={authTokenForUi}
                 lanHost={lanHost}
-                vaultId={effectiveVaultId}
+                workspaces={workspaces}
               />
             </span>
             {config.mcpEnabled && <span className={styles.statusIndicator} aria-hidden />}

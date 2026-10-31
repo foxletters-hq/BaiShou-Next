@@ -116,16 +116,115 @@
   flex-shrink: 0;
 }
 
-.workspaceSelectHost {
-  width: 220px !important;
-  max-width: 60%;
-  flex-shrink: 0;
+.workspaceListSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.workspaceSectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
 .workspaceHint {
-  font-size: var(--settings-font-label-size);
+  font-size: var(--settings-font-desc-size);
   line-height: 1.5;
   color: var(--text-secondary);
+}
+
+.workspaceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs-plus);
+}
+
+.workspacePaginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-2xs);
+}
+
+.workspacePageInfo {
+  font-size: var(--settings-font-meta-size);
+  font-weight: var(--settings-font-meta-weight);
+  color: var(--text-secondary);
+}
+
+.workspaceItemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm-plus);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-normal);
+  min-width: 0;
+}
+
+.workspaceItemMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.workspaceItemTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs-plus);
+  min-width: 0;
+}
+
+.workspaceItemName {
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspaceItemActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.copySseTagBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-xs-plus);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--settings-font-meta-size);
+  font-weight: var(--settings-font-meta-weight);
+  font-family: var(--font-family-mono);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-swift) ease,
+    color var(--duration-swift) ease,
+    border-color var(--duration-swift) ease;
+}
+
+.copySseTagBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--color-primary);
+  border-color: var(--border-strong);
+}
+
+.copySseTagBtn:active {
+  transform: scale(0.96);
 }
 
 .portInputHost input {

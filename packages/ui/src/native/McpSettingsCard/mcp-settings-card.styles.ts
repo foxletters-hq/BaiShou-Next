@@ -56,6 +56,64 @@ export const mcpSettingsCardStyles = StyleSheet.create({
     fontFamily: 'monospace',
     marginTop: sharedTokens.spacing.xs
   },
+  workspaceList: {
+    width: '100%',
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.xsPlus
+  },
+  workspaceItem: {
+    width: '100%',
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.sm,
+    gap: sharedTokens.spacing.xs
+  },
+  workspaceItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: sharedTokens.spacing.sm
+  },
+  workspaceTitleGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus
+  },
+  workspaceName: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight
+  },
+  workspacePaginationRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.sm
+  },
+  workspacePageInfo: {
+    fontSize: mobileTypography.caption.fontSize
+  },
+  workspaceActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus
+  },
+  workspaceActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.xsPlus,
+    borderWidth: StyleSheet.hairlineWidth
+  },
+  workspaceActionBtnText: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight
+  },
   copyBtn: {
     marginTop: sharedTokens.spacing.sm,
     paddingHorizontal: sharedTokens.spacing.mdTight,

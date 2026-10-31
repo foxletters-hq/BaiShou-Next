@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
 import { SettingsHelpIconButton } from '../HelpTooltip/SettingsHelpIconButton'
 import styles from './McpHelpButton.module.css'
-import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
+import {
+  buildMcpClientJsonExample,
+  buildMcpMultiWorkspaceJsonExample
+} from '../../shared/mcp-client-config.util'
 import { buildMcpSseUrl, buildMcpUrl } from './mcp-url'
 
 export interface McpHelpButtonProps {
@@ -14,6 +17,7 @@ export interface McpHelpButtonProps {
   mcpAuthToken?: string
   lanHost?: string | null
   vaultId?: string
+  workspaces?: Array<{ id: string; name: string }>
 }
 
 export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
@@ -23,7 +27,8 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   mcpAuthEnabled = false,
   mcpAuthToken,
   lanHost = null,
-  vaultId
+  vaultId,
+  workspaces
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -31,8 +36,29 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   const mcpUrl = buildMcpUrl(mcpPort, endpointHost, vaultId)
   const mcpSseUrl = buildMcpSseUrl(mcpPort, endpointHost, vaultId)
   const effectiveToken = mcpAuthEnabled ? mcpAuthToken : undefined
-  const mcpJsonExample = buildMcpClientJsonExample(mcpUrl, effectiveToken, 'streamableHttp')
-  const mcpSseJsonExample = buildMcpClientJsonExample(mcpSseUrl, effectiveToken, 'sse')
+  const workspaceStreamableEntries =
+    workspaces?.map((w) => ({
+      name: w.name,
+      url: buildMcpUrl(mcpPort, endpointHost, w.id)
+    })) ?? []
+  const workspaceSseEntries =
+    workspaces?.map((w) => ({
+      name: w.name,
+      url: buildMcpSseUrl(mcpPort, endpointHost, w.id)
+    })) ?? []
+  const mcpJsonExample =
+    workspaceStreamableEntries.length > 1
+      ? buildMcpMultiWorkspaceJsonExample(
+          workspaceStreamableEntries,
+          mcpUrl,
+          effectiveToken,
+          'streamableHttp'
+        )
+      : buildMcpClientJsonExample(mcpUrl, effectiveToken, 'streamableHttp')
+  const mcpSseJsonExample =
+    workspaceSseEntries.length > 1
+      ? buildMcpMultiWorkspaceJsonExample(workspaceSseEntries, mcpSseUrl, effectiveToken, 'sse')
+      : buildMcpClientJsonExample(mcpSseUrl, effectiveToken, 'sse')
 
   return (
     <>
