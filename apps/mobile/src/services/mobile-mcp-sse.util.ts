@@ -10,12 +10,22 @@ export function parseSseSessionId(path: string): string | undefined {
 
 export function isMcpSsePath(path: string): boolean {
   const pathname = path.split('?')[0] || path
-  return pathname === '/sse' || pathname === '/sse/'
+  return pathname === '/sse' || pathname === '/sse/' || pathname.startsWith('/sse/')
 }
 
 export function isMcpMessagePath(path: string): boolean {
   const pathname = path.split('?')[0] || path
   return pathname === '/message'
+}
+
+export function extractMcpSessionId(headers: Record<string, string>): string | undefined {
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === 'mcp-session-id') {
+      const trimmed = value?.trim()
+      return trimmed || undefined
+    }
+  }
+  return undefined
 }
 
 export function buildSseEndpointEvent(sessionId: string, messageEndpoint = '/message'): string {

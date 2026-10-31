@@ -4,7 +4,7 @@ import { JSONRPCMessageSchema } from '@modelcontextprotocol/sdk/types.js'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { createBaishouMcpServer } from '@baishou/ai/mcp/baishou-mcp-server'
 import type { ToolRegistry, ToolContext } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import { extractMcpTargetVault, logger } from '@baishou/shared'
 import * as ExpoCrypto from 'expo-crypto'
 import * as BaishouServer from 'expo-baishou-server'
 import type { McpHttpResponseEnvelope } from 'expo-baishou-server'
@@ -132,7 +132,7 @@ export class MobileMcpSseBridge {
   constructor(
     private readonly appVersion: string,
     private readonly toolRegistry: ToolRegistry,
-    private readonly resolveToolContext: () => Promise<ToolContext>
+    private readonly resolveToolContext: (targetVault?: string) => Promise<ToolContext>
   ) {}
 
   async handleRequest(
@@ -143,7 +143,7 @@ export class MobileMcpSseBridge {
     body: string
   ): Promise<void> {
     if (isMcpSsePath(path) && method === 'GET') {
-      await this.openSseSession(requestId)
+      await this.openSseSession(requestId, extractMcpTargetVault(path))
       return
     }
 
@@ -174,10 +174,10 @@ export class MobileMcpSseBridge {
     )
   }
 
-  private async openSseSession(requestId: string): Promise<void> {
+  private async openSseSession(requestId: string, targetVault?: string): Promise<void> {
     const transport = new MobileSseServerTransport(requestId, '/message')
     const server = createBaishouMcpServer(this.appVersion, this.toolRegistry, () =>
-      this.resolveToolContext()
+      this.resolveToolContext(targetVault)
     )
 
     transport.onclose = () => {

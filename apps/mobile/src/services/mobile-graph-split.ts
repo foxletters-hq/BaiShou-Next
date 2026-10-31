@@ -12,6 +12,7 @@ import {
   ensureMobileRawDataRuntime,
   syncMobileGraphPendingIndex
 } from './mobile-raw-data-source.runtime'
+import { notifyGraphDataChanged } from './mobile-graph-data-changed'
 
 export type MobileGraphNameCandidate = {
   nodeId: string
@@ -144,6 +145,7 @@ export async function mobileSplitGraphNode(options: {
     drizzleDb: options.drizzleDb,
     absentSweep: 'off'
   })
+  notifyGraphDataChanged()
   return result
 }
 
@@ -170,6 +172,7 @@ export async function mobileRevertGraphNodeSplit(options: {
   })
   if (!result.removedNodeId) {
     await syncMobileGraphPendingIndex({ drizzleDb: options.drizzleDb })
+    notifyGraphDataChanged()
     return result
   }
   const { syncDiaryGraphMergeIntoIndex } = await import('@baishou/core-mobile')
@@ -180,6 +183,7 @@ export async function mobileRevertGraphNodeSplit(options: {
     },
     softDeleteNode: (id) => repo.softDeleteNode(id)
   })
+  notifyGraphDataChanged()
   return result
 }
 

@@ -20,6 +20,7 @@ import {
   syncMobileGraphPendingIndex
 } from './mobile-raw-data-source.runtime'
 import { parseGraphNodePropsJson } from './graph-name-candidates.util'
+import { notifyGraphDataChanged } from './mobile-graph-data-changed'
 
 async function writeMobileNodeReview(options: {
   drizzleDb: AppDatabase
@@ -129,6 +130,7 @@ export async function mobileDismissSimilarPair(options: {
     embeddingProvider: options.embeddingProvider,
     embeddingModelId: options.embeddingModelId
   })
+  notifyGraphDataChanged()
 }
 
 export async function writeMobileNodeSuspectReason(options: {
@@ -263,6 +265,7 @@ export async function mobileSetNodeReview(options: {
     embeddingProvider: options.embeddingProvider,
     embeddingModelId: options.embeddingModelId
   })
+  notifyGraphDataChanged()
 }
 
 export async function mobileSetEdgeReview(options: {
@@ -279,6 +282,7 @@ export async function mobileSetEdgeReview(options: {
     ...options,
     approvePendingEndpoints: true
   })
+  notifyGraphDataChanged()
 }
 
 export async function mobileSetReviewsBatch(options: {
@@ -340,5 +344,6 @@ export async function mobileSetReviewsBatch(options: {
     embeddingProvider: options.embeddingProvider,
     embeddingModelId: options.embeddingModelId
   })
+  notifyGraphDataChanged()
   return { ok: true, nodeCount: nodeIds.length, edgeCount: edgeIds.length }
 }

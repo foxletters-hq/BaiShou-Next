@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildSseEndpointEvent,
   buildSseMessageEvent,
+  extractMcpSessionId,
   isMcpMessagePath,
   isMcpSsePath,
   parseSseSessionId
@@ -15,6 +16,13 @@ describe('mobile-mcp-sse.util', () => {
     expect(isMcpMessagePath('/message')).toBe(true)
     expect(isMcpMessagePath('/message?sessionId=abc')).toBe(true)
     expect(isMcpMessagePath('/mcp')).toBe(false)
+  })
+
+  it('extracts mcp-session-id header case-insensitively', () => {
+    expect(extractMcpSessionId({ 'mcp-session-id': 'sid-1' })).toBe('sid-1')
+    expect(extractMcpSessionId({ 'Mcp-Session-Id': '  sid-2  ' })).toBe('sid-2')
+    expect(extractMcpSessionId({ 'mcp-session-id': '   ' })).toBeUndefined()
+    expect(extractMcpSessionId({})).toBeUndefined()
   })
 
   it('parses session id from message path', () => {
