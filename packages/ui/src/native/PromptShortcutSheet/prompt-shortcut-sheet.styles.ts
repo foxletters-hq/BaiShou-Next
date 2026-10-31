@@ -78,7 +78,8 @@ export const promptShortcutSheetStyles = StyleSheet.create({
   },
   listArea: {
     flex: 1,
-    minHeight: 160
+    minHeight: 160,
+    overflow: 'hidden'
   },
   list: {
     flex: 1

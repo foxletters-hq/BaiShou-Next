@@ -11,6 +11,16 @@ const styles = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '..', 'model-switcher.styles.ts'),
   'utf8'
 )
+const providerBrandIconSrc = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    'ProviderBrandIcon',
+    'ProviderBrandIcon.tsx'
+  ),
+  'utf8'
+)
 
 describe('native ModelSwitcher opacity chrome', () => {
   it('should close with a fade like other centered dialogs, without scaling', () => {
@@ -21,5 +31,13 @@ describe('native ModelSwitcher opacity chrome', () => {
     expect(src).not.toContain('transform: [{ scale')
     expect(src).not.toContain('Animated.spring')
     expect(styles).not.toContain('rgba(0, 0, 0, 0.35)')
+  })
+
+  it('should keep effort chips on a single row and omit repeated provider icons on model rows', () => {
+    expect(styles).toContain("flexWrap: 'nowrap'")
+    expect(styles).toContain('borderTopWidth: StyleSheet.hairlineWidth')
+    expect(src.match(/<ProviderBrandIcon/g)?.length).toBe(1)
+    expect(providerBrandIconSrc).not.toContain("backgroundColor: '#FFFFFF'")
+    expect(providerBrandIconSrc).toContain("backgroundColor: Icon ? 'transparent' : colors.bgSurfaceNormal")
   })
 })

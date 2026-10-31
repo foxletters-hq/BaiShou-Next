@@ -38,6 +38,9 @@ describe('PromptShortcutSheet drag chrome', () => {
     expect(sheet).toContain('shortcutsRef.current')
     expect(sheet).toMatch(/useMemo\(\(\) => getDefaultShortcutLabelsFromT\(t\)/)
     expect(sheet).toContain('listSizeStyle')
+    expect(sheet).toContain('dragResetKey')
+    expect(sheet).toContain('isDraggingRef.current')
+    expect(sheet).toContain('{filteredShortcuts.length > 0 ? (')
   })
 
   it('should keep the more menu inside the row instead of overflowing', () => {

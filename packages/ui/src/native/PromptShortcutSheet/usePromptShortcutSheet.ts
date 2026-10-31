@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PromptShortcut } from '@baishou/shared'
 
-export const SHORTCUT_PAGE_SIZE = 10
+export const SHORTCUT_PAGE_SIZE = 5
 
 export function mergePageReorder(
   shortcuts: PromptShortcut[],
@@ -16,6 +16,24 @@ export function mergePageReorder(
 export function isSameShortcutOrder(left: { id: string }[], right: { id: string }[]): boolean {
   if (left.length !== right.length) return false
   return left.every((item, index) => item.id === right[index]?.id)
+}
+
+export function isSameShortcutItems(left: PromptShortcut[], right: PromptShortcut[]): boolean {
+  if (left.length !== right.length) return false
+  return left.every((item, index) => {
+    const other = right[index]
+    if (!other) return false
+    return (
+      item.id === other.id &&
+      item.command === other.command &&
+      item.name === other.name &&
+      item.description === other.description &&
+      item.content === other.content &&
+      item.tag === other.tag &&
+      item.source === other.source &&
+      item.icon === other.icon
+    )
+  })
 }
 
 export function usePromptShortcutSheet(shortcuts: PromptShortcut[]) {
