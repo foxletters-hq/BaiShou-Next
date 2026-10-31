@@ -77,6 +77,7 @@ export const Input = forwardRef<any, NativeInputProps>(
       isInvalid,
       multiline,
       textarea = false,
+      numberOfLines,
       style,
       className,
       textAlignVertical: textAlignVerticalProp,
@@ -141,6 +142,8 @@ export const Input = forwardRef<any, NativeInputProps>(
         ref={ref}
         isInvalid={computedInvalid}
         variant="primary"
+        numberOfLines={numberOfLines}
+        textAlignVertical={textAlignVerticalProp ?? 'top'}
         className={inputClassName}
         style={inputStyle}
         placeholderTextColor={resolvedPlaceholderColor}
@@ -155,7 +158,8 @@ export const Input = forwardRef<any, NativeInputProps>(
         ref={ref}
         isInvalid={computedInvalid}
         variant="primary"
-        multiline={multiline}
+        multiline={Boolean(multiline)}
+        numberOfLines={numberOfLines ?? (multiline ? undefined : 1)}
         textAlignVertical={textAlignVerticalProp ?? (multiline ? 'top' : 'center')}
         className={inputClassName}
         style={inputStyle}

@@ -9,18 +9,21 @@ export function getHeroInputFieldStyle(
   colors: ThemeColors,
   options?: { multiline?: boolean; compact?: boolean; height?: number }
 ): TextStyle {
+  const singleLineHeight =
+    options?.multiline || options?.compact
+      ? undefined
+      : (options?.height ?? mobileControlTokens.height)
   return {
     backgroundColor: colors.bgSurface,
     borderWidth: 1,
     borderColor: colors.borderControl,
     borderRadius: sharedTokens.radius.lg,
     borderCurve: 'continuous',
-    minHeight:
-      options?.multiline || options?.compact
-        ? undefined
-        : (options?.height ?? mobileControlTokens.height),
+    minHeight: singleLineHeight,
+    maxHeight: singleLineHeight,
     width: options?.compact ? undefined : '100%',
     paddingHorizontal: mobileControlTokens.inputPaddingHorizontal,
+    ...(options?.multiline ? { paddingVertical: sharedTokens.spacing.smPlus } : null),
     color: colors.textPrimary
   }
 }

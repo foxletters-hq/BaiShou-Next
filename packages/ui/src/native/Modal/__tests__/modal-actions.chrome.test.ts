@@ -11,6 +11,8 @@ describe('native Modal actions chrome', () => {
     expect(source).toContain('export const modalActionsStyle')
     expect(source).toContain("justifyContent: 'flex-end'")
     expect(source).toContain("flexDirection: 'row'")
+    expect(source).toContain('flexShrink: 0')
+    expect(source).toContain("overflow: 'hidden'")
   })
 
   it('should cover system bars immediately and keep the card hugging content', () => {
