@@ -26,6 +26,7 @@ import { Button } from '../Button'
 import { useNativeToast } from '../Toast'
 import { useDialog } from '../Dialog'
 import {
+  isSameShortcutItems,
   isSameShortcutOrder,
   mergePageReorder,
   SHORTCUT_PAGE_SIZE,
@@ -102,9 +103,12 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   const [listData, setListData] = useState(paginatedShortcuts)
   const listDataRef = useRef(paginatedShortcuts)
   listDataRef.current = listData
+  const isDraggingRef = useRef(false)
+  const [dragResetKey, setDragResetKey] = useState(0)
 
   useEffect(() => {
-    if (isSameShortcutOrder(listDataRef.current, paginatedShortcuts)) return
+    if (isDraggingRef.current) return
+    if (isSameShortcutItems(listDataRef.current, paginatedShortcuts)) return
     setListData(paginatedShortcuts)
   }, [paginatedShortcuts])
 
@@ -129,13 +133,15 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   const [saving, setSaving] = useState(false)
 
   const windowHeight = Dimensions.get('window').height
-  const modalHeight = Math.min(windowHeight * 0.72, 580)
+  const modalHeight = Math.min(windowHeight * 0.78, 640)
 
   const resetEditing = useCallback(() => {
     setEditingItem(null)
     setDraftCommand('')
     setDraftDescription('')
     setDraftContent('')
+    listAreaHeightRef.current = null
+    setListAreaHeight(null)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -270,11 +276,14 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   ])
 
   const handleDragBegin = useCallback(() => {
+    isDraggingRef.current = true
     nativeLightHaptic()
   }, [])
 
   const handleDragEnd = useCallback(
     ({ data }: { data: PromptShortcut[] }) => {
+      isDraggingRef.current = false
+      setDragResetKey((prev) => prev + 1)
       if (!onReorder || isSearchActive) return
       setListData((prev) => (isSameShortcutOrder(prev, data) ? prev : data))
       const next = mergePageReorder(shortcutsRef.current, pageStartIndex, pageSize, data)
@@ -420,6 +429,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                       />
                     ) : canDrag && onReorder ? (
                       <DraggableFlatList
+                        key={`page-${currentPage}-drag-${dragResetKey}`}
                         style={listSizeStyle}
                         containerStyle={listSizeStyle}
                         contentContainerStyle={styles.listContent}
@@ -447,7 +457,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                     )}
                   </View>
 
-                  {filteredShortcuts.length > 0 && totalPages > 1 ? (
+                  {filteredShortcuts.length > 0 ? (
                     <PromptShortcutPaginationBar
                       pageInfo={t('common.page_info', '{{current}} / {{total}}', {
                         current: currentPage,

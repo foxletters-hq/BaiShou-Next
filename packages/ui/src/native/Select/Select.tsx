@@ -37,6 +37,8 @@ export interface NativeSelectProps {
   style?: any
   /** 覆盖触发器外观（如表单页预览更小圆角） */
   triggerStyle?: StyleProp<ViewStyle>
+  /** 覆盖触发器文字样式（如居中对齐） */
+  textStyle?: StyleProp<TextStyle>
   /** 覆盖右侧箭头字符，默认 settings 为 ›、其它为 ▼ */
   chevron?: string
   chevronStyle?: StyleProp<TextStyle>
@@ -60,6 +62,7 @@ export const Select: React.FC<NativeSelectProps> = ({
   error,
   style,
   triggerStyle,
+  textStyle,
   chevron,
   chevronStyle,
   presentation = 'sheet',
@@ -132,15 +135,18 @@ export const Select: React.FC<NativeSelectProps> = ({
     >
       {selectedOpt?.leading}
       <Text
-        style={{
-          color: hasValue ? colors.textPrimary : colors.textTertiary,
-          fontSize: isSettings
-            ? mobileTypography.secondary.fontSize
-            : mobileTypography.primary.fontSize,
-          lineHeight: isSettings ? 20 : undefined,
-          flex: compact ? undefined : 1,
-          textAlign: isSettings ? 'right' : 'left'
-        }}
+        style={[
+          {
+            color: hasValue ? colors.textPrimary : colors.textTertiary,
+            fontSize: isSettings
+              ? mobileTypography.secondary.fontSize
+              : mobileTypography.primary.fontSize,
+            lineHeight: isSettings ? 20 : undefined,
+            flex: compact ? undefined : 1,
+            textAlign: isSettings ? 'right' : 'left'
+          },
+          textStyle
+        ]}
         numberOfLines={2}
       >
         {selectedOpt ? selectedOpt.label : placeholder || 'Select...'}

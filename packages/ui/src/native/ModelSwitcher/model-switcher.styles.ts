@@ -42,13 +42,14 @@ export const styles = StyleSheet.create({
   effortRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: sharedTokens.spacing.xsPlus,
+    flexWrap: 'nowrap',
+    gap: sharedTokens.spacing.xs,
     paddingBottom: sharedTokens.spacing.xs
   },
   effortChip: {
-    paddingHorizontal: sharedTokens.spacing.smPlus,
-    height: 26,
+    flex: 1,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    height: 28,
     borderRadius: sharedTokens.radius.xsPlus,
     borderWidth: 1,
     alignItems: 'center',
@@ -64,11 +65,11 @@ export const styles = StyleSheet.create({
   },
   modelListScroll: {
     flexGrow: 0,
-    maxHeight: 280
+    maxHeight: 300
   },
   modelListContent: {
     paddingHorizontal: sharedTokens.spacing.xs,
-    paddingBottom: sharedTokens.spacing.xs
+    paddingBottom: sharedTokens.spacing.sm
   },
   emptyWrap: {
     paddingVertical: sharedTokens.spacing.mdPlus,
@@ -103,7 +104,8 @@ export const styles = StyleSheet.create({
   },
   modelRow: {
     height: 34,
-    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingLeft: sharedTokens.spacing.md,
+    paddingRight: sharedTokens.spacing.sm,
     borderRadius: sharedTokens.radius.xsPlus,
     flexDirection: 'row',
     alignItems: 'center',
@@ -121,8 +123,10 @@ export const styles = StyleSheet.create({
     flexShrink: 1
   },
   footer: {
+    marginTop: sharedTokens.spacing.xxs,
     paddingTop: sharedTokens.spacing.smPlus,
     paddingHorizontal: sharedTokens.spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
     gap: sharedTokens.spacing.sm
   },
   saveBtn: {

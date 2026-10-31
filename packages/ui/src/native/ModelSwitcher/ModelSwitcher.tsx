@@ -279,11 +279,6 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                           ]}
                         >
                           <View style={styles.modelInfo}>
-                            <ProviderBrandIcon
-                              providerId={provider.id}
-                              providerType={provider.type}
-                              size={14}
-                            />
                             <Text
                               style={[
                                 styles.modelName,
@@ -315,7 +310,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
           </ScrollView>
 
           {/* 底部保存按钮与管理供应商 */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleSave}
