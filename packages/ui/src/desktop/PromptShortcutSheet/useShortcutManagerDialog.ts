@@ -90,7 +90,7 @@ export function useShortcutManagerDialog(
     if (isProtectedSkill(item)) return
     setEditingItem(item)
     setDraftId(item.id)
-    setDraftName(item.name || item.tag || '')
+    setDraftName(item.description || item.name || item.tag || '')
     setDraftCommand(item.command || '')
     setDraftContent(item.content || '')
   }
@@ -110,6 +110,7 @@ export function useShortcutManagerDialog(
       ...editingItem,
       id: draftId,
       name: draftName,
+      description: draftName,
       tag: draftName,
       content: draftContent,
       command:

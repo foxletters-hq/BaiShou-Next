@@ -13,6 +13,7 @@ export interface McpHelpButtonProps {
   mcpAuthEnabled?: boolean
   mcpAuthToken?: string
   lanHost?: string | null
+  vaultId?: string
 }
 
 export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
@@ -21,13 +22,14 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   mcpPort = 31004,
   mcpAuthEnabled = false,
   mcpAuthToken,
-  lanHost = null
+  lanHost = null,
+  vaultId
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const endpointHost = lanHost?.trim() || '127.0.0.1'
-  const mcpUrl = buildMcpUrl(mcpPort, endpointHost)
-  const mcpSseUrl = buildMcpSseUrl(mcpPort, endpointHost)
+  const mcpUrl = buildMcpUrl(mcpPort, endpointHost, vaultId)
+  const mcpSseUrl = buildMcpSseUrl(mcpPort, endpointHost, vaultId)
   const effectiveToken = mcpAuthEnabled ? mcpAuthToken : undefined
   const mcpJsonExample = buildMcpClientJsonExample(mcpUrl, effectiveToken, 'streamableHttp')
   const mcpSseJsonExample = buildMcpClientJsonExample(mcpSseUrl, effectiveToken, 'sse')

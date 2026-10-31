@@ -11,4 +11,13 @@ describe('mcp-url', () => {
     expect(buildMcpSseUrl(31004)).toBe('http://127.0.0.1:31004/sse')
     expect(buildMcpSseUrl(31005, '10.0.0.2')).toBe('http://10.0.0.2:31005/sse')
   })
+
+  it('should append vault suffix when vaultId is provided', () => {
+    expect(buildMcpUrl(31004, '127.0.0.1', 'vlt_0123456789abcdef')).toBe(
+      'http://127.0.0.1:31004/mcp?vault=vlt_0123456789abcdef'
+    )
+    expect(buildMcpSseUrl(31004, '192.168.1.8', 'vlt_0123456789abcdef')).toBe(
+      'http://192.168.1.8:31004/sse?vault=vlt_0123456789abcdef'
+    )
+  })
 })

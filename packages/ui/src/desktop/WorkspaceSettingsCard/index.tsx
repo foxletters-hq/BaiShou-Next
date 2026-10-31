@@ -64,7 +64,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   const recentVaults = useMemo(() => pickRecentVaults(vaults, activeVault), [vaults, activeVault])
 
   const handleCreate = async () => {
-    const name = await dialog.prompt(t('workspace.new_name', '空间名称'), '')
+    const name = await dialog.prompt(t('workspace.new_name', '小窝名称'), '')
     if (name === null) return
     const validation = validateWorkspaceName(
       name,
@@ -73,8 +73,8 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
     if (!validation.ok) {
       const message =
         validation.reason === 'duplicate'
-          ? t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。')
-          : t('workspace.name_invalid', '工作空间名称不能包含特殊字符，且不能以点号结尾。')
+          ? t('workspace.name_exists', '已经有同名小窝啦，换一个名字试试。')
+          : t('workspace.name_invalid', '小窝名称不能包含特殊字符，且不能以点号结尾。')
       toast.showWarning(message)
       return
     }
@@ -86,7 +86,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
         toast.showError(
           t('workspace.name_exists', {
             name: err.vaultName ?? validation.name,
-            defaultValue: '工作空间「{{name}}」已存在，请使用其他名称'
+            defaultValue: '小窝「{{name}}」已存在，请使用其他名称'
           })
         )
         return
@@ -96,7 +96,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
           t(err.reason === 'empty' ? 'workspace.name_empty' : 'workspace.invalid_name', {
             defaultValue:
               err.reason === 'empty'
-                ? '请输入工作空间名称'
+                ? '请输入小窝名称'
                 : '名称不能包含 / \\ : % # ? * 等特殊字符'
           })
         )
@@ -108,7 +108,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
   const handleDelete = async (vaultName: string) => {
     const input = await dialog.prompt(
-      t('workspace.delete_confirm_input', '请输入工作区名称 "{{name}}" 以确认删除：', {
+      t('workspace.delete_confirm_input', '请输入小窝名称 "{{name}}" 以确认删除：', {
         name: vaultName
       })
     )
@@ -136,7 +136,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
           {activeVault ? (
             <>
               <span className={styles.workspaceSectionLabel}>
-                {t('workspace.current_space', '当前空间')}
+                {t('workspace.current_space', '当前小窝')}
               </span>
               <span className="settings-list-tile-title">{activeVault.name}</span>
               {activeVault.path ? (
@@ -147,7 +147,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
             </>
           ) : (
             <span className={styles.workspaceEmptyHint}>
-              {t('workspace.no_active', '尚未选择工作空间')}
+              {t('workspace.no_active', '尚未选择小窝')}
             </span>
           )}
         </div>
@@ -158,7 +158,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
           onClick={() => onManageWorkspace?.()}
           disabled={!onManageWorkspace}
         >
-          {t('workspace.manage', '管理工作空间')}
+          {t('workspace.manage', '管理小窝')}
         </Button>
       </div>
 
@@ -166,18 +166,18 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
         <div className={styles.workspaceToggleCard}>
           <div className={styles.workspaceToggleInfo}>
             <span className="settings-list-tile-title">
-              {t('workspace.show_topbar_switcher', '在顶部栏显示工作空间切换')}
+              {t('workspace.show_topbar_switcher', '在顶部栏显示小窝切换')}
             </span>
             <span className="settings-list-tile-subtitle">
               {t(
                 'workspace.show_topbar_switcher_desc',
-                '开启后，可在顶部窗口栏快速切换当前工作空间。'
+                '开启后，可在顶部窗口栏快速切换当前小窝。'
               )}
             </span>
           </div>
           <Switch
             checked={Boolean(showTopBarSwitcher)}
-            aria-label={t('workspace.show_topbar_switcher', '在顶部栏显示工作空间切换')}
+            aria-label={t('workspace.show_topbar_switcher', '在顶部栏显示小窝切换')}
             onChange={(e) => onShowTopBarSwitcherChange(e.target.checked)}
           />
         </div>
@@ -189,7 +189,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
             className={styles.workspaceSectionLabel}
             style={{ marginBottom: sharedTokens.spacing.xs, marginTop: sharedTokens.spacing.xs }}
           >
-            {t('workspace.recent_hint', '仅显示最近使用的三个工作空间')}
+            {t('workspace.recent_hint', '仅显示最近使用的三个小窝')}
           </span>
           <div className={styles.workspaceRecentList}>
             {recentVaults.map((vault) => (
@@ -222,9 +222,9 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
         embedded
         isLast={isLast}
         icon={<Layers size={20} />}
-        title={t('workspace.title', '工作空间')}
+        title={t('workspace.title', '小窝')}
         titleAddon={<WorkspaceScopeHelpTooltip />}
-        subtitle={t('workspace.current', '当前空间: {{name}}', {
+        subtitle={t('workspace.current', '当前小窝: {{name}}', {
           name: activeVault?.name ?? t('common.unknown', '未知')
         })}
       >
@@ -236,9 +236,9 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   return (
     <SettingsExpansionTile
       icon={<Layers size={20} />}
-      title={t('workspace.title', '工作空间')}
+      title={t('workspace.title', '小窝')}
       titleAddon={<WorkspaceScopeHelpTooltip />}
-      subtitle={t('workspace.current', '当前空间: {{name}}', {
+      subtitle={t('workspace.current', '当前小窝: {{name}}', {
         name: activeVault?.name ?? '未知'
       })}
     >
@@ -296,7 +296,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
         </div>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">
-            {t('workspace.create_new', '创建新空间')}
+            {t('workspace.create_new', '创建新小窝')}
           </span>
         </div>
       </button>

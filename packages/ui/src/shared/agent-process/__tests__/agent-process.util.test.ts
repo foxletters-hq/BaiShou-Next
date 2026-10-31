@@ -261,4 +261,32 @@ describe('coalesceTimelineItemsForDisplay', () => {
     }
     expect(coalesced[1]!.kind).toBe('text')
   })
+
+  it('keeps visible reply text outside process when followed by trailing tools or reasoning without new text', () => {
+    const items: AssistantDisplayTimelineItem[] = [
+      { kind: 'reasoning', key: 'r1', text: '先思考回复内容' },
+      { kind: 'text', key: 'txt1', text: '已经回复给用户的一半正文内容' },
+      {
+        kind: 'tools',
+        key: 't1',
+        invocations: [],
+        completedTools: [{ name: 'memory_store', durationMs: 80 }]
+      },
+      { kind: 'reasoning', key: 'r2', text: '工具执行后续轮思考但未再输出正文' }
+    ]
+
+    const coalesced = coalesceTimelineItemsForDisplay(items)
+    expect(coalesced).toHaveLength(2)
+    expect(coalesced[0]!.kind).toBe('process')
+    if (coalesced[0]!.kind === 'process') {
+      expect(coalesced[0]!.hasSubsequentText).toBe(true)
+      expect(coalesced[0]!.textItems).toHaveLength(0)
+      expect(coalesced[0]!.reasoningItems).toHaveLength(2)
+      expect(coalesced[0]!.toolsItems).toHaveLength(1)
+    }
+    expect(coalesced[1]!.kind).toBe('text')
+    if (coalesced[1]!.kind === 'text') {
+      expect(coalesced[1]!.text).toBe('已经回复给用户的一半正文内容')
+    }
+  })
 })
