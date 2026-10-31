@@ -147,7 +147,6 @@ pnpm ci:check
 <a href="https://github.com/fisHarly0" title="fisHarly0"><img src="https://avatars.githubusercontent.com/u/188205924?v=4&s=240" width="80" height="80" alt="fisHarly0" style="border-radius:50%;"/></a>
 <a href="https://github.com/david082321" title="david082321"><img src="https://avatars.githubusercontent.com/u/7046617?v=4&s=240" width="80" height="80" alt="david082321" style="border-radius:50%;"/></a>
 <a href="https://github.com/Magnemomet" title="Magnemomet"><img src="https://avatars.githubusercontent.com/u/269363200?v=4&s=240" width="80" height="80" alt="Magnemomet" style="border-radius:50%;"/></a>
-<a href="https://github.com/Asamizu-saki" title="Asamizu-saki"><img src="https://avatars.githubusercontent.com/u/231084446?v=4&s=240" width="80" height="80" alt="Asamizu-saki" style="border-radius:50%;"/></a>
 
 <!-- CONTRIBUTORS-WALL:END -->
 
