@@ -86,7 +86,7 @@ export function registerMessageIPC() {
         throw new Error(
           i18n.t(
             'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
-            '无权访问其他工作空间的会话'
+            '无权访问其他小窝的会话'
           )
         )
       }
@@ -197,7 +197,7 @@ export function registerMessageIPC() {
       throw new Error(
         i18n.t(
           'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
-          '无权访问其他工作空间的会话'
+          '无权访问其他小窝的会话'
         )
       )
     }

@@ -39,30 +39,60 @@ import {
 import { settingsManager } from './settings.ipc'
 import { getDesktopMcpServerConfig } from '../services/desktop-mcp-config.store'
 
-/** MCP 外部工具调用上下文：绑定当前活跃工作空间，与应用内 Agent 对齐 */
+/** MCP 外部工具调用上下文：默认绑定当前活跃工作空间，也支持通过 URL 参数映射指定工作空间 */
 const MCP_CONTEXT_CACHE_TTL_MS = 5000
-let mcpToolContextCache: {
-  vaultId: string
-  context: ToolContext
-  expiresAt: number
-} | null = null
+const mcpToolContextCache = new Map<
+  string,
+  {
+    context: ToolContext
+    expiresAt: number
+  }
+>()
 
 export function invalidateMcpToolContextCache(): void {
-  mcpToolContextCache = null
+  mcpToolContextCache.clear()
 }
 
-export async function buildMcpToolContext(): Promise<ToolContext> {
+function resolveTargetMcpVault(targetVault?: string): { id: string; name: string } {
+  const requested = typeof targetVault === 'string' ? targetVault.trim() : ''
+  if (requested) {
+    const allVaults =
+      typeof vaultService.getAllVaults === 'function' ? vaultService.getAllVaults() : []
+    const candidates = [...allVaults]
+    const active = vaultService.getActiveVault()
+    if (active && !candidates.some((v) => v.id === active.id && v.name === active.name)) {
+      candidates.push(active)
+    }
+    const matched =
+      candidates.find((v) => v.id === requested || v.name === requested) ??
+      candidates.find(
+        (v) =>
+          v.id.toLowerCase() === requested.toLowerCase() ||
+          v.name.toLowerCase() === requested.toLowerCase()
+      )
+    if (!matched) {
+      throw new Error(`Workspace not found: ${requested}`)
+    }
+    return {
+      id: matched.id || deriveLegacyVaultId(matched.name),
+      name: matched.name
+    }
+  }
   const activeVault = vaultService.getActiveVault()
   const vaultName = activeVault?.name || 'Personal'
   const vaultId = activeVault?.id || deriveLegacyVaultId(vaultName)
+  return { id: vaultId, name: vaultName }
+}
+
+export async function buildMcpToolContext(targetVault?: string): Promise<ToolContext> {
+  const resolvedVault = resolveTargetMcpVault(targetVault)
+  const vaultName = resolvedVault.name
+  const vaultId = resolvedVault.id
   const now = Date.now()
 
-  if (
-    mcpToolContextCache &&
-    mcpToolContextCache.vaultId === vaultId &&
-    mcpToolContextCache.expiresAt > now
-  ) {
-    return mcpToolContextCache.context
+  const cached = mcpToolContextCache.get(vaultId)
+  if (cached && cached.expiresAt > now) {
+    return cached.context
   }
 
   const [userConfig, mcpConfig] = await Promise.all([
@@ -78,7 +108,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
   const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
   const msgRepo = new MessageRepository(drizzleDb)
-  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)
+  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb, () => vaultId)
 
   let embAdapter: EmbeddingAdapter | undefined
   if (embeddingProvider && embeddingModelId) {
@@ -136,12 +166,31 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   // 外部 MCP 客户端的调用不在应用内弹确认：编辑/写入/删除都直接执行，
   // 只保留 Deny 规则（禁用工具、策略拒绝等）。
   const effectiveAgentGate = createAutoApproveAgentGate(agentGate)
+  const rawDataRuntime = await import('../services/raw-data-source.runtime')
+  const { createCompanionGraphLookups } = await import('@baishou/ai')
+  const { GraphRepository } = await import('@baishou/database-desktop')
+  const isDbConnected =
+    typeof connectionManager.isConnected === 'function' ? connectionManager.isConnected() : true
+  const { graphNodeLookup, graphEdgeLookup } = isDbConnected
+    ? createCompanionGraphLookups(async () => {
+        const repo = new GraphRepository(connectionManager.getDb())
+        return {
+          findByNameOrAlias: async (name, nodeType) =>
+            (await repo.findNodesByNameOrAlias(vaultId, name, nodeType))[0] ?? null,
+          findNodesByNameOrAlias: (name, nodeType) =>
+            repo.findNodesByNameOrAlias(vaultId, name, nodeType),
+          getNodeById: (id) => repo.getNodeById(id, vaultId),
+          getEdgeById: (id) => repo.getEdgeById(id, vaultId)
+        }
+      })
+    : { graphNodeLookup: undefined, graphEdgeLookup: undefined }
+
   const context = syncMcpToolUserConfig({
     sessionId: MCP_EXTERNAL_SESSION_ID,
-    vaultId: activeVault?.id || deriveLegacyVaultId(vaultName),
+    vaultId,
     vaultName,
     userConfig: scopedUserConfig,
-    diarySearcher: createDiarySearcher(),
+    diarySearcher: createDiarySearcher({ vaultId, vaultName }),
     embeddingService: embAdapter,
     vectorStore: dbAdapter,
     messageSearcher: dbAdapter,
@@ -153,21 +202,42 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     skillsReader: (await import('../services/desktop-skills-writer')).createDesktopSkillsReader(
       activeWorkspace?.folderRoot ? { folderRoot: activeWorkspace.folderRoot } : undefined
     ),
-    rawDataSourceManager: (
-      await import('../services/raw-data-source.runtime')
-    ).getRawDataSourceManager(),
+    rawDataSourceManager: rawDataRuntime.getRawDataSourceManagerForVault(vaultName),
+    syncGraphPendingIndex: () =>
+      rawDataRuntime.syncGraphPendingIndex({
+        vaultId,
+        vaultName
+      }),
+    deleteGraphRecord: async ({ kind, id }) => {
+      if (typeof connectionManager.isConnected === 'function' && !connectionManager.isConnected()) {
+        throw new Error('Database not connected')
+      }
+      const { applyDiaryGraphSurgicalDelete } = await import('@baishou/core-desktop')
+      await applyDiaryGraphSurgicalDelete({
+        kind,
+        id,
+        vaultId,
+        manager: rawDataRuntime.getGraphRawManagerForVault(vaultName),
+        repo: new GraphRepository(connectionManager.getDb())
+      })
+    },
+    graphNodeLookup,
+    graphEdgeLookup,
     graphReader: (await import('../services/desktop-graph-reader')).createDesktopGraphReader(
-      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined
+      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined,
+      vaultId
     ),
     knowledgeReader: (
       await import('../services/desktop-knowledge-reader')
     ).createDesktopKnowledgeReader(
-      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined
+      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined,
+      vaultId
     ),
     knowledgeGraphReader: (
       await import('../services/desktop-knowledge-graph-reader')
     ).createDesktopKnowledgeGraphReader(
-      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined
+      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined,
+      vaultId
     )
   })
 
@@ -175,11 +245,10 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     context.workspace = activeWorkspace
   }
 
-  mcpToolContextCache = {
-    vaultId,
+  mcpToolContextCache.set(vaultId, {
     context,
     expiresAt: now + MCP_CONTEXT_CACHE_TTL_MS
-  }
+  })
 
   return context
 }

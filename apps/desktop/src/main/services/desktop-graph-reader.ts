@@ -9,14 +9,15 @@ import { resolveActiveVaultId } from '../ipc/vault.ipc'
  * agent.db 未连接时返回 undefined；连接状态在每次检索时重新读取，避免热切换后拿到旧句柄。
  */
 export function createDesktopGraphReader(
-  embedQuery?: (text: string) => Promise<number[] | null>
+  embedQuery?: (text: string) => Promise<number[] | null>,
+  targetVaultId?: string
 ): ToolGraphReader | undefined {
   if (!connectionManager.isConnected()) return undefined
 
   return new GraphReaderAdapter(async (opts) => {
     const rag = new GraphRagService(new GraphRepository(connectionManager.getDb()))
     const result = await rag.recallRelations({
-      vaultId: resolveActiveVaultId(),
+      vaultId: targetVaultId || resolveActiveVaultId(),
       entity: opts.entity,
       mode: opts.mode,
       depth: opts.depth,

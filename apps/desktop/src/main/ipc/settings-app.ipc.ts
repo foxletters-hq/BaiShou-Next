@@ -199,7 +199,12 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:get-mcp-server-config', async () => {
     const { getDesktopMcpServerConfig } = await import('../services/desktop-mcp-config.store')
-    return getDesktopMcpServerConfig()
+    const config = await getDesktopMcpServerConfig()
+    if (config.mcpEnabled) {
+      const { ensureMcpServerAlive } = await import('../services/mcp-runtime')
+      await ensureMcpServerAlive()
+    }
+    return config
   })
 
   ipcMain.handle('settings:set-mcp-server-config', async (_, config: any) => {
