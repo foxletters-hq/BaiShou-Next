@@ -92,14 +92,6 @@
   border-color: var(--border-muted);
 }
 
-.dangerCard {
-  border-color: rgba(239, 68, 68, 0.3) !important;
-}
-.dangerCard:hover {
-  border-color: rgba(239, 68, 68, 0.6) !important;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1) !important;
-}
-
 .routeHeader {
   display: flex;
   align-items: center;
@@ -118,19 +110,10 @@
   justify-content: center;
 }
 
-.dangerIcon {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--color-error);
-}
-
 .routeName {
   font-size: var(--settings-font-shell-title-size);
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.dangerName {
-  color: var(--color-error);
 }
 
 .routeDesc {
