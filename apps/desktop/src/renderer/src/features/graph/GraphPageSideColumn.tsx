@@ -8,7 +8,7 @@ import {
   MdSettings,
   MdTune
 } from 'react-icons/md'
-import type { GraphSideMode } from './graph-page.types'
+import type { GraphSideMode, GraphSideTab } from './graph-page.types'
 import { formatGraphRailCount } from './graph-page-view.util'
 import { GraphPageCanvasPane } from './GraphPageCanvasPane'
 import { GraphPageContentPane } from './GraphPageContentPane'
@@ -34,6 +34,8 @@ export function GraphPageSideColumn(props: {
 }): React.ReactElement {
   const { t } = useTranslation()
   const { sideMode } = props
+  const scrollTopByTabRef = React.useRef<Partial<Record<GraphSideTab, number>>>({})
+  const lastNodesPageKeyRef = React.useRef<string | null>(null)
   return (
     <div
       className={`${styles.sideColumn}${props.sideCollapsed ? ` ${styles.sideColumnCollapsed}` : ''}`}
@@ -146,7 +148,11 @@ export function GraphPageSideColumn(props: {
               </div>
             </>
           ) : (
-            <GraphPageContentPane {...props.content} />
+            <GraphPageContentPane
+              {...props.content}
+              scrollTopByTabRef={scrollTopByTabRef}
+              lastNodesPageKeyRef={lastNodesPageKeyRef}
+            />
           )}
         </aside>
       ) : null}

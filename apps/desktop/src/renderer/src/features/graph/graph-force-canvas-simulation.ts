@@ -69,10 +69,13 @@ export function graphForcePrewarmTicks(nodeCount: number): number {
  */
 export function prewarmGraphForceSimulation(
   sim: Simulation<GraphForceSimNode, GraphForceSimLink>,
-  nodeCount: number
+  nodeCount: number,
+  opts?: { skipTicks?: boolean }
 ): void {
-  const ticks = graphForcePrewarmTicks(nodeCount)
-  for (let i = 0; i < ticks && sim.alpha() > 0.01; i++) sim.tick()
+  if (!opts?.skipTicks) {
+    const ticks = graphForcePrewarmTicks(nodeCount)
+    for (let i = 0; i < ticks && sim.alpha() > 0.01; i++) sim.tick()
+  }
   sim.alpha(0.1)
   sim.stop()
 }
@@ -217,8 +220,16 @@ export function rebuildGraphForceSimulation(
     )
   }
 
+  const reusedAllPositions =
+    simNodes.length > 0 &&
+    prevById.size > 0 &&
+    topology.nodes.every((n) => {
+      const prev = prevById.get(n.id)
+      return prev?.x != null && prev?.y != null
+    })
+
   applyGraphForceStrengths(sim, forces, refs.degreeByIdRef.current)
-  prewarmGraphForceSimulation(sim, simNodes.length)
+  prewarmGraphForceSimulation(sim, simNodes.length, { skipTicks: reusedAllPositions })
   refs.simRef.current = sim
   return true
 }

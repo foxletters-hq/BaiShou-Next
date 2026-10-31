@@ -189,6 +189,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                 onOpenSide={(mode) => {
                   const jumpToPending =
                     mode === 'content' &&
+                    !side.hasVisitedContent &&
                     review.pendingCount > 0 &&
                     (side.sideCollapsed || side.sideMode !== 'content')
                   side.openSide(mode)
