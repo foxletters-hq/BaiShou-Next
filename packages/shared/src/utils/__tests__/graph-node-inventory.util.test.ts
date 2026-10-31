@@ -166,4 +166,3 @@ describe('applyGraphInventoryEdgeDelete', () => {
     expect(applyGraphInventoryEdgeDelete(1, 3)).toBe(0)
   })
 })
-

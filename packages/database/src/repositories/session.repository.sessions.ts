@@ -13,10 +13,7 @@ import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
 import { compressionSnapshotsTable } from '../schema/compression-snapshots'
-import {
-  ensureAgentSessionIndexes,
-  type InsertSessionInput
-} from './session.repository.types'
+import { ensureAgentSessionIndexes, type InsertSessionInput } from './session.repository.types'
 import { usesSyncTransaction } from './session.repository.utils'
 
 export type AgentSessionRow = Omit<

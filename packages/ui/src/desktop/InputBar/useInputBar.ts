@@ -1,11 +1,4 @@
-import {
-  useState,
-  useRef,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useCallback
-} from 'react'
+import { useState, useRef, useEffect, useImperativeHandle, useMemo, useCallback } from 'react'
 import type { InputBarProps, InputBarRef } from './input-bar.types'
 import { useInputBarAttachments } from './useInputBarAttachments'
 import {

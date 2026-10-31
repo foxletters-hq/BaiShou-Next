@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { mergePageReorder, isSameShortcutItems, isSameShortcutOrder } from '../usePromptShortcutSheet'
+import {
+  mergePageReorder,
+  isSameShortcutItems,
+  isSameShortcutOrder
+} from '../usePromptShortcutSheet'
 
 describe('mergePageReorder', () => {
   const shortcuts = [
@@ -32,12 +36,16 @@ describe('isSameShortcutOrder', () => {
 
 describe('isSameShortcutItems', () => {
   it('returns true when id and item fields are identical', () => {
-    const items = [{ id: 's1', command: 'writer', name: 'Writer', description: 'desc', content: 'v1' }]
+    const items = [
+      { id: 's1', command: 'writer', name: 'Writer', description: 'desc', content: 'v1' }
+    ]
     expect(isSameShortcutItems(items, [{ ...items[0]! }])).toBe(true)
   })
 
   it('returns false when skill body content or description is edited in place', () => {
-    const prev = [{ id: 's1', command: 'writer', name: 'Writer', description: 'desc', content: 'v1' }]
+    const prev = [
+      { id: 's1', command: 'writer', name: 'Writer', description: 'desc', content: 'v1' }
+    ]
     const nextContent = [
       { id: 's1', command: 'writer', name: 'Writer', description: 'desc', content: 'v2' }
     ]

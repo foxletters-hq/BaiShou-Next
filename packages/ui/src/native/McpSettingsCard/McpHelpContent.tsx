@@ -112,4 +112,3 @@ export const McpHelpContent: React.FC<NativeMcpHelpContentProps> = ({
     </View>
   )
 }
-
