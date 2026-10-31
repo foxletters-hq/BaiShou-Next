@@ -4,6 +4,7 @@ import {
   FileSyncServiceImpl,
   ShadowIndexSyncService,
   VaultIndexServiceImpl,
+  type IEmbeddingCallback,
   type IVaultService,
   type VaultInfo
 } from '@baishou/core-desktop'
@@ -111,14 +112,34 @@ export async function getDiaryManagerForVault(vaultName: string): Promise<DiaryS
 
   const vaultId = resolveVaultIdByName(vaultName)
   const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
-  const { getRawDataSourceManager } = await import('./raw-data-source.runtime')
-  const fileSync = new FileSyncServiceImpl(scopedPath, fileSystem, getRawDataSourceManager())
+  const { getRawDataSourceManagerForVault } = await import('./raw-data-source.runtime')
+  const fileSync = new FileSyncServiceImpl(
+    scopedPath,
+    fileSystem,
+    getRawDataSourceManagerForVault(vaultName)
+  )
+  const scopedEmbeddingCallback: IEmbeddingCallback = {
+    reEmbedDiary: (params) =>
+      embeddingCallback.reEmbedDiary({
+        ...params,
+        vaultName: params.vaultName ?? vaultName
+      }),
+    enqueueDiaryEmbed: embeddingCallback.enqueueDiaryEmbed
+      ? (params) =>
+          embeddingCallback.enqueueDiaryEmbed!({
+            ...params,
+            vaultName: params.vaultName ?? vaultId
+          })
+      : undefined,
+    deleteEmbeddingsBySource: (sourceType, sourceId) =>
+      embeddingCallback.deleteEmbeddingsBySource(sourceType, sourceId)
+  }
   const shadowSync = new ShadowIndexSyncService(
     shadowRepo,
     scopedPath,
     new FixedVaultServiceStub(vaultName, vaultPath),
     fileSystem,
-    embeddingCallback
+    scopedEmbeddingCallback
   )
   const vaultIndex = new VaultIndexServiceImpl()
 

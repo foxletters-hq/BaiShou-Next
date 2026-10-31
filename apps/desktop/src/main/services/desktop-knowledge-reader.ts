@@ -15,7 +15,8 @@ import { assertKnowledgeModelMatch } from '../ipc/knowledge-ipc.context'
  * Returns undefined when knowledge.db is not connected.
  */
 export function createDesktopKnowledgeReader(
-  embedQuery?: (text: string) => Promise<number[] | null>
+  embedQuery?: (text: string) => Promise<number[] | null>,
+  targetVaultId?: string
 ): ToolKnowledgeReader | undefined {
   if (!knowledgeConnectionManager.isConnected()) return undefined
 
@@ -41,7 +42,7 @@ export function createDesktopKnowledgeReader(
     const embeddingConfig = getEmbeddingConfig()
     await embeddingConfig.load()
     const modelId = embeddingConfig.getGlobalEmbeddingModelId()
-    const vaultId = resolveActiveVaultId()
+    const vaultId = targetVaultId || resolveActiveVaultId()
     await assertKnowledgeModelMatch(repo, notebookIds)
     const profiles = await repo.listNotebookEmbeddingProfiles({ vaultId, notebookIds })
 

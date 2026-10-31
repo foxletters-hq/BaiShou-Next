@@ -121,6 +121,7 @@ vi.mock('../../ipc/git-sync.ipc', () => ({
 
 vi.mock('../mcp-runtime', () => ({
   getMcpService: vi.fn(() => ({ running: false, stop: vi.fn().mockResolvedValue(undefined) })),
+  shutdownMcpServer: vi.fn().mockResolvedValue(undefined),
   bootstrapMcpServer: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -156,21 +157,33 @@ describe('desktop-storage-directory.service', () => {
     const mcpRuntime = await import('../mcp-runtime')
     const { settingsManager } = await import('../../ipc/settings.ipc')
 
-    vi.mocked(mcpRuntime.getMcpService).mockReturnValue({
-      running: true,
-      stop: vi.fn().mockResolvedValue(undefined)
-    } as never)
-
     const { quiesceStorageForFileCopy, resumeStorageAfterFileCopy } =
       await import('../desktop-storage-directory.service')
 
     await quiesceStorageForFileCopy()
+    expect(mcpRuntime.shutdownMcpServer).toHaveBeenCalledTimes(1)
+
     await resumeStorageAfterFileCopy()
 
     expect(settingsManager.fullResyncFromDisk).toHaveBeenCalledBefore(
       mcpRuntime.bootstrapMcpServer as never
     )
     expect(invalidateMcpToolContextCacheMock).toHaveBeenCalled()
-    expect(mcpRuntime.bootstrapMcpServer).toHaveBeenCalled()
+    expect(mcpRuntime.bootstrapMcpServer).toHaveBeenCalledTimes(1)
+  })
+
+  it('still restarts MCP via finally when an intermediate step in resumeStorageAfterFileCopy throws', async () => {
+    const mcpRuntime = await import('../mcp-runtime')
+    const { vaultService } = await import('../../ipc/vault.ipc')
+    vi.mocked(vaultService.initRegistry).mockRejectedValueOnce(new Error('vault init failed'))
+
+    const { quiesceStorageForFileCopy, resumeStorageAfterFileCopy } =
+      await import('../desktop-storage-directory.service')
+
+    await quiesceStorageForFileCopy()
+    expect(mcpRuntime.shutdownMcpServer).toHaveBeenCalledTimes(1)
+
+    await expect(resumeStorageAfterFileCopy()).rejects.toThrow('vault init failed')
+    expect(mcpRuntime.bootstrapMcpServer).toHaveBeenCalledTimes(1)
   })
 })
