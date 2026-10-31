@@ -229,7 +229,10 @@ export function useAgentChatScroll({
         lastIntrinsicContentHeightRef.current
       )
       if (viewportH > 0 && effectiveH > 0) {
-        lastScrollOffsetRef.current = Math.max(lastScrollOffsetRef.current, effectiveH - viewportH)
+        lastScrollOffsetRef.current =
+          effectiveH <= viewportH
+            ? 0
+            : Math.max(lastScrollOffsetRef.current, effectiveH - viewportH)
       }
       lastProgrammaticScrollAtRef.current = Date.now()
       lastProgrammaticReasonRef.current = reason

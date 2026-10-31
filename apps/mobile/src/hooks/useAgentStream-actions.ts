@@ -2,7 +2,11 @@ import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
-import { abortAgentStreamSession, getSharedSessionInbox, reconcileCompressionStateAfterTruncate } from '@baishou/ai'
+import {
+  abortAgentStreamSession,
+  getSharedSessionInbox,
+  reconcileCompressionStateAfterTruncate
+} from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
 import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
 
@@ -152,7 +156,6 @@ export function useAgentStreamActions({
     setStreamError(null)
     keepPartialOutputAfterUserStop()
     if (sessionId) {
-      getSharedSessionInbox().cancelAllPending(sessionId)
       abortAgentStreamSession(sessionId)
     }
     toast.showSuccess(t('agent.stream_cancelled', '取消成功'))
@@ -419,6 +422,7 @@ export function useAgentStreamActions({
       )
       if (!confirmed) return
       bumpReloadEpoch?.()
+      getSharedSessionInbox().cancelAllPending(currentSessionId)
       try {
         const ids = await services.sessionRepo.listMessageIdsFromMessageAndFollowing(
           currentSessionId,

@@ -32,3 +32,20 @@ describe('agent-chat-scroll helper wiring chrome', () => {
     expect(helperSrc).toContain('isSmoothScrolling: isSmoothScrollingRef.current')
   })
 })
+
+const keyboardInsetsSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'useAgentChatKeyboardInsets.ts'),
+  'utf8'
+)
+
+describe('useAgentChatKeyboardInsets retraction guard chrome', () => {
+  it('should reset composerBottom when Android closing animation ends at a non-zero intermediate height', () => {
+    expect(keyboardInsetsSrc).toContain('peakKeyboardHeightSv')
+    expect(keyboardInsetsSrc).toContain('state: keyboard.state.value')
+    expect(keyboardInsetsSrc).toContain('handleNativeKeyboardClosed')
+  })
+
+  it('should guard handleComposerFocus with Keyboard.isVisible before lifting composer', () => {
+    expect(keyboardInsetsSrc).toContain('if (Keyboard.isVisible?.() !== true) return')
+  })
+})
