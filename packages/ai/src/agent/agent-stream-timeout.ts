@@ -71,7 +71,10 @@ export async function runWithFirstOutputTimeout<T>(options: {
   }
 
   try {
-    const result = await Promise.race([run(markFirstOutput), waitingForFirstOutput])
+    const runPromise = run(markFirstOutput)
+    // 超时先触发时 runPromise 可能稍后才 reject，先挂空 catch 避免晚到的未捕获拒绝
+    void runPromise.catch(() => undefined)
+    const result = await Promise.race([runPromise, waitingForFirstOutput])
     if (timedOut) throw createAgentFirstOutputTimeoutError(timeoutMs)
     return result
   } catch (error) {

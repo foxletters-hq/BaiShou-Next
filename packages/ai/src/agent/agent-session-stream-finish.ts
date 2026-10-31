@@ -16,6 +16,7 @@ import { shouldPersistPartialAssistantAfterStop } from './persist-aborted-assist
 import { isAgentStreamSessionClaimActive } from './stream-session-guard'
 import { ContextCompressorService } from './context-compressor.service'
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
+import { normalizeApiErrorObject } from '../providers/provider-api-error.util'
 import type { StreamAccumulator } from './stream-accumulator'
 import type { StreamingAssistantCheckpoint } from './streaming-assistant-checkpoint'
 import type { StreamChatCallbacks, StreamChatOptions } from './agent-session.types'
@@ -91,6 +92,8 @@ export async function finishAgentSessionStream(input: {
     streamError = isAgentStreamAbortError(streamError) ? streamError : createAgentStreamAbortError()
   } else if (!streamError && !hasModelOutput) {
     streamError = new Error('模型未返回任何内容，请检查附件格式或稍后重试')
+  } else if (streamError && !isAgentStreamAbortError(streamError)) {
+    streamError = normalizeApiErrorObject(streamError)
   }
 
   if (isAgentGateRejectedError(streamError) || userAborted) {
@@ -119,9 +122,69 @@ export async function finishAgentSessionStream(input: {
     streamClaimGeneration !== undefined &&
     !isAgentStreamSessionClaimActive(sessionId, streamClaimGeneration)
   ) {
-    logger.info(`[AgentSessionService] Skip persist for session ${sessionId}: stream superseded`)
     recordRuntimeInterrupted('superseded')
-    await assistantCheckpoint.discard()
+    let shouldPreserveSupersededTurn = false
+    if (hasModelOutput && userMessageId && typeof sessionRepo.getMessageById === 'function') {
+      try {
+        const parentUserMsg = await sessionRepo.getMessageById(userMessageId)
+        if (parentUserMsg && typeof parentUserMsg.orderIndex === 'number') {
+          const recentMessages = await sessionRepo.getMessagesBySession(sessionId, 50)
+          const hasSubsequentUserTurn = recentMessages.some(
+            (m: any) =>
+              m.role === 'user' &&
+              m.id !== userMessageId &&
+              typeof m.orderIndex === 'number' &&
+              m.orderIndex >= parentUserMsg.orderIndex
+          )
+          const hasExistingAssistantReply = recentMessages.some(
+            (m: any) =>
+              m.role === 'assistant' &&
+              m.id !== assistantCheckpoint.assistantMessageId &&
+              typeof m.orderIndex === 'number' &&
+              m.orderIndex > parentUserMsg.orderIndex
+          )
+          shouldPreserveSupersededTurn = hasSubsequentUserTurn && !hasExistingAssistantReply
+        }
+      } catch {
+        shouldPreserveSupersededTurn = false
+      }
+    }
+
+    if (!shouldPreserveSupersededTurn) {
+      logger.info(`[AgentSessionService] Skip persist for session ${sessionId}: stream superseded`)
+      await assistantCheckpoint.discard()
+      return
+    }
+
+    logger.info(
+      `[AgentSessionService] Preserving completed/partial assistant output for session ${sessionId} before subsequent user turn`
+    )
+    const supersededAssistantMessageId = (await assistantCheckpoint.drain()) ?? undefined
+    await persistResult({
+      sessionId,
+      rawUserText: userText,
+      streamResult,
+      accumulator,
+      sessionRepo,
+      snapshotRepo,
+      provider,
+      modelId,
+      skipUserMessageRecording,
+      userMessageId,
+      streamError,
+      dbHistory,
+      systemPrompt: builtSystemPrompt,
+      namingModelConfigured: systemModels?.namingModelConfigured,
+      namingProvider: systemModels?.namingProvider,
+      namingModelId: systemModels?.namingModelId,
+      namingReasoningEffort: systemModels?.namingReasoningEffort,
+      flushSessionToDisk,
+      userConfig: mergedUserConfig,
+      agentGateParts: gateSessionBuffer.buildPartDataList(),
+      fileChangeParts: workspaceSessionBuffer.buildPartDataList(),
+      existingAssistantMessageId: supersededAssistantMessageId,
+      userAborted: true
+    })
     return
   }
 

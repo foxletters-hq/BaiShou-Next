@@ -17,6 +17,7 @@ import { StreamAccumulator } from './stream-accumulator'
 import { createAgentStreamAbortError, isAgentStreamAbortError, logger } from '@baishou/shared'
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 import { isAgentStreamFirstOutputChunk } from './agent-stream-timeout'
+import { normalizeApiErrorObject } from '../providers/provider-api-error.util'
 
 function readToolCallIds(part: { id?: unknown; toolCallId?: unknown }): {
   canonical: string
@@ -86,14 +87,15 @@ export class StreamChunkAdapter {
     streamResult: StreamTextResult<any, any, any>,
     options?: { onFirstOutput?: () => void }
   ): Promise<{ error: any | null }> {
-    if (!streamResult.fullStream) {
+    const fullStream = streamResult.fullStream
+    if (!fullStream) {
       return { error: null }
     }
 
     this.streamStartTime = Date.now()
     this.firstTokenTime = null
 
-    const reader = streamResult.fullStream.getReader()
+    const reader = fullStream.getReader()
     let fatalError: any = null
 
     try {
@@ -104,7 +106,7 @@ export class StreamChunkAdapter {
         if ((value as { type?: string }).type === 'error') {
           const err = (value as { error?: unknown }).error ?? value
           if (!isNoOutputGeneratedError(err)) {
-            fatalError = err instanceof Error ? err : new Error(String(err))
+            fatalError = normalizeApiErrorObject(err)
           }
         }
 
@@ -143,10 +145,11 @@ export class StreamChunkAdapter {
           '[StreamChunkAdapter] AI_NoOutputGeneratedError detected (normal for tool-call only responses), treating as non-fatal'
         )
       } else {
-        fatalError = e
+        const normalizedErr = normalizeApiErrorObject(e)
+        fatalError = normalizedErr
         this.callbacks.onChunk?.({
           type: ChunkType.ERROR,
-          error: e
+          error: normalizedErr
         })
       }
     } finally {
