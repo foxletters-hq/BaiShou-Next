@@ -103,6 +103,7 @@ export async function mobileUpsertNode(options: {
     embeddingProvider: options.embeddingProvider,
     embeddingModelId: options.embeddingModelId
   })
+  notifyGraphDataChanged()
   return { id: existing.id } satisfies GraphNodeWriteResult
 }
 
@@ -167,6 +168,7 @@ export async function mobileCreateNode(options: {
     embeddingProvider: options.embeddingProvider,
     embeddingModelId: options.embeddingModelId
   })
+  notifyGraphDataChanged()
   return { id }
 }
 
@@ -227,6 +229,7 @@ export async function mobileUpsertEdge(options: {
     embeddingProvider: options.embeddingProvider,
     embeddingModelId: options.embeddingModelId
   })
+  notifyGraphDataChanged()
   return { id }
 }
 
@@ -247,6 +250,7 @@ export async function mobileSoftDeleteGraph(options: {
     manager: graphManager,
     repo
   })
+  notifyGraphDataChanged()
 }
 
 export async function mobileMergeGraphNodes(options: {
@@ -283,6 +287,7 @@ export async function mobileMergeGraphNodes(options: {
       }),
     softDeleteNode: (id) => repo.softDeleteNode(id)
   })
+  notifyGraphDataChanged()
   return result
 }
 
@@ -320,6 +325,7 @@ export async function mobileMergeGraphNodeGroup(options: {
       }),
     softDeleteNode: (id) => repo.softDeleteNode(id)
   })
+  notifyGraphDataChanged()
   return result
 }
 

@@ -340,10 +340,32 @@ export async function mobileEstimateExtraction(options: {
   shadowRepo: ShadowIndexRepository
   pathService: IStoragePathService
   fileSystem: IFileSystem
+  pendingItems?: Array<{ filePath: string; date?: string }>
 }) {
-  const pending = await mobileListPendingReextract(options)
+  const pending = options.pendingItems ?? (await mobileListPendingReextract(options))
+  if (pending.length === 0) {
+    return estimateExtractionCost(0, { charCounts: [] })
+  }
+  const shadowCharLenByPath = new Map<string, number>()
+  try {
+    const records = await options.shadowRepo.getAllRecords()
+    for (const row of records) {
+      const normalized = normalizeGraphFilePath(row.filePath)
+      const len = typeof row.fileSize === 'number' && row.fileSize > 0 ? row.fileSize : 0
+      if (len > 0) {
+        shadowCharLenByPath.set(normalized, len)
+      }
+    }
+  } catch {
+    // 影子索引不可用时回退磁盘读取
+  }
   const charCounts: number[] = []
   for (const item of pending) {
+    const cachedLen = shadowCharLenByPath.get(normalizeGraphFilePath(item.filePath))
+    if (cachedLen != null && cachedLen > 0) {
+      charCounts.push(cachedLen)
+      continue
+    }
     try {
       const full = await resolveGraphExtractDiaryPath({
         filePath: item.filePath,

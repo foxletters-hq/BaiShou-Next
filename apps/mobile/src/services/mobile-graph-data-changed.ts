@@ -1,5 +1,20 @@
 const listeners = new Set<() => void>()
 
+export type GraphOptimisticDeleteEvent =
+  | {
+      kind: 'node'
+      id: string
+      deletedEdgeIds?: string[]
+      phase: 'optimistic' | 'committed' | 'rollback'
+    }
+  | {
+      kind: 'edge'
+      id: string
+      phase: 'optimistic' | 'committed' | 'rollback'
+    }
+
+const optimisticDeleteListeners = new Set<(event: GraphOptimisticDeleteEvent) => void>()
+
 function emitGraphDataChanged(): void {
   for (const listener of listeners) listener()
 }
@@ -13,5 +28,20 @@ export function subscribeGraphDataChanged(listener: () => void): () => void {
   listeners.add(listener)
   return () => {
     listeners.delete(listener)
+  }
+}
+
+export function notifyGraphOptimisticDelete(event: GraphOptimisticDeleteEvent): void {
+  for (const listener of optimisticDeleteListeners) {
+    listener(event)
+  }
+}
+
+export function subscribeGraphOptimisticDelete(
+  listener: (event: GraphOptimisticDeleteEvent) => void
+): () => void {
+  optimisticDeleteListeners.add(listener)
+  return () => {
+    optimisticDeleteListeners.delete(listener)
   }
 }
