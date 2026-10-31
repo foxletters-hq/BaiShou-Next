@@ -77,8 +77,29 @@ function newId(): string {
   return `sin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
 }
 
+export type SessionInboxListener = (sessionId: string) => void
+
 export class SessionInbox {
+  private readonly listeners = new Set<SessionInboxListener>()
+
   constructor(private readonly store: SessionInboxStore = getSessionInboxStore()) {}
+
+  subscribe(listener: SessionInboxListener): () => void {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  private notify(sessionId: string): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(sessionId)
+      } catch {
+        /* ignore listener errors */
+      }
+    }
+  }
 
   admit(params: AdmitSessionInputParams): SessionInputRecord {
     const delivery: SessionInputDelivery = params.delivery === 'steer' ? 'steer' : 'queue'
@@ -94,6 +115,7 @@ export class SessionInbox {
       payload: params.payload
     }
     this.store.upsert(record)
+    this.notify(params.sessionId)
     return record
   }
 
@@ -106,6 +128,7 @@ export class SessionInbox {
     if (!cur || cur.status !== 'pending') return null
     const next = { ...cur, status: 'cancelled' as SessionInputStatus }
     this.store.upsert(next)
+    this.notify(cur.sessionId)
     return next
   }
 
@@ -115,6 +138,7 @@ export class SessionInbox {
     if (!cur || cur.status !== 'pending') return null
     const next = { ...cur, text }
     this.store.upsert(next)
+    this.notify(cur.sessionId)
     return next
   }
 
@@ -127,6 +151,7 @@ export class SessionInbox {
     const nextDelivery: SessionInputDelivery = delivery === 'steer' ? 'steer' : 'queue'
     const next = { ...cur, delivery: nextDelivery }
     this.store.upsert(next)
+    this.notify(cur.sessionId)
     return next
   }
 
@@ -154,6 +179,7 @@ export class SessionInbox {
       promotedAt: Date.now()
     }
     this.store.upsert(next)
+    this.notify(sessionId)
     return next
   }
 
@@ -161,6 +187,7 @@ export class SessionInbox {
     const cur = this.store.get(inputId)
     if (!cur) return
     this.store.upsert({ ...cur, status: 'failed' })
+    this.notify(cur.sessionId)
   }
 }
 

@@ -62,8 +62,12 @@ export class ModelPricingService {
   private static instance: ModelPricingService
   private prices: Map<string, ModelPrice> = new Map()
   private _lastFetchTime?: Date
+  private _lastAttemptTime?: Date
   private _lastFetchFailed = false
+  private inFlightFetch: Promise<void> | null = null
   private readonly CACHE_DURATION_MS = 60 * 60 * 1000 // 1小时缓存失效
+  private readonly FAILED_RETRY_COOLDOWN_MS = 5 * 60 * 1000 // 失败后 5 分钟内不再重复阻塞拉取
+  private readonly FETCH_TIMEOUT_MS = 3000 // 价格表拉取超时控制在 3s，避免拖慢流结束与排队提升
 
   private constructor() {}
 
@@ -139,10 +143,18 @@ export class ModelPricingService {
   }
 
   public async ensureLoaded() {
+    const now = Date.now()
     if (
       this.prices.size > 0 &&
       this._lastFetchTime &&
-      new Date().getTime() - this._lastFetchTime.getTime() < this.CACHE_DURATION_MS
+      now - this._lastFetchTime.getTime() < this.CACHE_DURATION_MS
+    ) {
+      return
+    }
+    if (
+      this._lastFetchFailed &&
+      this._lastAttemptTime &&
+      now - this._lastAttemptTime.getTime() < this.FAILED_RETRY_COOLDOWN_MS
     ) {
       return
     }
@@ -150,80 +162,98 @@ export class ModelPricingService {
   }
 
   private async fetchPrices() {
-    try {
-      const controller = new AbortController()
-      const id = setTimeout(() => controller.abort(), 10000)
-
-      // 自动使用支持系统级别的 fetch (如 Electron net.fetch 注入) 或回落 NodeJS fetch
-      const fetcher = (globalThis as any).customNetFetch || fetch
-
-      const response = await fetcher('https://models.dev/api.json', {
-        signal: controller.signal
-      })
-      clearTimeout(id)
-
-      if (!response.ok) {
-        logger.warn(`[ModelPricingService] models.dev returned HTTP ${response.status}`)
-        this._lastFetchFailed = true
-        return
-      }
-
-      const data = await response.json()
-      applyReasoningCatalogFromModelsDevApi(data)
+    if (this.inFlightFetch) {
+      await this.inFlightFetch
+      return
+    }
+    const run = async () => {
+      this._lastAttemptTime = new Date()
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
       try {
-        applyVisionModelsRuntimeOverlay(extractVisionModelIdsFromModelsDev(data))
-      } catch (visionError) {
-        logger.warn(
-          '[ModelPricingService] Failed to apply vision overlay from models.dev:',
-          visionError as Error
-        )
-      }
-      this.prices.clear()
+        const controller = new AbortController()
+        timeoutId = setTimeout(() => controller.abort(), this.FETCH_TIMEOUT_MS)
 
-      for (const providerId of Object.keys(data)) {
-        const providerData = data[providerId]
-        const modelsData = providerData?.models
-        if (!modelsData) continue
+        // 自动使用支持系统级别的 fetch (如 Electron net.fetch 注入) 或回落 NodeJS fetch
+        const fetcher = (globalThis as any).customNetFetch || fetch
 
-        for (const modelId of Object.keys(modelsData)) {
-          const model = modelsData[modelId]
-          const costData = model?.cost
-          if (!costData) continue
+        const response = await fetcher('https://models.dev/api.json', {
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+        timeoutId = null
 
-          const inputPrice = costData.input ?? 0
-          if (inputPrice === 0) continue // 跨过纯免费不计的模型
+        if (!response.ok) {
+          logger.warn(`[ModelPricingService] models.dev returned HTTP ${response.status}`)
+          this._lastFetchFailed = true
+          return
+        }
 
-          const over200k = costData.context_over_200k
-          let over200kPriceObj: ModelPrice | undefined
-
-          if (over200k) {
-            over200kPriceObj = new ModelPrice({
-              input: over200k.input ?? inputPrice,
-              output: over200k.output ?? costData.output ?? 0,
-              cacheRead: over200k.cache_read ?? 0,
-              cacheWrite: over200k.cache_write ?? 0
-            })
-          }
-
-          this.prices.set(
-            `${providerId}/${modelId}`,
-            new ModelPrice({
-              input: inputPrice,
-              output: costData.output ?? 0,
-              cacheRead: costData.cache_read ?? 0,
-              cacheWrite: costData.cache_write ?? 0,
-              over200K: over200kPriceObj
-            })
+        const data = await response.json()
+        applyReasoningCatalogFromModelsDevApi(data)
+        try {
+          applyVisionModelsRuntimeOverlay(extractVisionModelIdsFromModelsDev(data))
+        } catch (visionError) {
+          logger.warn(
+            '[ModelPricingService] Failed to apply vision overlay from models.dev:',
+            visionError as Error
           )
         }
-      }
+        this.prices.clear()
 
-      this._lastFetchTime = new Date()
-      this._lastFetchFailed = false
-    } catch (e: any) {
-      logger.warn('[ModelPricingService] prices fetch failed:', e)
-      this._lastFetchFailed = true
-      // 网络打不开没关系，失败的话大不了不扣钱，决不能让 Agent 崩溃停止回答
+        for (const providerId of Object.keys(data)) {
+          const providerData = data[providerId]
+          const modelsData = providerData?.models
+          if (!modelsData) continue
+
+          for (const modelId of Object.keys(modelsData)) {
+            const model = modelsData[modelId]
+            const costData = model?.cost
+            if (!costData) continue
+
+            const inputPrice = costData.input ?? 0
+            if (inputPrice === 0) continue // 跨过纯免费不计的模型
+
+            const over200k = costData.context_over_200k
+            let over200kPriceObj: ModelPrice | undefined
+
+            if (over200k) {
+              over200kPriceObj = new ModelPrice({
+                input: over200k.input ?? inputPrice,
+                output: over200k.output ?? costData.output ?? 0,
+                cacheRead: over200k.cache_read ?? 0,
+                cacheWrite: over200k.cache_write ?? 0
+              })
+            }
+
+            this.prices.set(
+              `${providerId}/${modelId}`,
+              new ModelPrice({
+                input: inputPrice,
+                output: costData.output ?? 0,
+                cacheRead: costData.cache_read ?? 0,
+                cacheWrite: costData.cache_write ?? 0,
+                over200K: over200kPriceObj
+              })
+            )
+          }
+        }
+
+        this._lastFetchTime = new Date()
+        this._lastFetchFailed = false
+      } catch (e: any) {
+        logger.warn('[ModelPricingService] prices fetch failed:', e)
+        this._lastFetchFailed = true
+        // 网络打不开没关系，失败的话大不了不扣钱，决不能让 Agent 崩溃停止回答
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId)
+      }
+    }
+
+    this.inFlightFetch = run()
+    try {
+      await this.inFlightFetch
+    } finally {
+      this.inFlightFetch = null
     }
   }
 }

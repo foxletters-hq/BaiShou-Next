@@ -1,8 +1,12 @@
 import {
   classifyPromptAttachmentKind,
+  formatPromptDocumentExtractFailedHint,
   formatPromptFileAttachmentBlock,
   formatPromptDirectoryAttachmentBlock,
+  formatPromptLegacyOfficeAttachmentHint,
   formatPromptUnsupportedAttachmentHint,
+  isConvertiblePromptDocument,
+  isLegacyOfficeDocument,
   looksLikeBinaryText,
   PROMPT_TEXT_ATTACHMENT_READ_MAX_BYTES,
   sliceTextBySelection,
@@ -14,6 +18,7 @@ import {
 import { resolveAttachmentFilePath } from '../platform/resolve-attachment-path'
 import {
   canReadLocalPath,
+  readLocalDocumentText,
   readLocalFileAsBase64,
   readLocalFileAsBase64Async,
   readLocalTextFile,
@@ -121,11 +126,13 @@ export async function appendFileAttachmentToContentParts(
 ): Promise<void> {
   const flags = inferAttachmentFlags(att)
   const displayName = att.name || att.fileName || 'Attachment'
+  const fileName = String(att.name || att.fileName || att.relativePath || '')
+  const displayPath = resolveAttachmentDisplayPath(att)
 
   if (att.isDirectory) {
     contentParts.push({
       type: 'text',
-      text: formatPromptDirectoryAttachmentBlock(resolveAttachmentDisplayPath(att) || displayName)
+      text: formatPromptDirectoryAttachmentBlock(displayPath || displayName)
     })
     return
   }
@@ -134,6 +141,55 @@ export async function appendFileAttachmentToContentParts(
     await appendImagePartToContentParts(contentParts, att, {
       modelId: opts.modelId,
       providerKey: opts.providerKey ?? opts.providerType
+    })
+    return
+  }
+
+  if (isLegacyOfficeDocument(fileName, att.mimeType)) {
+    contentParts.push({
+      type: 'text',
+      text: formatPromptLegacyOfficeAttachmentHint(displayPath || displayName)
+    })
+    return
+  }
+
+  if (isConvertiblePromptDocument(fileName, att.mimeType)) {
+    let textContent = att.textContent || ''
+    if (!textContent) {
+      try {
+        const filePath = resolveAttachmentFilePath(att)
+        if (canReadLocalPath(filePath)) {
+          textContent = await readLocalDocumentText(filePath, fileName, att.mimeType)
+          if (textContent) {
+            att.textContent = textContent
+          }
+        }
+      } catch {
+        textContent = ''
+      }
+    }
+    if (!textContent.trim() || looksLikeBinaryText(textContent)) {
+      contentParts.push({
+        type: 'text',
+        text: formatPromptDocumentExtractFailedHint(displayPath || displayName)
+      })
+      return
+    }
+    const sliced = sliceTextBySelection(textContent, att.selection)
+    const limited = truncatePromptTextAttachment(sliced.text)
+    contentParts.push({
+      type: 'text',
+      text: formatPromptFileAttachmentBlock({
+        displayPath,
+        text: limited.text,
+        selection: att.selection
+          ? { startLine: sliced.startLine, endLine: sliced.endLine }
+          : undefined,
+        comment: att.comment,
+        truncated: limited.truncated,
+        shownLines: limited.shownLines,
+        totalLines: limited.totalLines
+      })
     })
     return
   }
@@ -150,7 +206,6 @@ export async function appendFileAttachmentToContentParts(
         textContent = ''
       }
     }
-    const displayPath = resolveAttachmentDisplayPath(att)
     if (looksLikeBinaryText(textContent)) {
       contentParts.push({
         type: 'text',

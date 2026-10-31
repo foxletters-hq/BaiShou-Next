@@ -38,7 +38,7 @@ export function buildToolUsageGuidelines(
       lookupSteps.push('diary_search（关键词搜索日记）')
     }
     if (hasVectorSearch) {
-      lookupSteps.push('vector_search（语义搜索对话与记忆）')
+      lookupSteps.push('vector_search（语义搜索日记、对话与记忆）')
     }
     if (hasSessionList) {
       lookupSteps.push('session_list（按时间列出会话）')
