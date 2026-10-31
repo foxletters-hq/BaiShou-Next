@@ -99,7 +99,7 @@ export const VersionMigrationScreen: React.FC = () => {
           <Text style={[styles.hint, { color: colors.textTertiary }]}>
             {t(
               'version_migration.import_order_hint',
-              '推荐顺序：全局（头像/身份卡/配置）→ 各工作空间（日记 + 伙伴与会话）'
+              '推荐顺序：全局（头像/身份卡/配置）→ 各小窝（日记 + 伙伴与会话）'
             )}
           </Text>
           {allFilesAccessGranted === false ? (
@@ -238,7 +238,7 @@ export const VersionMigrationScreen: React.FC = () => {
         {workspaceSections.length > 0 ? (
           <View style={styles.workspaceHeader}>
             <Text style={[styles.groupTitle, { color: colors.textSecondary, marginBottom: 0 }]}>
-              {t('version_migration.workspace_group_title', { defaultValue: '工作空间' })}
+              {t('version_migration.workspace_group_title', { defaultValue: '小窝' })}
             </Text>
             {importableWorkspaces.length > 1 ? (
               <Button
@@ -248,7 +248,7 @@ export const VersionMigrationScreen: React.FC = () => {
                 disabled={importBusy}
               >
                 {t('version_migration.import_all_workspaces', {
-                  defaultValue: '导入全部工作空间'
+                  defaultValue: '导入全部小窝'
                 })}
               </Button>
             ) : null}

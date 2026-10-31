@@ -195,6 +195,14 @@ export const SummaryScreen: React.FC = () => {
           cur.error?.includes('timeout')
         ) {
           errText = t('summary.generation_timeout')
+        } else if (
+          cur.error?.includes('Generated content was empty') ||
+          cur.error?.includes('生成内容为空')
+        ) {
+          errText = t(
+            'summary.error.empty_content',
+            '生成内容为空，请检查模型思考配置、输出限制或尝试更换其他模型'
+          )
         }
         toast.showError(`${t('summary.generation_failed')}: ${errText}`)
       }
