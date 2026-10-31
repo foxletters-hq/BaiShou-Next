@@ -192,6 +192,7 @@ export const OnboardingScreen: React.FC = () => {
       }
       await persistOnboardingProfile()
       await window.api.ensureDefaultLatteAssistant(selectedLanguage)
+      await window.api.onboarding.dismissLegacyMigrationPrompt?.()
       await window.api.onboarding.finish()
     } catch (e) {
       console.error('完成引导失败', e)
