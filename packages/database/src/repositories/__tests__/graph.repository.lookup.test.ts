@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { entityAlignKey } from '@baishou/shared'
 import type { Client } from '@libsql/client'
 import type { GraphRepository } from '../graph.repository'
 import {
@@ -147,5 +148,31 @@ describe('GraphRepository name lookup', () => {
     })
     expect(raw.rows[0]?.discriminator).toBe('')
     expect(raw.rows[0]?.discriminator).not.toBeNull()
+  })
+
+  it('should resolve name and alias hits in batch with bare discriminator first', async () => {
+    await seedNode('n-split', { name: '张三', discriminator: '同事', aliases: ['三哥'] })
+    await seedNode('n-bare', { name: '张三', aliases: ['小张'] })
+    await seedNode('n-place', { name: '杭州', nodeType: 'place', aliases: ['武林'] })
+    await seedNode('n-other', { vaultId: OTHER, name: '张三' })
+
+    const batch = await repo.findNodesByNamesOrAliasesBatch(VAULT, [
+      { name: '  张三  ', type: 'person' },
+      { name: '小张', type: 'person' },
+      { name: '三哥', type: 'person' },
+      { name: '武林', type: 'place' },
+      { name: '武林', type: 'person' },
+      { name: '不存在', type: 'person' }
+    ])
+
+    expect(batch.get(entityAlignKey('person', '张三'))?.map((r) => r.id)).toEqual([
+      'n-bare',
+      'n-split'
+    ])
+    expect(batch.get(entityAlignKey('person', '小张'))?.map((r) => r.id)).toEqual(['n-bare'])
+    expect(batch.get(entityAlignKey('person', '三哥'))?.map((r) => r.id)).toEqual(['n-split'])
+    expect(batch.get(entityAlignKey('place', '武林'))?.map((r) => r.id)).toEqual(['n-place'])
+    expect(batch.get(entityAlignKey('person', '武林'))).toEqual([])
+    expect(batch.get(entityAlignKey('person', '不存在'))).toEqual([])
   })
 })

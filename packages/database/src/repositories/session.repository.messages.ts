@@ -1,9 +1,13 @@
-import { eq, desc, and, gte, gt, inArray } from 'drizzle-orm'
+import { eq, ne, desc, and, gte, gt, inArray, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
-import type { InsertMessageInput, InsertPartInput } from './session.repository.types'
+import {
+  ensureAgentSessionIndexes,
+  type InsertMessageInput,
+  type InsertPartInput
+} from './session.repository.types'
 import { generateSessionUUID, usesSyncTransaction } from './session.repository.utils'
 
 export interface CompactionMarkerInput {
@@ -18,10 +22,23 @@ export interface CompactionMarkerInput {
 
 type AgentPartRowType = (typeof partsTbl.$inferInsert)['type']
 
+function resolveMessageCreatedAt(raw: Date | number | string | undefined): Date {
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return new Date(raw < 1e12 ? raw * 1000 : raw)
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    const parsed = new Date(raw)
+    if (!Number.isNaN(parsed.getTime())) return parsed
+  }
+  return new Date()
+}
+
 function toPartInsertRows(
   parts: InsertPartInput[],
   messageId: string,
-  sessionId: string
+  sessionId: string,
+  baseDate: Date = new Date()
 ): Array<{
   id: string
   messageId: string
@@ -30,7 +47,7 @@ function toPartInsertRows(
   data: InsertPartInput['data']
   createdAt: Date
 }> {
-  const baseSec = Math.floor(Date.now() / 1000)
+  const baseSec = Math.floor(baseDate.getTime() / 1000)
   return parts.map((p, index) => ({
     id: p.id,
     messageId,
@@ -48,8 +65,20 @@ export class SessionMessageOps {
     message: InsertMessageInput,
     parts: InsertPartInput[]
   ): Promise<void> {
+    const messageCreatedAt = resolveMessageCreatedAt(message.createdAt)
     if (usesSyncTransaction(this.db)) {
       await (this.db as any).transaction((tx: any) => {
+        tx.update(messagesTbl)
+          .set({ orderIndex: sql`${messagesTbl.orderIndex} + 1` })
+          .where(
+            and(
+              eq(messagesTbl.sessionId, message.sessionId),
+              gte(messagesTbl.orderIndex, message.orderIndex),
+              ne(messagesTbl.id, message.id)
+            )
+          )
+          .run()
+
         tx.insert(messagesTbl)
           .values({
             id: message.id,
@@ -64,7 +93,7 @@ export class SessionMessageOps {
             costMicros: message.costMicros,
             providerId: message.providerId,
             modelId: message.modelId,
-            createdAt: new Date()
+            createdAt: messageCreatedAt
           })
           .onConflictDoNothing()
           .run()
@@ -72,7 +101,7 @@ export class SessionMessageOps {
         if (parts.length > 0) {
           // integer timestamp 存秒；按 part 下标递增，避免同秒导致 ORDER BY createdAt 失序
           tx.insert(partsTbl)
-            .values(toPartInsertRows(parts, message.id, message.sessionId))
+            .values(toPartInsertRows(parts, message.id, message.sessionId, messageCreatedAt))
             .run()
         }
 
@@ -83,6 +112,17 @@ export class SessionMessageOps {
       })
     } else {
       await this.db.transaction(async (tx) => {
+        await tx
+          .update(messagesTbl)
+          .set({ orderIndex: sql`${messagesTbl.orderIndex} + 1` })
+          .where(
+            and(
+              eq(messagesTbl.sessionId, message.sessionId),
+              gte(messagesTbl.orderIndex, message.orderIndex),
+              ne(messagesTbl.id, message.id)
+            )
+          )
+
         await tx
           .insert(messagesTbl)
           .values({
@@ -98,12 +138,14 @@ export class SessionMessageOps {
             costMicros: message.costMicros,
             providerId: message.providerId,
             modelId: message.modelId,
-            createdAt: new Date()
+            createdAt: messageCreatedAt
           })
           .onConflictDoNothing()
 
         if (parts.length > 0) {
-          await tx.insert(partsTbl).values(toPartInsertRows(parts, message.id, message.sessionId))
+          await tx
+            .insert(partsTbl)
+            .values(toPartInsertRows(parts, message.id, message.sessionId, messageCreatedAt))
         }
 
         await tx
@@ -119,6 +161,8 @@ export class SessionMessageOps {
     sessionId: string,
     parts: InsertPartInput[],
     billing?: {
+      role?: 'user' | 'assistant' | 'system'
+      orderIndex?: number
       inputTokens?: number
       outputTokens?: number
       cacheReadInputTokens?: number
@@ -128,10 +172,31 @@ export class SessionMessageOps {
       modelId?: string
     }
   ): Promise<void> {
-    const partRows = toPartInsertRows(parts, messageId, sessionId)
+    const baseDate = new Date()
+    const partRows = toPartInsertRows(parts, messageId, sessionId, baseDate)
 
     if (usesSyncTransaction(this.db)) {
       await (this.db as any).transaction((tx: any) => {
+        if (typeof billing?.orderIndex === 'number') {
+          tx.insert(messagesTbl)
+            .values({
+              id: messageId,
+              sessionId,
+              role: billing.role ?? 'assistant',
+              isSummary: false,
+              orderIndex: billing.orderIndex,
+              inputTokens: billing.inputTokens,
+              outputTokens: billing.outputTokens,
+              cacheReadInputTokens: billing.cacheReadInputTokens,
+              cacheWriteInputTokens: billing.cacheWriteInputTokens,
+              costMicros: billing.costMicros,
+              providerId: billing.providerId,
+              modelId: billing.modelId,
+              createdAt: baseDate
+            })
+            .onConflictDoNothing()
+            .run()
+        }
         tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId)).run()
         if (partRows.length > 0) {
           tx.insert(partsTbl).values(partRows).run()
@@ -159,6 +224,26 @@ export class SessionMessageOps {
     }
 
     await this.db.transaction(async (tx) => {
+      if (typeof billing?.orderIndex === 'number') {
+        await tx
+          .insert(messagesTbl)
+          .values({
+            id: messageId,
+            sessionId,
+            role: billing.role ?? 'assistant',
+            isSummary: false,
+            orderIndex: billing.orderIndex,
+            inputTokens: billing.inputTokens,
+            outputTokens: billing.outputTokens,
+            cacheReadInputTokens: billing.cacheReadInputTokens,
+            cacheWriteInputTokens: billing.cacheWriteInputTokens,
+            costMicros: billing.costMicros,
+            providerId: billing.providerId,
+            modelId: billing.modelId,
+            createdAt: baseDate
+          })
+          .onConflictDoNothing()
+      }
       await tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId))
       if (partRows.length > 0) {
         await tx.insert(partsTbl).values(partRows)
@@ -185,6 +270,7 @@ export class SessionMessageOps {
   }
 
   async getMessagesBySession(sessionId: string, limit: number = 50, offset: number = 0) {
+    await ensureAgentSessionIndexes(this.db)
     const rawMessages = await this.db
       .select()
       .from(messagesTbl)
@@ -194,6 +280,12 @@ export class SessionMessageOps {
       .offset(offset)
 
     rawMessages.reverse()
+    rawMessages.sort((a, b) => {
+      if (a.orderIndex !== b.orderIndex) return a.orderIndex - b.orderIndex
+      if (a.role === 'assistant' && b.role === 'user') return -1
+      if (a.role === 'user' && b.role === 'assistant') return 1
+      return 0
+    })
 
     if (rawMessages.length === 0) return []
 
@@ -203,37 +295,46 @@ export class SessionMessageOps {
       .from(partsTbl)
       .where(and(eq(partsTbl.sessionId, sessionId), inArray(partsTbl.messageId, messageIds)))
 
+    const readPartSeq = (data: unknown): number => {
+      const obj =
+        typeof data === 'string'
+          ? (() => {
+              try {
+                return JSON.parse(data) as { seq?: unknown }
+              } catch {
+                return null
+              }
+            })()
+          : (data as { seq?: unknown } | null)
+      const seq = Number(obj?.seq)
+      return Number.isFinite(seq) ? seq : Number.NaN
+    }
+
+    const seqByPart = new WeakMap<object, number>()
+    const timeByPart = new WeakMap<object, number>()
     const partsByMessageId = new Map<string, typeof allParts>()
     for (const part of allParts) {
+      seqByPart.set(part, readPartSeq(part.data))
+      timeByPart.set(
+        part,
+        part.createdAt instanceof Date ? part.createdAt.getTime() : Number(part.createdAt || 0)
+      )
       const bucket = partsByMessageId.get(part.messageId)
       if (bucket) bucket.push(part)
       else partsByMessageId.set(part.messageId, [part])
     }
 
     for (const [, bucket] of partsByMessageId) {
+      if (bucket.length <= 1) continue
       bucket.sort((a, b) => {
-        const readSeq = (data: unknown): number => {
-          const obj =
-            typeof data === 'string'
-              ? (() => {
-                  try {
-                    return JSON.parse(data) as { seq?: unknown }
-                  } catch {
-                    return null
-                  }
-                })()
-              : (data as { seq?: unknown } | null)
-          const seq = Number(obj?.seq)
-          return Number.isFinite(seq) ? seq : Number.NaN
-        }
-        const seqA = readSeq(a.data)
-        const seqB = readSeq(b.data)
+        const seqA = seqByPart.get(a) ?? Number.NaN
+        const seqB = seqByPart.get(b) ?? Number.NaN
         const hasSeqA = Number.isFinite(seqA)
         const hasSeqB = Number.isFinite(seqB)
         if (hasSeqA && hasSeqB && seqA !== seqB) return seqA - seqB
         if (hasSeqA !== hasSeqB) return hasSeqA ? -1 : 1
-        const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : Number(a.createdAt || 0)
-        const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : Number(b.createdAt || 0)
+        const timeA = timeByPart.get(a) ?? 0
+        const timeB = timeByPart.get(b) ?? 0
         if (timeA !== timeB) return timeA - timeB
         return String(a.id).localeCompare(String(b.id))
       })

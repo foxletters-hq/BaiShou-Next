@@ -11,7 +11,12 @@ import type {
 export interface GraphNodeLookup {
   findNodeByNameOrAlias(vaultId: string, name: string, type?: string): Promise<GraphNodeRow | null>
   findNodesByNameOrAlias(vaultId: string, name: string, type?: string): Promise<GraphNodeRow[]>
+  findNodesByNamesOrAliasesBatch?(
+    vaultId: string,
+    queries: ReadonlyArray<{ name: string; type?: string }>
+  ): Promise<Map<string, GraphNodeRow[]>>
   getNodeById(id: string, vaultId?: string): Promise<GraphNodeRow | null>
+  getNodesByIds?(vaultId: string, ids: string[]): Promise<GraphNodeRow[]>
 }
 
 /** Read / traverse — RAG and UI. */
@@ -253,4 +258,4 @@ export interface GraphRepositoryPort
     GraphWrite,
     GraphReview,
     Omit<GraphSyncApply, 'getNodesByIds'>,
-    GraphExtractStore {}
+    Omit<GraphExtractStore, 'getNodesByIds'> {}
