@@ -114,6 +114,14 @@ export const SummaryPage: React.FC = () => {
             'summary.generation_timeout',
             'AI 总结超时。这通常是由于网络连接慢或 AI 服务响应慢导致的，建议您在设置中切换为其它更稳定的 AI 模型后重试。'
           )
+        } else if (
+          cur.error?.includes('Generated content was empty') ||
+          cur.error?.includes('生成内容为空')
+        ) {
+          errText = t(
+            'summary.error.empty_content',
+            '生成内容为空，请检查模型思考配置、输出限制或尝试更换其他模型'
+          )
         }
         toast.showError(`${t('summary.generation_failed', '生成失败')}: ${errText}`)
       }

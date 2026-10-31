@@ -58,8 +58,8 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
     .replace('$page', String(safeCurrentPage))
     .replace('$pages', String(totalPages))
 
-  /** 分页控制栏（顶底复用） */
-  const PaginationBar = () => (
+  /** 分页控制栏（顶底复用，直接返回 JSX 节点而非内嵌组件定义，避免每次重渲染卸载重挂载） */
+  const renderPaginationBar = () => (
     <>
       <div className="diary-pagination-info">{paginationInfo}</div>
       <div className="diary-pagination-controls">
@@ -130,7 +130,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
       {/* 顶部分页控制栏 */}
       {showPagination && (
         <div className="diary-pagination-top">
-          <PaginationBar />
+          {renderPaginationBar()}
         </div>
       )}
 
@@ -152,7 +152,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
       {/* 底部分页控制栏 */}
       {showPagination && (
         <div className="diary-pagination">
-          <PaginationBar />
+          {renderPaginationBar()}
         </div>
       )}
     </div>

@@ -256,7 +256,7 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
           <p className={styles.subtitle}>
             {t('data_sync.plan_confirm_desc', {
               count: preview.changeCount,
-              activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择工作空间')
+              activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择小窝')
             })}
           </p>
           <div className={styles.metaRow}>

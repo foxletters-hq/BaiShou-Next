@@ -168,7 +168,19 @@ export const classifyWorkspaceGateRisk: AgentGateRiskClassifier = async (input) 
       })
       let text = ''
       for await (const part of streamResult.fullStream) {
-        const typed = part as { type?: string; text?: unknown; textDelta?: unknown }
+        const typed = part as {
+          type?: string
+          text?: unknown
+          textDelta?: unknown
+          error?: unknown
+        }
+        if (typed.type === 'error') {
+          const err = typed.error
+          throw err instanceof Error ? err : new Error(String(err ?? 'Classifier stream error'))
+        }
+        if (typed.type === 'abort') {
+          break
+        }
         if (
           typed.type !== 'text-delta' &&
           typed.type !== 'reasoning-delta' &&
