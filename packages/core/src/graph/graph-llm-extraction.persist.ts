@@ -23,6 +23,36 @@ import { parseJsonObject } from './graph-llm-extraction.prompt'
 export type GraphExtractPersistCtx = {
   repo: GraphExtractStore
   graphManager: GraphExtractRawWriter
+  nodeCache?: Map<string, GraphNodeRow | null>
+  deferSupersede?: boolean
+}
+
+function rawRecordToCachedNodeRow(
+  record: GraphNodeRawRecord,
+  previous?: GraphNodeRow | null
+): GraphNodeRow {
+  return {
+    id: record.id,
+    vaultId: record.vaultId,
+    nodeType: record.nodeType,
+    name: record.name,
+    nameNormalized: normalizeGraphName(record.name),
+    discriminator: record.discriminator ?? previous?.discriminator ?? '',
+    aliases: record.aliases,
+    summary: record.summary,
+    propsJson: JSON.stringify(record.props ?? {}),
+    mentionCount: record.mentionCount,
+    firstSeenAt: record.firstSeenAt,
+    lastSeenAt: record.lastSeenAt,
+    origin: record.origin,
+    shardMonth: record.shardMonth,
+    reviewStatus: record.reviewStatus ?? 'approved',
+    modelId: previous?.modelId ?? '',
+    dimension: previous?.dimension ?? null,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    deletedAt: record.deletedAt
+  }
 }
 
 export function bindEndpointName(
@@ -119,7 +149,9 @@ export async function appendAmbiguousSourceRefsToBareNodes(
       existing.updatedAt = input.now
       continue
     }
-    const row = await ctx.repo.getNodeById(id, input.vaultId)
+    const row = ctx.nodeCache?.has(id)
+      ? (ctx.nodeCache.get(id) ?? null)
+      : await ctx.repo.getNodeById(id, input.vaultId)
     if (!row) continue
     const record = graphNodeRowToRawRecord(row, input.vaultId, input.vaultName, input.now)
     record.props = appendAmbiguousSourceRef(record.props, input.sourceRef)
@@ -133,8 +165,9 @@ export async function writeMentionCountsToJsonl(
   vaultId: string,
   vaultName: string,
   nodeIds: string[]
-): Promise<void> {
-  if (nodeIds.length === 0) return
+): Promise<Set<string>> {
+  const touchedMonths = new Set<string>()
+  if (nodeIds.length === 0) return touchedMonths
   const getNodesByIds = (
     ctx.repo as { getNodesByIds?: (vId: string, ids: string[]) => Promise<GraphNodeRow[]> }
   ).getNodesByIds
@@ -152,6 +185,7 @@ export async function writeMentionCountsToJsonl(
   }
   const records = rows.map((row) => {
     const writtenAt = Math.max(Date.now(), row.updatedAt ?? 0) + 1
+    if (row.shardMonth) touchedMonths.add(row.shardMonth)
     return graphNodeRowToRawRecord(row, vaultId, vaultName, writtenAt)
   })
   const writeRecords = (
@@ -166,6 +200,7 @@ export async function writeMentionCountsToJsonl(
       await ctx.graphManager.writeRecord(record, { collection: 'nodes' })
     }
   }
+  return touchedMonths
 }
 
 export async function persistGraphExtractDraft(
@@ -177,6 +212,7 @@ export async function persistGraphExtractDraft(
   nodeIds: string[]
   embeddings: Array<{ id: string; embedding: number[]; text: string }>
   removedFromShard?: boolean
+  supersede?: { sourceRef: string; exceptIds: Set<string>; shardMonth: string }
 }> {
   const { vaultId, vaultName, filePath, hash, dateStr, shardMonth, validFrom } = draft
   const sourceRef = dateStr || filePath
@@ -200,7 +236,8 @@ export async function persistGraphExtractDraft(
     origin: 'ai',
     reviewStatus: 'approved',
     now,
-    seenAt: validFrom
+    seenAt: validFrom,
+    existingByIdCache: ctx.nodeCache
   })
   nodeRecords.push(entryCreated.record)
   touchedNodeIds.push(entryCreated.id)
@@ -222,7 +259,8 @@ export async function persistGraphExtractDraft(
       reviewStatus: graphReviewStatusFromConfidence(ent.confidence),
       now,
       seenAt: validFrom,
-      forceId: hit?.id
+      forceId: hit?.id,
+      existingByIdCache: ctx.nodeCache
     })
     const ambiguous = hit?.ambiguous === true || created.ambiguous
     if (ambiguous) {
@@ -310,10 +348,21 @@ export async function persistGraphExtractDraft(
       await ctx.graphManager.writeRecord(record, { collection: 'nodes' })
     }
   }
+  if (ctx.nodeCache) {
+    for (const record of nodeRecords) {
+      ctx.nodeCache.set(
+        record.id,
+        rawRecordToCachedNodeRow(record, ctx.nodeCache.get(record.id) ?? null)
+      )
+    }
+  }
   let removedFromShard = false
-  const existingLegacy = await ctx.repo.getNodeById(legacyEntryId, vaultId)
+  const existingLegacy = ctx.nodeCache?.has(legacyEntryId)
+    ? (ctx.nodeCache.get(legacyEntryId) ?? null)
+    : await ctx.repo.getNodeById(legacyEntryId, vaultId)
   if (existingLegacy && legacyEntryId !== entryCreated.id) {
     removedFromShard = true
+    ctx.nodeCache?.set(legacyEntryId, null)
     const listEdges = ctx.repo.listEdgesTouching
     if (typeof listEdges === 'function') {
       const touching = await listEdges.call(ctx.repo, vaultId, legacyEntryId)
@@ -383,13 +432,18 @@ export async function persistGraphExtractDraft(
       await ctx.graphManager.writeRecord(record, { collection: 'edges' })
     }
   }
+  let supersede: { sourceRef: string; exceptIds: Set<string>; shardMonth: string } | undefined
   if (shouldSupersedeDiaryAiEdges(newEdgeIds)) {
-    await ctx.graphManager.supersedeAiEdgesBySourceRef(sourceRef, {
-      exceptIds: newEdgeIds,
-      shardMonth
-    })
+    if (ctx.deferSupersede) {
+      supersede = { sourceRef, exceptIds: newEdgeIds, shardMonth }
+    } else {
+      await ctx.graphManager.supersedeAiEdgesBySourceRef(sourceRef, {
+        exceptIds: newEdgeIds,
+        shardMonth
+      })
+    }
   }
-  return { nodeIds: touchedNodeIds, embeddings: alignedEmbeddings, removedFromShard }
+  return { nodeIds: touchedNodeIds, embeddings: alignedEmbeddings, removedFromShard, supersede }
 }
 
 /** 抽空或端点全解析失败时，不得把该日旧 AI 边标成失效。 */

@@ -123,13 +123,26 @@ export async function alignEntityPool(
   const unique = uniqueEntities(entities)
   const unresolved: Array<{ key: string; entity: AlignableEntity }> = []
 
-  const nameHits = await Promise.all(
-    [...unique].map(async ([key, entity]) => ({
-      key,
-      entity,
-      hits: await lookup.findCandidatesByNameOrAlias(entity.name, entity.nodeType)
-    }))
-  )
+  const uniqueEntries = [...unique]
+  const batchHits =
+    uniqueEntries.length > 0 && lookup.findCandidatesByNamesOrAliasesBatch
+      ? await lookup.findCandidatesByNamesOrAliasesBatch(
+          uniqueEntries.map(([, entity]) => ({ name: entity.name, type: entity.nodeType }))
+        )
+      : null
+  const nameHits = batchHits
+    ? uniqueEntries.map(([key, entity]) => ({
+        key,
+        entity,
+        hits: batchHits.get(key) ?? []
+      }))
+    : await Promise.all(
+        uniqueEntries.map(async ([key, entity]) => ({
+          key,
+          entity,
+          hits: await lookup.findCandidatesByNameOrAlias(entity.name, entity.nodeType)
+        }))
+      )
   const multiHits: Array<{ key: string; entity: AlignableEntity; hits: AlignedEntityHit[] }> = []
   for (const { key, entity, hits } of nameHits) {
     if (hits.length === 0) {
@@ -284,32 +297,47 @@ async function alignWithLlm(
   const existingById = new Map<string, AlignedEntityHit & { nodeType: string; distance?: number }>()
   const similarityByIncomingExisting = new Map<string, Map<string, number>>()
   if (lookup.searchByVector) {
+    const recalledByIndex: Array<Array<AlignedEntityHit & { distance: number }> | null> = new Array(
+      unresolved.length
+    ).fill(null)
+    const SEARCH_CONCURRENCY = 4
+    let searchCursor = 0
+    await Promise.all(
+      Array.from({ length: Math.min(SEARCH_CONCURRENCY, unresolved.length) }, async () => {
+        while (searchCursor < unresolved.length) {
+          const i = searchCursor++
+          const { key, entity } = unresolved[i]!
+          const vector = vectors.get(key)
+          if (!vector) continue
+          try {
+            recalledByIndex[i] = await lookup.searchByVector!(
+              vector,
+              entity.nodeType,
+              VECTOR_CANDIDATE_TOP_K
+            )
+          } catch {
+            recalledByIndex[i] = null
+          }
+        }
+      })
+    )
     for (let i = 0; i < unresolved.length; i++) {
       const { key, entity } = unresolved[i]!
-      const vector = vectors.get(key)
-      if (vector) {
-        try {
-          const hits = await lookup.searchByVector(vector, entity.nodeType, VECTOR_CANDIDATE_TOP_K)
-          const kept = hits.filter(
-            (hit) =>
-              (!hit.nodeType || hit.nodeType === entity.nodeType) &&
-              shouldRecallAlignCandidate(hit.distance)
-          )
-          const byPeer = new Map<string, number>()
-          for (const hit of kept) {
-            byPeer.set(hit.id, graphCosineDistanceToSimilarity(hit.distance))
-            if (!existingById.has(hit.id)) {
-              existingById.set(hit.id, { ...hit, nodeType: entity.nodeType })
-            }
-          }
-          similarityByIncomingExisting.set(key, byPeer)
-        } catch {
-          // ignore
+      const hits = recalledByIndex[i]
+      if (!hits) continue
+      const kept = hits.filter(
+        (hit) =>
+          (!hit.nodeType || hit.nodeType === entity.nodeType) &&
+          shouldRecallAlignCandidate(hit.distance)
+      )
+      const byPeer = new Map<string, number>()
+      for (const hit of kept) {
+        byPeer.set(hit.id, graphCosineDistanceToSimilarity(hit.distance))
+        if (!existingById.has(hit.id)) {
+          existingById.set(hit.id, { ...hit, nodeType: entity.nodeType })
         }
       }
-      if ((i + 1) % 8 === 0 && i + 1 < unresolved.length) {
-        await new Promise<void>((resolve) => setTimeout(resolve, 0))
-      }
+      similarityByIncomingExisting.set(key, byPeer)
     }
   }
 

@@ -11,7 +11,7 @@ import {
   preferGraphOrigin,
   type GraphNodeRawRecord
 } from '@baishou/shared'
-import type { GraphNodeLookup } from '@baishou/database/shared'
+import type { GraphNodeLookup, GraphNodeRow } from '@baishou/database/shared'
 
 export type FindOrCreateGraphNodeInput = {
   vaultId: string
@@ -30,6 +30,8 @@ export type FindOrCreateGraphNodeInput = {
   forceId?: string
   /** Diary entry anchor — use filePath instead of name-based id. */
   entryFilePath?: string
+  /** Optional batch node cache to avoid repeated SQLite getNodeById queries across a commit pool. */
+  existingByIdCache?: ReadonlyMap<string, GraphNodeRow | null>
 }
 
 export type FindOrCreateGraphNodeResult = {
@@ -81,7 +83,9 @@ export async function findOrCreateGraphNode(
       throw new Error('findOrCreateGraphNode: entry requires entryFilePath')
     }
     const id = entryNodeIdForFilePath(filePath, input.vaultId)
-    const existing = await repo.getNodeById(id, input.vaultId)
+    const existing = input.existingByIdCache?.has(id)
+      ? (input.existingByIdCache.get(id) ?? null)
+      : await repo.getNodeById(id, input.vaultId)
     const record: GraphNodeRawRecord = {
       id,
       schemaVersion: 1,
@@ -107,7 +111,9 @@ export async function findOrCreateGraphNode(
   }
 
   if (input.forceId) {
-    const existing = await repo.getNodeById(input.forceId, input.vaultId)
+    const existing = input.existingByIdCache?.has(input.forceId)
+      ? (input.existingByIdCache.get(input.forceId) ?? null)
+      : await repo.getNodeById(input.forceId, input.vaultId)
     const incomingAliases = input.aliases ?? []
     const record: GraphNodeRawRecord = {
       id: input.forceId,

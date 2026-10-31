@@ -1,4 +1,4 @@
-import { inflateRawSync } from 'node:zlib'
+import { inflateRaw } from '@baishou/shared'
 
 const SIG_EOCD = 0x06054b50
 const SIG_CEN = 0x02014b50
@@ -61,7 +61,7 @@ export function readZipEntries(buffer: Uint8Array): Map<string, Uint8Array> {
     if (method !== METHOD_DEFLATE) {
       throw new Error(`zip: unsupported compression ${method} for ${name}`)
     }
-    entries.set(name, inflateRawSync(compressed))
+    entries.set(name, inflateRaw(compressed))
   }
   return entries
 }
