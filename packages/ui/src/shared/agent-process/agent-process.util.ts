@@ -337,11 +337,25 @@ export function coalesceTimelineItemsForDisplay(
 ): CoalescedTimelineItem[] {
   if (items.length === 0) return []
 
-  // 找到最后一个代表仍在执行工作过程（思考或工具调用，或内嵌 <think> 的文本）的索引；
-  // 在此索引之前的 text 均视为中间过渡文字并归入工作过程，在此索引之后的 text 为最终输出正文。
-  // 所有 gate（权限确认记录）始终归入工作过程。
-  let lastActiveWorkIndex = -1
+  // 找到最后一个含可见正文的 text 索引，以及在此之前的最后一个工作过程（思考、工具调用或内嵌 <think>）索引。
+  // 仅当后续确实产出了新的可见正文时，才将工作过程之前的 text 归入工作过程；
+  // 若尾部工作过程之后尚无新的可见正文（如正文中途或末尾调用工具、续轮仅产出思考、或流式中途因网络异常中断），
+  // 必须保留最后一段可见正文在 finalTextItems 中展示，防止已输出到气泡的正文被收回折叠进工作过程栏。
+  let lastVisibleTextIndex = -1
   for (let i = 0; i < items.length; i++) {
+    const item = items[i]!
+    if (item.kind === 'text') {
+      const parsed = parseRedactedThinking(item.text)
+      const visibleText = parsed.cleanContent || (!parsed.cleanReasoning ? item.text : '')
+      if (visibleText.trim()) {
+        lastVisibleTextIndex = i
+      }
+    }
+  }
+
+  let lastActiveWorkIndex = -1
+  const workSearchBound = lastVisibleTextIndex >= 0 ? lastVisibleTextIndex : items.length
+  for (let i = 0; i < workSearchBound; i++) {
     const item = items[i]!
     if (item.kind === 'reasoning' && item.text.trim()) {
       lastActiveWorkIndex = i

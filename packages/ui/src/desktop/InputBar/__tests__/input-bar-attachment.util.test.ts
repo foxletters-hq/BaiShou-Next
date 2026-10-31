@@ -15,6 +15,15 @@ describe('input-bar-attachment.util', () => {
     expect(att.isText).toBe(true)
   })
 
+  it('should classify .py files as text attachments', async () => {
+    const file = new File(['print(1)'], 'main.py', { type: '' }) as File & { path?: string }
+    file.path = 'D:/docs/main.py'
+    const att = await fileToChatAttachment(file)
+    expect(att.isText).toBe(true)
+    expect(att.isImage).toBe(false)
+    expect(att.isPdf).toBe(false)
+  })
+
   it('resolves path via getPathForFile when file.path is missing', () => {
     const file = new File(['x'], 'shot.png', { type: 'image/png' })
     const getPathForFile = vi.fn(() => 'D:/shots/shot.png')

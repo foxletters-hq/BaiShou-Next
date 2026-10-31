@@ -26,6 +26,7 @@ export function useInputBarSend(params: {
   fileRefs: FileRefChip[]
   sendTextCache: string
   attachments: MockChatAttachment[]
+  localizedShortcuts?: PromptShortcut[]
   isSending: boolean
   htmlSnapshotRef: React.MutableRefObject<string>
   addSkillRef: (command: string, content: string) => void
@@ -59,6 +60,7 @@ export function useInputBarSend(params: {
     fileRefs,
     sendTextCache,
     attachments,
+    localizedShortcuts,
     isSending,
     htmlSnapshotRef,
     addSkillRef,
@@ -97,16 +99,28 @@ export function useInputBarSend(params: {
             fileRefs,
             sendText: sendTextCache
           }
+      const contentByCommand = new Map<string, string>()
+      for (const shortcut of localizedShortcuts ?? []) {
+        const cmd = getShortcutCommand(shortcut).trim().replace(/^\/+/, '').toLowerCase()
+        if (cmd) contentByCommand.set(cmd, shortcut.content ?? '')
+      }
       const pendingSkills: SkillRefChip[] = (
         overrideSkills?.length ? overrideSkills : snap.skills
-      ).map((item, index) => ({
-        id:
-          'id' in item && typeof item.id === 'string' && item.id
-            ? item.id
-            : makeSkillChipId(item.command || `skill-${index}`),
-        command: item.command,
-        content: item.content
-      }))
+      ).map((item, index) => {
+        const normalizedCmd = item.command.trim().replace(/^\/+/, '').toLowerCase()
+        const latestContent =
+          normalizedCmd && normalizedCmd !== CREATE_SKILL_SLASH_COMMAND
+            ? contentByCommand.get(normalizedCmd)
+            : undefined
+        return {
+          id:
+            'id' in item && typeof item.id === 'string' && item.id
+              ? item.id
+              : makeSkillChipId(item.command || `skill-${index}`),
+          command: item.command,
+          content: typeof latestContent === 'string' ? latestContent : item.content
+        }
+      })
       const pendingPlain = snap.plainText
       const extraPlain = composerExtraPlain(pendingPlain, pendingSkills, snap.fileRefs)
       const pendingText = buildSkillSendText(
@@ -192,6 +206,7 @@ export function useInputBarSend(params: {
       htmlSnapshotRef,
       isLoading,
       isSending,
+      localizedShortcuts,
       onComposerBlocked,
       onEmptySubmit,
       onSend,

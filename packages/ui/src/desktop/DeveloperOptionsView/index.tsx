@@ -50,9 +50,9 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
     const confirmed = await confirm(
       t(
         'developer.load_demo_full_desc',
-        '将创建新的「演示空间」工作空间，切换至该空间并写入脱敏演示数据，不影响当前工作空间。'
+        '将创建新的「演示小窝」小窝，切换至该小窝并写入脱敏演示数据，不影响当前小窝。'
       ),
-      t('developer.load_demo_data', '创建演示工作空间')
+      t('developer.load_demo_data', '创建演示小窝')
     )
     if (!confirmed) return
 
@@ -65,8 +65,8 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
           await onDemoVaultCreated(vaultName)
         }
         toast.showSuccess(
-          t('developer.load_demo_success', '已创建演示工作空间「{{vaultName}}」', {
-            vaultName: vaultName ?? t('developer.demo_vault_fallback', '演示空间')
+          t('developer.load_demo_success', '已创建演示小窝「{{vaultName}}」', {
+            vaultName: vaultName ?? t('developer.demo_vault_fallback', '演示小窝')
           })
         )
       }
@@ -81,7 +81,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
     const confirmed = await confirm(
       t(
         'developer.clear_warning_content',
-        '您确定要清空应用的所有数据吗？此操作无法撤销！\n将删除所有工作空间及其内部数据。'
+        '您确定要清空应用的所有数据吗？此操作无法撤销！\n将删除所有小窝及其内部数据。'
       ),
       t('developer.clear_warning_title', '危险操作告知')
     )
@@ -140,7 +140,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
     const confirmed = await confirm(
       t(
         'developer.clear_agent_db_desc',
-        '将删除所有工作空间下的 Agent 会话、伙伴和消息数据。\n重启后数据库会自动重建。'
+        '将删除所有小窝下的 Agent 会话、伙伴和消息数据。\n重启后数据库会自动重建。'
       ),
       t('developer.clear_agent_db', '清理 Agent 数据库')
     )
@@ -305,14 +305,14 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
           />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: '600', fontSize: settingsTypography.section.fontSize }}>
-              {t('developer.load_demo_data', '创建演示工作空间')}
+              {t('developer.load_demo_data', '创建演示小窝')}
             </div>
             <div
               style={{ fontSize: settingsTypography.desc.fontSize, color: 'var(--text-secondary)' }}
             >
               {t(
                 'developer.load_demo_desc',
-                '新建独立工作空间并写入 66 条日记与 17 篇总结（脱敏演示数据）。'
+                '新建独立小窝并写入 66 条日记与 17 篇总结（脱敏演示数据）。'
               )}
             </div>
           </div>

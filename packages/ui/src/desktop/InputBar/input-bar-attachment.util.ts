@@ -1,4 +1,9 @@
-import { classifyPromptAttachmentKind, type MockChatAttachment } from '@baishou/shared'
+import {
+  classifyPromptAttachmentKind,
+  isConvertiblePromptDocument,
+  PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES,
+  type MockChatAttachment
+} from '@baishou/shared'
 
 type ElectronFile = File & { path?: string }
 
@@ -63,7 +68,12 @@ export async function fileToChatAttachment(file: File): Promise<InputBarAttachme
   }
 
   const previewPath = URL.createObjectURL(file)
-  const needsData = isImage || isPdf
+  const isConvertible = isConvertiblePromptDocument(file.name, file.type)
+  const needsData =
+    isImage ||
+    isPdf ||
+    (isText && file.size <= TEXT_FILE_SIZE_LIMIT) ||
+    (isConvertible && file.size <= PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES)
   const data = needsData ? await fileToBase64(file) : undefined
 
   return {

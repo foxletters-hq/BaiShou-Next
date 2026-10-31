@@ -1,4 +1,11 @@
-import { useState, useRef, useImperativeHandle, useMemo, useCallback } from 'react'
+import {
+  useState,
+  useRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useCallback
+} from 'react'
 import type { InputBarProps, InputBarRef } from './input-bar.types'
 import { useInputBarAttachments } from './useInputBarAttachments'
 import {
@@ -7,7 +14,9 @@ import {
   useInputBarExpand
 } from './useInputBarExpand'
 import {
+  CREATE_SKILL_SLASH_COMMAND,
   fileContextItemKey,
+  getShortcutCommand,
   isSafeWorkspaceRelativePath,
   getDefaultShortcutLabelsFromT,
   localizePromptShortcuts,
@@ -20,6 +29,9 @@ import { useTranslation } from 'react-i18next'
 import { useComposerDraft } from '../../shared/composer-draft'
 import type { SkillComposerSnapshot } from './InputBarSkillEditor'
 import {
+  SKILL_CHIP_ATTR,
+  SKILL_COMMAND_ATTR,
+  SKILL_CONTENT_ATTR,
   insertFileRefChipAtSelection,
   insertSkillChipAtSelection,
   makeFileRefChipId,
@@ -105,6 +117,60 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     if (!shortcuts?.length) return undefined
     return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
   }, [shortcuts, t])
+
+  useEffect(() => {
+    if (!localizedShortcuts?.length) return
+    const contentByCommand = new Map<string, string>()
+    for (const item of localizedShortcuts) {
+      const cmd = getShortcutCommand(item).trim().replace(/^\/+/, '').toLowerCase()
+      if (cmd) contentByCommand.set(cmd, item.content ?? '')
+    }
+    const root = editorRef.current
+    if (root) {
+      let domChanged = false
+      const chipElements = Array.from(root.querySelectorAll<HTMLElement>(`[${SKILL_CHIP_ATTR}]`))
+      for (const chipEl of chipElements) {
+        const cmd = (chipEl.getAttribute(SKILL_COMMAND_ATTR) || '')
+          .trim()
+          .replace(/^\/+/, '')
+          .toLowerCase()
+        if (!cmd || cmd === CREATE_SKILL_SLASH_COMMAND) continue
+        const latestContent = contentByCommand.get(cmd)
+        if (
+          typeof latestContent === 'string' &&
+          chipEl.getAttribute(SKILL_CONTENT_ATTR) !== latestContent
+        ) {
+          chipEl.setAttribute(SKILL_CONTENT_ATTR, latestContent)
+          domChanged = true
+        }
+      }
+      if (domChanged) {
+        syncEditorState(root, {
+          setText,
+          setSkillRefs,
+          setFileRefs,
+          setSendTextCache,
+          htmlSnapshotRef
+        })
+        return
+      }
+    }
+    setSkillRefs((prev) => {
+      if (!prev.length) return prev
+      let changed = false
+      const next = prev.map((item) => {
+        const cmd = item.command.trim().replace(/^\/+/, '').toLowerCase()
+        if (!cmd || cmd === CREATE_SKILL_SLASH_COMMAND) return item
+        const latestContent = contentByCommand.get(cmd)
+        if (typeof latestContent === 'string' && latestContent !== item.content) {
+          changed = true
+          return { ...item, content: latestContent }
+        }
+        return item
+      })
+      return changed ? next : prev
+    })
+  }, [localizedShortcuts])
 
   const pickers = useInputBarPickers({
     localizedShortcuts,
@@ -301,6 +367,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     fileRefs,
     sendTextCache,
     attachments,
+    localizedShortcuts,
     isSending,
     htmlSnapshotRef,
     addSkillRef,
