@@ -329,18 +329,38 @@ export type CoalescedTimelineItem =
   | Extract<AssistantDisplayTimelineItem, { kind: 'text' }>
 
 /**
- * 将整个回合的工作过程（所有思考、工具调用、权限确认记录，以及工具/思考结束前的中间过渡文字）
- * 统一收拢为顶部的单个 process 项，仅保留最后的 AI 输出正文作为内容部分，实现「工作过程 + 最终内容」两段式展示。
+ * 判断一段可见正文是否属于已经成型的结构化主回答（而非「让我先查一下…」之类的工具前过渡短语）。
+ * 当模型在发起提问（companion_ask）或后续工具前已经输出了带多行/列表/标题或较长篇幅的汇报时，
+ * 应当保留在最终回答区一并展示给用户，避免被折叠进顶部工作过程栏造成正文截断。
+ */
+function isSubstantialReplyText(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  if (trimmed.length >= 120) return true
+  const nonEmptyLines = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  if (nonEmptyLines.length >= 3) return true
+  return nonEmptyLines.some((line) =>
+    /^(?:#{1,6}\s|[-*+•]\s|\d+[.、]\s|[一二三四五六七八九十]+[、.．])/.test(line)
+  )
+}
+
+/**
+ * 将整个回合的工作过程（所有思考、工具调用、权限确认记录，以及工具结束前的中间过渡短语）
+ * 统一收拢为顶部的单个 process 项，保留主汇报与工具后正文作为最终内容，实现「工作过程 + 最终内容」两段式展示。
  */
 export function coalesceTimelineItemsForDisplay(
   items: readonly AssistantDisplayTimelineItem[]
 ): CoalescedTimelineItem[] {
   if (items.length === 0) return []
 
-  // 找到最后一个含可见正文的 text 索引，以及在此之前的最后一个工作过程（思考、工具调用或内嵌 <think>）索引。
-  // 仅当后续确实产出了新的可见正文时，才将工作过程之前的 text 归入工作过程；
-  // 若尾部工作过程之后尚无新的可见正文（如正文中途或末尾调用工具、续轮仅产出思考、或流式中途因网络异常中断），
-  // 必须保留最后一段可见正文在 finalTextItems 中展示，防止已输出到气泡的正文被收回折叠进工作过程栏。
+  // 找到最后一个含可见正文的 text 索引，以及在此之前的最后一个工具调用（tools / gate）索引。
+  // 1. 仅当工具调用之后确实产出了新的可见正文时，工具调用之前的短过渡语才归入工作过程；
+  // 2. 工具全部执行完毕之后的续轮思考（如末尾调用 emoji_send 触发的思考）不再把已产出的正文吞入工作过程；
+  // 3. 若工具之前的某段文字本身已经是多行/结构化的实质性汇报（例如在 companion_ask 提问前先给出了完整报告），
+  //    也保留在 finalTextItems 中与后续回答一并展示给用户。
   let lastVisibleTextIndex = -1
   for (let i = 0; i < items.length; i++) {
     const item = items[i]!
@@ -353,19 +373,12 @@ export function coalesceTimelineItemsForDisplay(
     }
   }
 
-  let lastActiveWorkIndex = -1
+  let lastToolBeforeVisibleTextIndex = -1
   const workSearchBound = lastVisibleTextIndex >= 0 ? lastVisibleTextIndex : items.length
   for (let i = 0; i < workSearchBound; i++) {
     const item = items[i]!
-    if (item.kind === 'reasoning' && item.text.trim()) {
-      lastActiveWorkIndex = i
-    } else if (item.kind === 'tools') {
-      lastActiveWorkIndex = i
-    } else if (item.kind === 'text') {
-      const parsed = parseRedactedThinking(item.text)
-      if (parsed.cleanReasoning.trim()) {
-        lastActiveWorkIndex = i
-      }
+    if (item.kind === 'tools' || item.kind === 'gate') {
+      lastToolBeforeVisibleTextIndex = i
     }
   }
 
@@ -430,7 +443,7 @@ export function coalesceTimelineItemsForDisplay(
       text: visibleText
     }
 
-    if (i < lastActiveWorkIndex) {
+    if (i < lastToolBeforeVisibleTextIndex && !isSubstantialReplyText(visibleText)) {
       ensureKeyPrefix(item.key)
       steps.push(cleanTextItem)
       textItems.push(cleanTextItem)

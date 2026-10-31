@@ -39,6 +39,6 @@ describe('Native AssistantDisplayTimeline chrome', () => {
     expect(src).toContain('<AgentProcessSection')
     expect(src).toContain('hasAnswerText={coalesced.hasSubsequentText}')
     expect(src).toContain('hasPrecedingText={coalesced.hasPrecedingText}')
-    expect(src).not.toContain('variant="ancillary"')
+    expect(src).toContain('variant="ancillary"')
   })
 })

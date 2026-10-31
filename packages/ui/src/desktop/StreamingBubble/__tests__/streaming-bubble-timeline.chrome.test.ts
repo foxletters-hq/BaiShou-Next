@@ -10,6 +10,7 @@ describe('StreamingBubble timeline chrome', () => {
     expect(src).toContain('gateParts')
     expect(src).toContain('groupStreamTimelineForDisplay(liveTimeline, gateParts)')
     expect(src).not.toContain('<AgentGatePartBubble')
+    expect(src).not.toContain('hasGateParts')
   })
 
   it('should render the live stream from timeline groups instead of flattening think then tools then text', () => {

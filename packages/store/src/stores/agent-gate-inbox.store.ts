@@ -70,6 +70,7 @@ export interface AgentGateInboxActions {
   hydrate: (requests: AgentGateRequest[], options?: AgentGateHydrateOptions) => void
   replaceAll: (requests: AgentGateRequest[]) => void
   setFocusedRequest: (sessionId: string, requestId: string | null) => void
+  clearResolvedLiveForSession: (sessionId: string) => void
   clearSession: (sessionId: string) => void
   reset: () => void
 }
@@ -199,6 +200,17 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
           [sessionId]: requestId
         }
       }))
+    },
+
+    clearResolvedLiveForSession: (sessionId) => {
+      if (!sessionId) return
+      set((state: AgentGateInboxState) => {
+        const resolvedLive = state.resolvedLive.filter(
+          (item) => item.request.sessionId !== sessionId
+        )
+        if (resolvedLive.length === state.resolvedLive.length) return state
+        return { resolvedLive }
+      })
     },
 
     clearSession: (sessionId) => {
