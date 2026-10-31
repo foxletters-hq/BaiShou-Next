@@ -95,9 +95,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
         toast.showError(
           t(err.reason === 'empty' ? 'workspace.name_empty' : 'workspace.invalid_name', {
             defaultValue:
-              err.reason === 'empty'
-                ? '请输入小窝名称'
-                : '名称不能包含 / \\ : % # ? * 等特殊字符'
+              err.reason === 'empty' ? '请输入小窝名称' : '名称不能包含 / \\ : % # ? * 等特殊字符'
           })
         )
         return
@@ -169,10 +167,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
               {t('workspace.show_topbar_switcher', '在顶部栏显示小窝切换')}
             </span>
             <span className="settings-list-tile-subtitle">
-              {t(
-                'workspace.show_topbar_switcher_desc',
-                '开启后，可在顶部窗口栏快速切换当前小窝。'
-              )}
+              {t('workspace.show_topbar_switcher_desc', '开启后，可在顶部窗口栏快速切换当前小窝。')}
             </span>
           </div>
           <Switch

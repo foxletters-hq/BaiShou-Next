@@ -38,6 +38,8 @@ describe('native ModelSwitcher opacity chrome', () => {
     expect(styles).toContain('borderTopWidth: StyleSheet.hairlineWidth')
     expect(src.match(/<ProviderBrandIcon/g)?.length).toBe(1)
     expect(providerBrandIconSrc).not.toContain("backgroundColor: '#FFFFFF'")
-    expect(providerBrandIconSrc).toContain("backgroundColor: Icon ? 'transparent' : colors.bgSurfaceNormal")
+    expect(providerBrandIconSrc).toContain(
+      "backgroundColor: Icon ? 'transparent' : colors.bgSurfaceNormal"
+    )
   })
 })

@@ -115,21 +115,14 @@ export async function generateCompressionSummaryText(
                 : {})
             })
         )
-        return consumeCompressionModelStream(
-          streamResult,
-          sessionId,
-          localAbortController.signal,
-          {
-            onFirstOutput: markFirstOutput
-          }
-        )
+        return consumeCompressionModelStream(streamResult, sessionId, localAbortController.signal, {
+          onFirstOutput: markFirstOutput
+        })
       }
     })
   } catch (streamErr: unknown) {
     if (isNoOutputGeneratedError(streamErr)) {
-      logger.error(
-        `[ContextCompressor] Session(${sessionId}) empty summary (no output generated).`
-      )
+      logger.error(`[ContextCompressor] Session(${sessionId}) empty summary (no output generated).`)
       return null
     }
     const aborted = isAgentStreamAbortError(streamErr)

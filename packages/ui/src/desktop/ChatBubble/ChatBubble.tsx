@@ -53,7 +53,8 @@ function areDesktopChatBubblePropsEqual(prev: ChatBubbleProps, next: ChatBubbleP
     (prev.message.parts === next.message.parts ||
       (prev.message.parts?.length ?? 0) === (next.message.parts?.length ?? 0)) &&
     (prev.message.toolInvocations === next.message.toolInvocations ||
-      (prev.message.toolInvocations?.length ?? 0) === (next.message.toolInvocations?.length ?? 0)) &&
+      (prev.message.toolInvocations?.length ?? 0) ===
+        (next.message.toolInvocations?.length ?? 0)) &&
     (prev.message.attachments === next.message.attachments ||
       (prev.message.attachments?.length ?? 0) === (next.message.attachments?.length ?? 0)) &&
     (prev.message.skillRefs === next.message.skillRefs ||

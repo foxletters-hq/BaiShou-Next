@@ -106,10 +106,7 @@ export class ShadowIndexQueryOps {
   }
 
   async getAllRecords(): Promise<
-    Pick<
-      ShadowJournalRecord,
-      'id' | 'date' | 'filePath' | 'contentHash' | 'fileSize'
-    >[]
+    Pick<ShadowJournalRecord, 'id' | 'date' | 'filePath' | 'contentHash' | 'fileSize'>[]
   > {
     return await this.ctx.database
       .select({

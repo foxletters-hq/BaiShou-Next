@@ -190,10 +190,6 @@ export function applyGraphInventoryNodeDelete(input: {
   }
 }
 
-export function applyGraphInventoryEdgeDelete(
-  edgeCount: number,
-  deletedEdgeCount = 1
-): number {
+export function applyGraphInventoryEdgeDelete(edgeCount: number, deletedEdgeCount = 1): number {
   return Math.max(0, edgeCount - Math.max(0, deletedEdgeCount))
 }
-
