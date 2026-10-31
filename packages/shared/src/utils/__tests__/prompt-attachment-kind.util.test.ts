@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   classifyPromptAttachmentKind,
+  isConvertiblePromptDocument,
+  isLegacyOfficeDocument,
   isSafeWorkspaceRelativePath,
   fileContextItemKey,
   formatPromptDirectoryAttachmentBlock,
   formatFileMentionLabel,
   formatFileMentionPathLabel,
   formatPromptFileAttachmentBlock,
+  formatPromptLegacyOfficeAttachmentHint,
   formatPromptUnsupportedAttachmentHint,
   looksLikeBinaryText,
   parseFileMentionToken,
@@ -20,6 +23,27 @@ describe('classifyPromptAttachmentKind', () => {
     expect(classifyPromptAttachmentKind('data.json').isText).toBe(true)
     expect(classifyPromptAttachmentKind('main.py').isText).toBe(true)
     expect(classifyPromptAttachmentKind('notes.md').isText).toBe(true)
+    expect(classifyPromptAttachmentKind('table.csv').isText).toBe(true)
+    expect(classifyPromptAttachmentKind('server.log').isText).toBe(true)
+    expect(classifyPromptAttachmentKind('script.lua').isText).toBe(true)
+  })
+
+  it('should identify convertible documents separately from raw text', () => {
+    expect(isConvertiblePromptDocument('report.docx')).toBe(true)
+    expect(isConvertiblePromptDocument('sheet.xlsx')).toBe(true)
+    expect(isConvertiblePromptDocument('slides.pptx')).toBe(true)
+    expect(isConvertiblePromptDocument('book.epub')).toBe(true)
+    expect(isConvertiblePromptDocument('note.rtf', 'text/rtf')).toBe(true)
+    expect(isConvertiblePromptDocument('analysis.ipynb')).toBe(true)
+    expect(classifyPromptAttachmentKind('report.docx').isText).toBe(false)
+    expect(classifyPromptAttachmentKind('note.rtf', 'text/rtf').isText).toBe(false)
+  })
+
+  it('should identify legacy binary office documents', () => {
+    expect(isLegacyOfficeDocument('old.doc')).toBe(true)
+    expect(isLegacyOfficeDocument('old.xls')).toBe(true)
+    expect(isLegacyOfficeDocument('old.ppt')).toBe(true)
+    expect(formatPromptLegacyOfficeAttachmentHint('old.doc')).toContain('.docx')
   })
 
   it('keeps images and pdf separate from text', () => {

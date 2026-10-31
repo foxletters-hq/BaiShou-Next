@@ -37,3 +37,62 @@ export function isMcpRequestAuthorized(
   if (!token) return true
   return authorizationHeader === `Bearer ${token}`
 }
+
+/** 在 MCP 连接地址后拼接 ?vault=<vaultId> 后缀（纯 ASCII 稳定工作空间 ID） */
+export function appendMcpVaultQuery(baseUrl: string, vaultId?: string | null): string {
+  const trimmed = typeof vaultId === 'string' ? vaultId.trim() : ''
+  if (!trimmed) return baseUrl
+  const separator = baseUrl.includes('?') ? '&' : '?'
+  return `${baseUrl}${separator}vault=${encodeURIComponent(trimmed)}`
+}
+
+/**
+ * 从 MCP 请求路径或完整 URL 中解析目标工作空间标识（支持 ?vault= / ?vaultId= / ?workspace= 或 /mcp/:vault / /sse/:vault）。
+ */
+export function extractMcpTargetVault(pathOrUrl: string | undefined | null): string | undefined {
+  const raw = typeof pathOrUrl === 'string' ? pathOrUrl.trim() : ''
+  if (!raw) return undefined
+
+  let pathname = raw
+  let queryString = ''
+  try {
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      const parsed = new URL(raw)
+      pathname = parsed.pathname
+      queryString = parsed.search.startsWith('?') ? parsed.search.slice(1) : parsed.search
+    } else {
+      const qIndex = raw.indexOf('?')
+      if (qIndex >= 0) {
+        pathname = raw.slice(0, qIndex)
+        queryString = raw.slice(qIndex + 1)
+      }
+    }
+  } catch {
+    const qIndex = raw.indexOf('?')
+    if (qIndex >= 0) {
+      pathname = raw.slice(0, qIndex)
+      queryString = raw.slice(qIndex + 1)
+    }
+  }
+
+  if (queryString) {
+    const params = new URLSearchParams(queryString)
+    const fromQuery = params.get('vault') ?? params.get('vaultId') ?? params.get('workspace')
+    if (fromQuery && fromQuery.trim().length > 0) {
+      return fromQuery.trim()
+    }
+  }
+
+  const pathMatch = pathname.match(/^\/(?:mcp|sse)\/([^/]+)\/?$/)
+  if (pathMatch?.[1]) {
+    try {
+      const decoded = decodeURIComponent(pathMatch[1]).trim()
+      if (decoded.length > 0) return decoded
+    } catch {
+      const fallback = pathMatch[1].trim()
+      if (fallback.length > 0) return fallback
+    }
+  }
+
+  return undefined
+}

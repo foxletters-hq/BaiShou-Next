@@ -1,5 +1,8 @@
 import type { MockChatAttachment } from '../mock/agent.mock'
-import { classifyPromptAttachmentKind } from './prompt-attachment-kind.util'
+import {
+  classifyPromptAttachmentKind,
+  isConvertiblePromptDocument
+} from './prompt-attachment-kind.util'
 
 export type MessagePartLike = {
   id?: string
@@ -100,7 +103,11 @@ export function mapAttachmentsFromParts(
       String(p.type ?? '').toLowerCase() === 'image' || att.type === 'image' || att.isImage === true
     const classified = classifyPromptAttachmentKind(fileName, String(att.mimeType || ''))
     const isPdf = att.mimeType === 'application/pdf' || att.isPdf === true || classified.isPdf
-    const isText = classified.isText || att.isText === true || att.type === 'text'
+    const isText =
+      classified.isText ||
+      isConvertiblePromptDocument(fileName, String(att.mimeType || '')) ||
+      att.isText === true ||
+      att.type === 'text'
     const rawPath = String(att.url || att.filePath || '')
     return {
       id: String(p.id ?? fileName),
@@ -181,7 +188,11 @@ export function mapSavedAttachmentsForUi(
     const isImage = att.type === 'image' || att.isImage === true
     const classified = classifyPromptAttachmentKind(fileName, String(att.mimeType || ''))
     const isPdf = att.mimeType === 'application/pdf' || att.isPdf === true || classified.isPdf
-    const isText = classified.isText || att.isText === true || att.type === 'text'
+    const isText =
+      classified.isText ||
+      isConvertiblePromptDocument(fileName, String(att.mimeType || '')) ||
+      att.isText === true ||
+      att.type === 'text'
     const rawPath = String(att.url || att.filePath || '')
 
     return {
