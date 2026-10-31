@@ -37,7 +37,16 @@ export { EXTERNAL_STORAGE_ROOT }
  * 用户可在设置中更换目录；自定义路径保存在 AsyncStorage，不得被默认根覆盖。
  */
 export class MobileStoragePathService implements IStoragePathService {
-  constructor(private readonly fileSystem: IFileSystem) {}
+  constructor(
+    private readonly fileSystem: IFileSystem,
+    private readonly fixedVaultName?: string
+  ) {}
+
+  public forVault(vaultName: string): MobileStoragePathService {
+    const trimmed = vaultName.trim()
+    if (!trimmed) return this
+    return new MobileStoragePathService(this.fileSystem, trimmed)
+  }
 
   private customRootKey = 'baishou_custom_storage_root'
   private activeVaultIdKey = 'baishou_active_vault_id'
@@ -217,6 +226,7 @@ export class MobileStoragePathService implements IStoragePathService {
   }
 
   private async getActiveVaultName(): Promise<string> {
+    if (this.fixedVaultName) return this.fixedVaultName
     try {
       const rootDir = await this.getRootDirectory()
       const registryFile = `${rootDir}/vault_registry.json`

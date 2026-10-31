@@ -26,7 +26,9 @@ export function createMobileRagVaultScope(deps: {
     const trimmed = name.trim()
     if (!trimmed) return deriveLegacyVaultId('Personal')
     await deps.vaultService.initRegistry()
-    const fromRegistry = deps.vaultService.getAllVaults().find((v) => v.name === trimmed)
+    const fromRegistry = deps.vaultService
+      .getAllVaults()
+      .find((v) => v.id === trimmed || v.name === trimmed)
     return fromRegistry?.id ?? deriveLegacyVaultId(trimmed)
   }
 

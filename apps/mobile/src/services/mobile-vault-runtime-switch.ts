@@ -94,6 +94,8 @@ export async function switchVaultRuntime(
       pathService: deps.pathService,
       fileSystem: deps.fileSystem
     })
+    const { invalidateMobileMcpToolContextCache } = await import('./mobile-mcp-context.service')
+    invalidateMobileMcpToolContextCache()
 
     deps.callbacks?.onStackInvalidated?.()
 
