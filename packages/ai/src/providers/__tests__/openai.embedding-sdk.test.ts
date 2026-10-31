@@ -31,4 +31,25 @@ describe('OpenAIAdaptedProvider embedding model spec', () => {
       expect(String(error)).not.toMatch(/Unsupported model version/)
     }
   })
+
+  it('normalizes jina-ai/ prefix to bare modelId for Jina embeddings', () => {
+    const provider = new OpenAIAdaptedProvider(
+      createAiProvider({
+        id: 'jina',
+        name: 'Jina AI',
+        type: ProviderType.Custom,
+        apiKey: 'jina_test_key',
+        baseUrl: 'https://api.jina.ai/v1'
+      })
+    )
+
+    const model = provider.getEmbeddingModel('jina-ai/jina-embeddings-v3') as {
+      specificationVersion?: string
+      provider?: string
+      modelId?: string
+    }
+
+    expect(model.modelId).toBe('jina-embeddings-v3')
+    expect(model.provider).toBe('openaiCompatible.embedding')
+  })
 })

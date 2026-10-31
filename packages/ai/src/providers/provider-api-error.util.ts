@@ -1,3 +1,45 @@
+function extractMessageFromParsedBody(parsed: unknown): string | null {
+  if (!parsed || typeof parsed !== 'object') return null
+  const record = parsed as {
+    message?: unknown
+    detail?: unknown
+    error?: unknown
+  }
+  if (record.error && typeof record.error === 'object') {
+    const nestedMsg = (record.error as { message?: unknown }).message
+    if (typeof nestedMsg === 'string' && nestedMsg.trim()) {
+      return nestedMsg.trim()
+    }
+  }
+  if (typeof record.error === 'string' && record.error.trim()) {
+    return record.error.trim()
+  }
+  if (typeof record.message === 'string' && record.message.trim()) {
+    return record.message.trim()
+  }
+  if (typeof record.detail === 'string' && record.detail.trim()) {
+    return record.detail.trim()
+  }
+  return null
+}
+
+function formatHttpStatusFallback(statusCode: number): string {
+  switch (statusCode) {
+    case 401:
+      return 'HTTP 401 Unauthorized (invalid_api_key)'
+    case 402:
+      return 'HTTP 402 Payment Required (Insufficient Balance)'
+    case 403:
+      return 'HTTP 403 Forbidden'
+    case 404:
+      return 'HTTP 404 Not Found'
+    case 429:
+      return 'HTTP 429 Too Many Requests (rate limit)'
+    default:
+      return `HTTP ${statusCode}`
+  }
+}
+
 export function extractApiErrorMessage(error: unknown): string {
   if (!error || typeof error !== 'object') {
     return String(error ?? 'Unknown error')
@@ -5,24 +47,57 @@ export function extractApiErrorMessage(error: unknown): string {
 
   const err = error as {
     message?: string
-    responseBody?: string | { message?: string; code?: number }
+    statusCode?: number
+    data?: unknown
+    responseBody?: string | { message?: string; code?: number; error?: unknown }
   }
 
   const body = err.responseBody
   if (body) {
     try {
       const parsed = typeof body === 'string' ? JSON.parse(body) : body
-      if (parsed?.message && typeof parsed.message === 'string') {
-        return parsed.message
+      const extracted = extractMessageFromParsedBody(parsed)
+      if (extracted) {
+        return extracted
       }
     } catch {
       if (typeof body === 'string' && body.trim()) {
-        return body
+        return body.trim()
       }
     }
   }
 
-  return err.message || 'Unknown error'
+  const fromData = extractMessageFromParsedBody(err.data)
+  if (fromData) {
+    return fromData
+  }
+
+  if (typeof err.message === 'string' && err.message.trim()) {
+    return err.message.trim()
+  }
+
+  if (typeof err.statusCode === 'number' && Number.isFinite(err.statusCode)) {
+    return formatHttpStatusFallback(err.statusCode)
+  }
+
+  return 'Unknown error'
+}
+
+export function normalizeApiErrorObject(error: unknown): Error {
+  if (error instanceof Error) {
+    if (!error.message.trim()) {
+      const resolved = extractApiErrorMessage(error)
+      try {
+        error.message = resolved
+      } catch {
+        const wrapped = new Error(resolved)
+        wrapped.name = error.name
+        return wrapped
+      }
+    }
+    return error
+  }
+  return new Error(extractApiErrorMessage(error))
 }
 
 /**
