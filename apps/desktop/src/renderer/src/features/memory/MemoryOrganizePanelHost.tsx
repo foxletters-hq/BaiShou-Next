@@ -56,16 +56,20 @@ export function MemoryOrganizePanelHost(props: {
     ).api?.rag?.cancelBatchEmbed?.()
   }, [confirm, t])
 
+  // 「篇」只统计待嵌入日记与待抽图日记，用于展示数量
   const leftoverCount = pendingOrganizeArticleCount({
     pendingEmbedCount: readiness.pendingEmbedCount,
     pendingGraphCount: readiness.pendingGraphCount,
     pendingDiaryCount: readiness.pendingEmbedParts.diaries
   })
+  // 是否还有待整理内容与状态条同一口径：伙伴记忆、图谱节点向量虽然不算「篇」，也属于待整理，
+  // 不能因为待整理日记为 0 就显示「整理完毕」
+  const hasPendingWork = readiness.pendingEmbedCount > 0 || readiness.pendingGraphCount > 0
   const running =
     (ragState.isRunning && ragState.type === 'batchEmbed') ||
     Boolean(readiness.graphExtracting && readiness.graphExtracting.total > 0) ||
     Boolean(readiness.indexing)
-  const leftover = (leftoverCount > 0 || Boolean(ragState.error)) && !running
+  const leftover = (hasPendingWork || Boolean(ragState.error)) && !running
   const leftoverState = leftover
     ? {
         ...ragState,

@@ -328,6 +328,10 @@ describe('memory center chrome', () => {
     expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain(
       'pendingOrganizeArticleCount'
     )
+    // 伙伴记忆、图谱节点向量待嵌入时也不能显示「整理完毕」
+    expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain(
+      'readiness.pendingEmbedCount > 0 || readiness.pendingGraphCount > 0'
+    )
     expect(readRagSrc('RagMemoryView.tsx')).toContain('hideOrganizeProgress')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain("surface !== 'organize'")
     expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('surface="organize"')
