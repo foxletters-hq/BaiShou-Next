@@ -15,6 +15,10 @@ describe('AssistantDisplayTimeline chrome', () => {
     expect(src).toContain("item.kind === 'reasoning'")
     expect(src).toContain('<AgentProcessSection')
     expect(src).toContain('coalesceTimelineItemsForDisplay')
-    expect(src).toContain('variant="ancillary"')
+  })
+
+  it('should only stream the last chronological segment', () => {
+    expect(src).toContain('activeStreaming && index === coalescedItems.length - 1')
+    expect(src).toContain('isStreaming={stepStreamingHere}')
   })
 })

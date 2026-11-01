@@ -1,5 +1,9 @@
 import i18n from 'i18next'
-import { resolveAgentToolActionLabel, type AssistantDisplayTimelineItem } from '@baishou/shared'
+import {
+  ASSISTANT_DISPLAY_ASK_TOOL_NAME,
+  resolveAgentToolActionLabel,
+  type AssistantDisplayTimelineItem
+} from '@baishou/shared'
 import { formatToolDurationMs } from '../agent-tool-chain/agent-tool-chain.util'
 import { parseRedactedThinking } from '../chat-bubble/redacted-thinking'
 
@@ -307,202 +311,130 @@ export function formatAgentProcessTitle({
   return translate('agent.chat.thought_process', i18n.t('agent.chat.thought_process', '思考完成'))
 }
 
-export type CoalescedProcessStep =
-  | Extract<AssistantDisplayTimelineItem, { kind: 'reasoning' }>
-  | Extract<AssistantDisplayTimelineItem, { kind: 'tools' }>
-  | Extract<AssistantDisplayTimelineItem, { kind: 'gate' }>
-  | Extract<AssistantDisplayTimelineItem, { kind: 'text' }>
+type ReasoningTimelineItem = Extract<AssistantDisplayTimelineItem, { kind: 'reasoning' }>
+type ToolsTimelineItem = Extract<AssistantDisplayTimelineItem, { kind: 'tools' }>
+type GateTimelineItem = Extract<AssistantDisplayTimelineItem, { kind: 'gate' }>
+type TextTimelineItem = Extract<AssistantDisplayTimelineItem, { kind: 'text' }>
 
-export type CoalescedTimelineItem =
-  | {
-      kind: 'process'
-      key: string
-      steps: CoalescedProcessStep[]
-      reasoningItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'reasoning' }>>
-      toolsItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'tools' }>>
-      gateItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'gate' }>>
-      textItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'text' }>>
-      hasSubsequentText: boolean
-      hasPrecedingText: boolean
-    }
-  | Extract<AssistantDisplayTimelineItem, { kind: 'gate' }>
-  | Extract<AssistantDisplayTimelineItem, { kind: 'text' }>
+/** 工作过程段内的步骤：只包含思考、工具与权限确认记录，可见正文永远不会进入工作过程 */
+export type CoalescedProcessStep = ReasoningTimelineItem | ToolsTimelineItem | GateTimelineItem
+
+export type CoalescedProcessItem = {
+  kind: 'process'
+  key: string
+  steps: CoalescedProcessStep[]
+  reasoningItems: ReasoningTimelineItem[]
+  toolsItems: ToolsTimelineItem[]
+  gateItems: GateTimelineItem[]
+  /** 本段之后是否已经出现正文或提问卡片；为 true 说明本段工作已经结束 */
+  hasSubsequentText: boolean
+  /** 本段之前是否已有正文（用于调整与上方正文的间距） */
+  hasPrecedingText: boolean
+}
 
 /**
- * 判断一段可见正文是否属于已经成型的结构化主回答（而非「让我先查一下…」之类的工具前过渡短语）。
- * 当模型在发起提问（companion_ask）或后续工具前已经输出了带多行/列表/标题或较长篇幅的汇报时，
- * 应当保留在最终回答区一并展示给用户，避免被折叠进顶部工作过程栏造成正文截断。
+ * 展示层时间线：按时间顺序交替排列「工作过程段」「正文」「提问卡片」。
+ * - process：一段连续的思考 / 工具 / 权限确认，可折叠；
+ * - text：模型输出的可见正文，始终直接展示；
+ * - tools：仅包含伙伴提问（companion_ask）的工具组，作为面向用户的交互直接展示在正文流中。
  */
-function isSubstantialReplyText(text: string): boolean {
-  const trimmed = text.trim()
-  if (!trimmed) return false
-  if (trimmed.length >= 120) return true
-  const nonEmptyLines = trimmed
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-  if (nonEmptyLines.length >= 3) return true
-  return nonEmptyLines.some((line) =>
-    /^(?:#{1,6}\s|[-*+•]\s|\d+[.、]\s|[一二三四五六七八九十]+[、.．])/.test(line)
-  )
-}
+export type CoalescedTimelineItem = CoalescedProcessItem | TextTimelineItem | ToolsTimelineItem
 
-export interface CoalesceTimelineOptions {
-  /** 当前消息是否仍处于流式生成中；流式期间工具前的过渡短语保持在工作过程内，不提前兜底为最终正文 */
-  isStreaming?: boolean
-}
-
-function isAskOnlyTimelineWorkItem(item: AssistantDisplayTimelineItem): boolean {
-  if (item.kind === 'gate') {
-    return item.data?.request?.action?.trim() === 'companion_ask'
-  }
-  if (item.kind === 'tools') {
-    const names = [
-      ...(item.invocations?.map((tool) => tool.toolName) ?? []),
-      ...(item.completedTools?.map((tool) => tool.name) ?? []),
-      ...(item.activeToolName ? [item.activeToolName] : [])
-    ]
-    return names.length > 0 && names.every((name) => name === 'companion_ask')
-  }
-  return false
-}
-
-function hasNonAskToolAfter(
-  items: readonly AssistantDisplayTimelineItem[],
-  fromIndex: number
-): boolean {
-  for (let i = fromIndex + 1; i < items.length; i++) {
-    const item = items[i]!
-    if ((item.kind === 'tools' || item.kind === 'gate') && !isAskOnlyTimelineWorkItem(item)) {
-      return true
-    }
-  }
-  return false
+/** 判断工具组是否只包含伙伴提问；上游时间线构建时已保证伙伴提问不与普通工具混在同一组 */
+export function isAskOnlyToolsItem(item: ToolsTimelineItem): boolean {
+  const names = [
+    ...(item.invocations?.map((tool) => tool.toolName) ?? []),
+    ...(item.completedTools?.map((tool) => tool.name) ?? []),
+    ...(item.activeToolName ? [item.activeToolName] : [])
+  ]
+  return names.length > 0 && names.every((name) => name === ASSISTANT_DISPLAY_ASK_TOOL_NAME)
 }
 
 /**
- * 将整个回合的工作过程（所有思考、工具调用、权限确认记录，以及工具结束前的中间过渡短语）
- * 统一收拢为顶部的单个 process 项，保留主汇报与工具后正文作为最终内容，实现「工作过程 + 最终内容」两段式展示。
+ * 把一条助手消息的时间线按时间顺序切分为「工作过程段」与「正文 / 提问卡片」交替排列的展示序列。
+ *
+ * 规则只有一条：可见正文与伙伴提问会结束当前工作过程段并按原位置直接展示；
+ * 其余连续的思考、工具调用、权限确认记录合并为一个可折叠的工作过程段。
+ * 这样无论模型在提问前输出了多长的汇报、中途说了几句过渡语，用户读到的正文都保持完整连续、顺序正确，
+ * 不需要再猜测某段文字属于「过程」还是「回答」。
  */
 export function coalesceTimelineItemsForDisplay(
-  items: readonly AssistantDisplayTimelineItem[],
-  options?: CoalesceTimelineOptions
+  items: readonly AssistantDisplayTimelineItem[]
 ): CoalescedTimelineItem[] {
-  if (items.length === 0) return []
+  const result: CoalescedTimelineItem[] = []
+  let current: CoalescedProcessItem | null = null
+  let seenText = false
 
-  const settled = !options?.isStreaming
-
-  // 扫描完整时间线，定位最后一个工具调用（tools / gate）索引：
-  // 1. 任何位于最后一个工具调用之前的短过渡语（i < lastToolIndex），默认归入工作过程；
-  // 2. 若工具之前的某段文字本身已经是多行/结构化的实质性汇报，且其后仅有 companion_ask 提问工具，
-  //    则保留在 finalTextItems 中与后续收尾一并展示；
-  // 3. 仅当回合已结束（settled）且没有任何工具后正文时，才把最后一段可见文字从工作过程中兜底提出来作为最终正文，
-  //    避免流式期间后续工具与深度思考仍在执行时提前把中间过渡语当成最终回答并错误收起工作过程栏。
-  let lastToolIndex = -1
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i]!
-    if (item.kind === 'tools' || item.kind === 'gate') {
-      lastToolIndex = i
+  const ensureProcess = (firstKey: string): CoalescedProcessItem => {
+    if (!current) {
+      current = {
+        kind: 'process',
+        key: `proc-${firstKey}`,
+        steps: [],
+        reasoningItems: [],
+        toolsItems: [],
+        gateItems: [],
+        hasSubsequentText: false,
+        hasPrecedingText: seenText
+      }
+      result.push(current)
     }
+    return current
   }
 
-  const steps: CoalescedProcessStep[] = []
-  const reasoningItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'reasoning' }>> = []
-  const toolsItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'tools' }>> = []
-  const gateItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'gate' }>> = []
-  const textItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'text' }>> = []
-  const finalTextItems: Array<Extract<AssistantDisplayTimelineItem, { kind: 'text' }>> = []
-  let groupKeyPrefix = ''
-
-  const ensureKeyPrefix = (key: string) => {
-    if (!groupKeyPrefix) {
-      groupKeyPrefix = `proc-${key}`
-    }
+  const closeProcess = () => {
+    if (current) current.hasSubsequentText = true
+    current = null
   }
 
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i]!
-
+  for (const item of items) {
     if (item.kind === 'reasoning') {
       if (!item.text.trim()) continue
-      ensureKeyPrefix(item.key)
-      steps.push(item)
-      reasoningItems.push(item)
+      const process = ensureProcess(item.key)
+      process.steps.push(item)
+      process.reasoningItems.push(item)
       continue
     }
 
     if (item.kind === 'tools') {
-      ensureKeyPrefix(item.key)
-      steps.push(item)
-      toolsItems.push(item)
+      if (isAskOnlyToolsItem(item)) {
+        closeProcess()
+        result.push(item)
+        continue
+      }
+      const process = ensureProcess(item.key)
+      process.steps.push(item)
+      process.toolsItems.push(item)
       continue
     }
 
     if (item.kind === 'gate') {
-      ensureKeyPrefix(item.key)
-      steps.push(item)
-      gateItems.push(item)
+      const process = ensureProcess(item.key)
+      process.steps.push(item)
+      process.gateItems.push(item)
       continue
     }
 
-    // item.kind === 'text'
+    // item.kind === 'text'：先拆出内嵌的思考片段，再把可见正文按原位置展示
     const parsed = parseRedactedThinking(item.text)
     if (parsed.cleanReasoning.trim()) {
-      ensureKeyPrefix(item.key)
-      const reasoningStep: Extract<AssistantDisplayTimelineItem, { kind: 'reasoning' }> = {
+      const reasoningStep: ReasoningTimelineItem = {
         kind: 'reasoning',
         key: `${item.key}:reasoning`,
         text: parsed.cleanReasoning
       }
-      steps.push(reasoningStep)
-      reasoningItems.push(reasoningStep)
+      const process = ensureProcess(reasoningStep.key)
+      process.steps.push(reasoningStep)
+      process.reasoningItems.push(reasoningStep)
     }
 
     const visibleText = parsed.cleanContent || (!parsed.cleanReasoning ? item.text : '')
     if (!visibleText.trim()) continue
 
-    const cleanTextItem: Extract<AssistantDisplayTimelineItem, { kind: 'text' }> = {
-      kind: 'text',
-      key: item.key,
-      text: visibleText
-    }
-
-    const isPreAskSubstantialReport =
-      isSubstantialReplyText(visibleText) && !hasNonAskToolAfter(items, i)
-
-    if (i < lastToolIndex && !isPreAskSubstantialReport) {
-      ensureKeyPrefix(item.key)
-      steps.push(cleanTextItem)
-      textItems.push(cleanTextItem)
-    } else {
-      finalTextItems.push(cleanTextItem)
-    }
+    closeProcess()
+    seenText = true
+    result.push({ kind: 'text', key: item.key, text: visibleText })
   }
 
-  if (settled && finalTextItems.length === 0 && textItems.length > 0) {
-    const rescuedText = textItems.pop()!
-    const stepIndex = steps.lastIndexOf(rescuedText)
-    if (stepIndex >= 0) {
-      steps.splice(stepIndex, 1)
-    }
-    finalTextItems.push(rescuedText)
-  }
-
-  const result: CoalescedTimelineItem[] = []
-  if (steps.length > 0) {
-    result.push({
-      kind: 'process',
-      key: groupKeyPrefix || 'process:0',
-      steps,
-      reasoningItems,
-      toolsItems,
-      gateItems,
-      textItems,
-      hasSubsequentText: finalTextItems.length > 0,
-      hasPrecedingText: false
-    })
-  }
-
-  result.push(...finalTextItems)
   return result
 }

@@ -5,9 +5,12 @@ import {
   AGENT_PROCESS_ROTATE_INTERVAL_MS,
   coalesceTimelineItemsForDisplay,
   formatAgentProcessTitle,
+  isAskOnlyToolsItem,
   pickNextAgentProcessPhraseIndex
 } from '../agent-process.util'
 import type { AssistantDisplayTimelineItem } from '@baishou/shared'
+
+type ToolsItem = Extract<AssistantDisplayTimelineItem, { kind: 'tools' }>
 
 describe('formatAgentProcessTitle', () => {
   it('uses an 8-second rotation interval and rich active/completed phrase pools', () => {
@@ -145,82 +148,120 @@ describe('pickNextAgentProcessPhraseIndex', () => {
 })
 
 describe('coalesceTimelineItemsForDisplay', () => {
-  it('merges adjacent reasoning and tools into a single process item', () => {
+  const tools = (key: string, name: string, extra?: Partial<ToolsItem>): ToolsItem => ({
+    kind: 'tools',
+    key,
+    invocations: [],
+    completedTools: [{ name, durationMs: 20 }],
+    ...extra
+  })
+
+  it('merges adjacent reasoning and tools into one process segment before the answer text', () => {
     const items: AssistantDisplayTimelineItem[] = [
       { kind: 'reasoning', key: 'r1', text: '先想一下' },
-      {
-        kind: 'tools',
-        key: 't1',
-        invocations: [],
-        completedTools: [{ name: 'read_file', durationMs: 20 }]
-      },
+      tools('t1', 'read_file'),
       { kind: 'text', key: 'txt1', text: '最终回答内容' }
     ]
 
     const coalesced = coalesceTimelineItemsForDisplay(items)
-    expect(coalesced).toHaveLength(2)
-    expect(coalesced[0]!.kind).toBe('process')
-    if (coalesced[0]!.kind === 'process') {
-      expect(coalesced[0]!.reasoningItems).toHaveLength(1)
-      expect(coalesced[0]!.reasoningItems[0]!.text).toBe('先想一下')
-      expect(coalesced[0]!.toolsItems).toHaveLength(1)
-      expect(coalesced[0]!.hasSubsequentText).toBe(true)
-      expect(coalesced[0]!.hasPrecedingText).toBe(false)
+    expect(coalesced.map((c) => c.kind)).toEqual(['process', 'text'])
+    const process = coalesced[0]!
+    expect(process.kind).toBe('process')
+    if (process.kind === 'process') {
+      expect(process.key).toBe('proc-r1')
+      expect(process.steps.map((s) => s.key)).toEqual(['r1', 't1'])
+      expect(process.hasSubsequentText).toBe(true)
+      expect(process.hasPrecedingText).toBe(false)
     }
-    expect(coalesced[1]!.kind).toBe('text')
   })
 
-  it('folds intermediate text before tools into the single process item', () => {
+  it('never folds visible text into a process segment; text splits work into chronological segments', () => {
     const items: AssistantDisplayTimelineItem[] = [
-      { kind: 'reasoning', key: 'r1', text: '先看现状' },
-      {
-        kind: 'tools',
-        key: 't1',
-        invocations: [],
-        completedTools: [{ name: 'diary_list', durationMs: 1300 }]
-      },
-      {
-        kind: 'text',
-        key: 'txt1',
-        text: '让我先看看今天的日记现状，同时把能并行跑的检查一次跑完。'
-      },
-      {
-        kind: 'tools',
-        key: 't2',
-        activeToolName: 'vector_search',
-        completedTools: [{ name: 'diary_search', durationMs: 1100 }]
-      },
-      { kind: 'reasoning', key: 'r2', text: '汇总结果' },
-      { kind: 'text', key: 'txt2', text: '这是最终整理好的回答。' }
+      { kind: 'reasoning', key: 'r1', text: '先查第一轮图谱' },
+      tools('t1', 'recall_relations'),
+      { kind: 'text', key: 'txt1', text: '关系图里确实有东西，我再逐一查过。' },
+      tools('t2', 'recall_relations'),
+      { kind: 'text', key: 'txt2', text: '关系图比预想的大很多，我再补查两轮。' },
+      tools('t3', 'recall_relations', { activeToolName: 'recall_relations' }),
+      { kind: 'reasoning', key: 'r2', text: '整理完整节点与边的汇报结构' }
     ]
 
     const coalesced = coalesceTimelineItemsForDisplay(items)
-    expect(coalesced).toHaveLength(2)
+    expect(coalesced.map((c) => c.key)).toEqual([
+      'proc-r1',
+      'txt1',
+      'proc-t2',
+      'txt2',
+      'proc-t3'
+    ])
 
-    expect(coalesced[0]!.kind).toBe('process')
-    if (coalesced[0]!.kind === 'process') {
-      expect(coalesced[0]!.hasSubsequentText).toBe(true)
-      expect(coalesced[0]!.hasPrecedingText).toBe(false)
-      expect(coalesced[0]!.reasoningItems).toHaveLength(2)
-      expect(coalesced[0]!.toolsItems).toHaveLength(2)
-      expect(coalesced[0]!.textItems).toHaveLength(1)
-      expect(coalesced[0]!.textItems[0]!.text).toContain('让我先看看今天的日记现状')
-      expect(coalesced[0]!.steps.map((s) => s.kind)).toEqual([
-        'reasoning',
-        'tools',
-        'text',
-        'tools',
-        'reasoning'
-      ])
+    const last = coalesced[4]!
+    expect(last.kind).toBe('process')
+    if (last.kind === 'process') {
+      expect(last.steps.map((s) => s.key)).toEqual(['t3', 'r2'])
+      expect(last.hasSubsequentText).toBe(false)
+      expect(last.hasPrecedingText).toBe(true)
     }
-
-    expect(coalesced[1]!.kind).toBe('text')
-    if (coalesced[1]!.kind === 'text') {
-      expect(coalesced[1]!.text).toBe('这是最终整理好的回答。')
+    const middle = coalesced[2]!
+    if (middle.kind === 'process') {
+      expect(middle.hasSubsequentText).toBe(true)
+      expect(middle.hasPrecedingText).toBe(true)
     }
   })
 
-  it('folds gates into the process item and keeps only final text outside', () => {
+  it('keeps a long report, the companion_ask card and the closing text in chronological order', () => {
+    const report = ['图谱节点如下：', '- 白守用户', '- 深度关系'].join('\n')
+    const items: AssistantDisplayTimelineItem[] = [
+      { kind: 'reasoning', key: 'r1', text: '先查图数据库' },
+      tools('t1', 'recall_relations'),
+      { kind: 'text', key: 'txt1', text: report },
+      tools('ask1', 'companion_ask'),
+      { kind: 'reasoning', key: 'r2', text: '收到回答' },
+      { kind: 'text', key: 'txt2', text: '好，那就先这样。' }
+    ]
+
+    const coalesced = coalesceTimelineItemsForDisplay(items)
+    expect(coalesced.map((c) => `${c.kind}:${c.key}`)).toEqual([
+      'process:proc-r1',
+      'text:txt1',
+      'tools:ask1',
+      'process:proc-r2',
+      'text:txt2'
+    ])
+  })
+
+  it('shows a short transition text followed by companion_ask inline as well', () => {
+    const items: AssistantDisplayTimelineItem[] = [
+      { kind: 'text', key: 'txt1', text: '我问你一下。' },
+      tools('ask1', 'companion_ask', { activeToolName: 'companion_ask', completedTools: [] })
+    ]
+
+    const coalesced = coalesceTimelineItemsForDisplay(items)
+    expect(coalesced.map((c) => `${c.kind}:${c.key}`)).toEqual(['text:txt1', 'tools:ask1'])
+  })
+
+  it('keeps reply text visible when trailing tools or reasoning follow without new text', () => {
+    const items: AssistantDisplayTimelineItem[] = [
+      { kind: 'reasoning', key: 'r1', text: '先思考回复内容' },
+      { kind: 'text', key: 'txt1', text: '已经回复给用户的一半正文内容' },
+      tools('t1', 'memory_store'),
+      { kind: 'reasoning', key: 'r2', text: '工具执行后续轮思考但未再输出正文' }
+    ]
+
+    const coalesced = coalesceTimelineItemsForDisplay(items)
+    expect(coalesced.map((c) => `${c.kind}:${c.key}`)).toEqual([
+      'process:proc-r1',
+      'text:txt1',
+      'process:proc-t1'
+    ])
+    const trailing = coalesced[2]!
+    if (trailing.kind === 'process') {
+      expect(trailing.hasSubsequentText).toBe(false)
+      expect(trailing.steps.map((s) => s.key)).toEqual(['t1', 'r2'])
+    }
+  })
+
+  it('keeps permission gate records inside the process segment', () => {
     const gateItem: AssistantDisplayTimelineItem = {
       kind: 'gate',
       key: 'g1',
@@ -230,6 +271,7 @@ describe('coalesceTimelineItemsForDisplay', () => {
           sessionId: 's1',
           vaultName: 'v',
           title: '保存 Skill',
+          action: 'skill_save',
           kind: 1 as any,
           status: 2 as any,
           options: [],
@@ -242,207 +284,60 @@ describe('coalesceTimelineItemsForDisplay', () => {
 
     const items: AssistantDisplayTimelineItem[] = [
       { kind: 'reasoning', key: 'r1', text: '想' },
-      {
-        kind: 'tools',
-        key: 't1',
-        invocations: [],
-        completedTools: [{ name: 'skill_save', durationMs: 100 }]
-      },
       gateItem,
+      tools('t1', 'skill_save'),
       { kind: 'text', key: 'txt1', text: '保存成功！' }
     ]
 
     const coalesced = coalesceTimelineItemsForDisplay(items)
-    expect(coalesced).toHaveLength(2)
-    expect(coalesced[0]!.kind).toBe('process')
+    expect(coalesced.map((c) => c.kind)).toEqual(['process', 'text'])
     if (coalesced[0]!.kind === 'process') {
       expect(coalesced[0]!.gateItems).toHaveLength(1)
-      expect(coalesced[0]!.steps.map((s) => s.kind)).toEqual(['reasoning', 'tools', 'gate'])
+      expect(coalesced[0]!.steps.map((s) => s.kind)).toEqual(['reasoning', 'gate', 'tools'])
     }
-    expect(coalesced[1]!.kind).toBe('text')
   })
 
-  it('keeps visible reply text outside process when followed by trailing tools or reasoning without new text', () => {
+  it('splits redacted thinking embedded in text into the process segment before the visible text', () => {
     const items: AssistantDisplayTimelineItem[] = [
-      { kind: 'reasoning', key: 'r1', text: '先思考回复内容' },
-      { kind: 'text', key: 'txt1', text: '已经回复给用户的一半正文内容' },
-      {
-        kind: 'tools',
-        key: 't1',
-        invocations: [],
-        completedTools: [{ name: 'memory_store', durationMs: 80 }]
-      },
-      { kind: 'reasoning', key: 'r2', text: '工具执行后续轮思考但未再输出正文' }
+      { kind: 'text', key: 'txt1', text: '<think>内部推理</think>这是正文' }
     ]
 
     const coalesced = coalesceTimelineItemsForDisplay(items)
-    expect(coalesced).toHaveLength(2)
-    expect(coalesced[0]!.kind).toBe('process')
-    if (coalesced[0]!.kind === 'process') {
-      expect(coalesced[0]!.hasSubsequentText).toBe(true)
-      expect(coalesced[0]!.textItems).toHaveLength(0)
-      expect(coalesced[0]!.reasoningItems).toHaveLength(2)
-      expect(coalesced[0]!.toolsItems).toHaveLength(1)
-    }
-    expect(coalesced[1]!.kind).toBe('text')
+    expect(coalesced.map((c) => `${c.kind}:${c.key}`)).toEqual([
+      'process:proc-txt1:reasoning',
+      'text:txt1'
+    ])
     if (coalesced[1]!.kind === 'text') {
-      expect(coalesced[1]!.text).toBe('已经回复给用户的一半正文内容')
+      expect(coalesced[1]!.text).toBe('这是正文')
     }
   })
 
-  it('should keep reply segments after the last tool outside process even when reasoning appears between them', () => {
-    const items: AssistantDisplayTimelineItem[] = [
-      { kind: 'reasoning', key: 'r1', text: '先查图谱' },
-      {
-        kind: 'tools',
-        key: 't1',
-        invocations: [],
-        completedTools: [{ name: 'companion_ask', durationMs: 80900 }]
-      },
-      { kind: 'reasoning', key: 'r2', text: '用户选了先不补，整理测试结论' },
-      {
-        kind: 'text',
-        key: 'txt1',
-        text: '好，那就先让它空着。反正测试的目的已经达到了：数据库读得到，节点建得进。'
-      },
-      { kind: 'reasoning', key: 'r3', text: '调用 emoji_send 后的续轮思考' },
-      {
-        kind: 'text',
-        key: 'txt2',
-        text: '对了，上一条里写的“535 验证”是我手滑，本来想写的是“写入”。'
-      }
-    ]
-
-    const coalesced = coalesceTimelineItemsForDisplay(items)
-    expect(coalesced).toHaveLength(3)
-    expect(coalesced[0]!.kind).toBe('process')
-    if (coalesced[0]!.kind === 'process') {
-      expect(coalesced[0]!.hasSubsequentText).toBe(true)
-      expect(coalesced[0]!.textItems).toHaveLength(0)
-      expect(coalesced[0]!.reasoningItems).toHaveLength(3)
-      expect(coalesced[0]!.toolsItems).toHaveLength(1)
-    }
-    expect(coalesced[1]!.kind).toBe('text')
-    if (coalesced[1]!.kind === 'text') {
-      expect(coalesced[1]!.text).toContain('好，那就先让它空着')
-    }
-    expect(coalesced[2]!.kind).toBe('text')
-    if (coalesced[2]!.kind === 'text') {
-      expect(coalesced[2]!.text).toContain('本来想写的是“写入”')
-    }
+  it('returns plain text only when there is no work at all', () => {
+    const coalesced = coalesceTimelineItemsForDisplay([{ kind: 'text', key: 'txt1', text: '你好' }])
+    expect(coalesced.map((c) => c.kind)).toEqual(['text'])
   })
+})
 
-  it('should keep substantial structured report before companion_ask outside process while folding short commentary before normal tools', () => {
-    const structuredReport = [
-      '测完了，结论有点好笑：库是通的，但里面几乎什么都没有。',
-      '一、日记关系图（生命图谱）——能查，但是空的',
-      '- 查「武志红」：直接回我“未找到”。',
-      '- 查「深度关系」的网络：返回了 5 个节点，它们之间当前一条边都没有。',
-      '二、笔记本图谱——还是被拒',
-      '要不要我把这座孤岛连起来？'
-    ].join('\n')
-
-    const items: AssistantDisplayTimelineItem[] = [
-      { kind: 'reasoning', key: 'r1', text: '先查图数据库' },
-      {
+describe('isAskOnlyToolsItem', () => {
+  it('detects companion_ask-only tool groups', () => {
+    expect(
+      isAskOnlyToolsItem({
         kind: 'tools',
-        key: 't1',
+        key: 'a',
         invocations: [],
-        completedTools: [{ name: 'graph_search', durationMs: 36 }]
-      },
-      { kind: 'text', key: 'txt1', text: structuredReport },
-      {
+        completedTools: [{ name: 'companion_ask', durationMs: 1 }]
+      })
+    ).toBe(true)
+    expect(
+      isAskOnlyToolsItem({
         kind: 'tools',
-        key: 't2',
+        key: 'b',
         invocations: [],
-        completedTools: [{ name: 'companion_ask', durationMs: 80900 }]
-      },
-      { kind: 'reasoning', key: 'r2', text: '收到回答' },
-      { kind: 'text', key: 'txt2', text: '好，那就先让它空着。' }
-    ]
-
-    const coalesced = coalesceTimelineItemsForDisplay(items)
-    expect(coalesced).toHaveLength(3)
-    expect(coalesced[0]!.kind).toBe('process')
-    if (coalesced[0]!.kind === 'process') {
-      expect(coalesced[0]!.textItems).toHaveLength(0)
-    }
-    expect(coalesced[1]!.kind).toBe('text')
-    if (coalesced[1]!.kind === 'text') {
-      expect(coalesced[1]!.text).toContain('一、日记关系图')
-    }
-    expect(coalesced[2]!.kind).toBe('text')
-    if (coalesced[2]!.kind === 'text') {
-      expect(coalesced[2]!.text).toBe('好，那就先让它空着。')
-    }
-  })
-
-  it('should keep all intermediate commentary inside process while streaming subsequent tools and reasoning', () => {
-    const items: AssistantDisplayTimelineItem[] = [
-      { kind: 'reasoning', key: 'r1', text: '先查第一轮图谱' },
-      {
-        kind: 'tools',
-        key: 't1',
-        invocations: [],
-        completedTools: [{ name: 'recall_relations', durationMs: 28 }]
-      },
-      {
-        kind: 'text',
-        key: 'txt1',
-        text: '关系图里确实有东西，并不是空的。我把实体和关系都逐一查过，再做汇总。'
-      },
-      {
-        kind: 'tools',
-        key: 't2',
-        invocations: [],
-        completedTools: [{ name: 'recall_relations', durationMs: 53 }]
-      },
-      {
-        kind: 'text',
-        key: 'txt2',
-        text: '关系图比预想的大很多。「白守用户」这个中心节点自己就挂着 36 条边，单次查询最多只返回 20 条；我再补查两轮，把剩下的边也查出来。'
-      },
-      {
-        kind: 'tools',
-        key: 't3',
-        invocations: [],
-        completedTools: [{ name: 'recall_relations', durationMs: 75 }]
-      },
-      {
-        kind: 'reasoning',
-        key: 'r2',
-        text: '正在整理完整节点与边的汇报结构…'
-      }
-    ]
-
-    const streamingCoalesced = coalesceTimelineItemsForDisplay(items, { isStreaming: true })
-    expect(streamingCoalesced).toHaveLength(1)
-    expect(streamingCoalesced[0]!.kind).toBe('process')
-    if (streamingCoalesced[0]!.kind === 'process') {
-      expect(streamingCoalesced[0]!.hasSubsequentText).toBe(false)
-      expect(streamingCoalesced[0]!.textItems).toHaveLength(2)
-      expect(streamingCoalesced[0]!.steps.map((s) => s.key)).toEqual([
-        'r1',
-        't1',
-        'txt1',
-        't2',
-        'txt2',
-        't3',
-        'r2'
-      ])
-    }
-
-    const settledCoalesced = coalesceTimelineItemsForDisplay(items, { isStreaming: false })
-    expect(settledCoalesced).toHaveLength(2)
-    expect(settledCoalesced[0]!.kind).toBe('process')
-    if (settledCoalesced[0]!.kind === 'process') {
-      expect(settledCoalesced[0]!.hasSubsequentText).toBe(true)
-      expect(settledCoalesced[0]!.textItems).toHaveLength(1)
-      expect(settledCoalesced[0]!.textItems[0]!.key).toBe('txt1')
-    }
-    expect(settledCoalesced[1]!.kind).toBe('text')
-    if (settledCoalesced[1]!.kind === 'text') {
-      expect(settledCoalesced[1]!.key).toBe('txt2')
-    }
+        completedTools: [
+          { name: 'companion_ask', durationMs: 1 },
+          { name: 'diary_search', durationMs: 1 }
+        ]
+      })
+    ).toBe(false)
   })
 })
