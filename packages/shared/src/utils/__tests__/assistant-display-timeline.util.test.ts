@@ -158,6 +158,16 @@ describe('groupStreamTimelineForDisplay', () => {
     ])
     expect(items.map((item) => item.kind)).toEqual(['reasoning', 'tools'])
   })
+
+  it('should keep companion_ask in its own tool group instead of merging with adjacent tools', () => {
+    const timeline: AgentStreamTimelineItem[] = [
+      { kind: 'tool', callId: 's1', name: 'diary_search', status: 'completed', result: 'a' },
+      { kind: 'tool', callId: 'a1', name: 'companion_ask', status: 'running' },
+      { kind: 'tool', callId: 's2', name: 'web_search', status: 'running' }
+    ]
+    const items = groupStreamTimelineForDisplay(timeline)
+    expect(items.map((item) => item.key)).toEqual(['tools:s1', 'tools:a1', 'tools:s2'])
+  })
 })
 
 describe('buildAssistantDisplayTimelineFromParts', () => {
@@ -297,5 +307,21 @@ describe('buildAssistantDisplayTimelineFromParts', () => {
       }
     ])
     expect(items.map((item) => item.kind)).toEqual(['reasoning', 'gate', 'tools', 'reasoning'])
+  })
+
+  it('should keep persisted companion_ask in its own tool group', () => {
+    const items = buildAssistantDisplayTimelineFromParts([
+      {
+        id: 'search',
+        type: 'tool',
+        data: { callId: 's1', name: 'diary_search', status: 'completed', result: 'ok', seq: 0 }
+      },
+      {
+        id: 'ask',
+        type: 'tool',
+        data: { callId: 'a1', name: 'companion_ask', status: 'completed', result: '答了', seq: 1 }
+      }
+    ])
+    expect(items.map((item) => item.key)).toEqual(['tools:s1', 'tools:a1'])
   })
 })

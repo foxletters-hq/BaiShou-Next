@@ -188,7 +188,14 @@ function pushGateItems(
   for (const gate of gates) items.push(toAssistantGateDisplayItem(gate))
 }
 
-/** 相邻工具收成一组；匹配到的权限确认插在对应工具前面 */
+/** 伙伴提问是面向用户的交互，在时间线里单独成组，不与相邻的普通工具合并 */
+export const ASSISTANT_DISPLAY_ASK_TOOL_NAME = 'companion_ask'
+
+function isAskToolName(name: string): boolean {
+  return name === ASSISTANT_DISPLAY_ASK_TOOL_NAME
+}
+
+/** 相邻工具收成一组（伙伴提问单独成组）；匹配到的权限确认插在对应工具前面 */
 export function groupStreamTimelineForDisplay(
   items: AgentStreamTimelineItem[],
   gates: readonly AgentGatePartData[] = []
@@ -211,6 +218,10 @@ export function groupStreamTimelineForDisplay(
       if (matched.length > 0) {
         flushTools()
         pushGateItems(groups, matched)
+      }
+      const last = pendingTools[pendingTools.length - 1]
+      if (last && isAskToolName(last.name) !== isAskToolName(item.name)) {
+        flushTools()
       }
       pendingTools.push(item)
       continue
@@ -288,6 +299,10 @@ export function buildAssistantDisplayTimelineFromParts(
     if (matched.length > 0) {
       flushTools()
       pushGateItems(items, matched)
+    }
+    const last = pendingTools[pendingTools.length - 1]
+    if (last && isAskToolName(last.invocation.toolName) !== isAskToolName(invocation.toolName)) {
+      flushTools()
     }
     pendingTools.push({
       invocation,

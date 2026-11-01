@@ -11,10 +11,6 @@ import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
 import { AgentProcessSection } from '../AgentProcessSection'
 import { AgentToolChainSection } from '../AgentToolChain'
 
-function restIsOnlyGates(items: readonly { kind: string }[], index: number): boolean {
-  return items.slice(index + 1).every((item) => item.kind === 'gate')
-}
-
 function visibleAnswerText(text: string): string | null {
   const parsed = parseRedactedThinking(text)
   if (parsed.cleanContent) return parsed.cleanContent
@@ -42,10 +38,7 @@ function AssistantDisplayTimelineInner(props: {
     appendCitationMarkers = false
   } = props
   const activeStreaming = Boolean(isStreaming && !error)
-  const coalescedItems = useMemo(
-    () => coalesceTimelineItemsForDisplay(items, { isStreaming: activeStreaming }),
-    [activeStreaming, items]
-  )
+  const coalescedItems = useMemo(() => coalesceTimelineItemsForDisplay(items), [items])
 
   const citedByKey = useMemo(() => {
     const entries = items.flatMap((item) => {
@@ -65,37 +58,32 @@ function AssistantDisplayTimelineInner(props: {
   return (
     <>
       {coalescedItems.map((coalesced, index) => {
-        const streamingHere = restIsOnlyGates(coalescedItems, index) && !error
+        // 只有时间线最末尾的一项处于生成中；前面的工作过程段、正文和提问卡片都已经结束
+        const streamingHere = activeStreaming && index === coalescedItems.length - 1
 
         if (coalesced.kind === 'process') {
           const reasoningByKey = new Map<string, string>()
           for (const r of coalesced.reasoningItems) {
             reasoningByKey.set(r.key, parseRedactedThinking('', r.text).cleanReasoning || r.text)
           }
-          const cleanReasonings = [
-            ...coalesced.reasoningItems.map((r) => reasoningByKey.get(r.key) ?? r.text),
-            ...coalesced.textItems.map((t) => t.text)
-          ].filter((t) => Boolean(t.trim()))
-          const combinedReasoning = cleanReasonings.join('\n\n')
-          const lastTimelineItem = items[items.length - 1]
-          const trailingWorkActive = Boolean(lastTimelineItem && lastTimelineItem.kind !== 'text')
-          const processStreaming =
-            (!coalesced.hasSubsequentText || trailingWorkActive) && Boolean(isStreaming && !error)
+          const combinedReasoning = coalesced.reasoningItems
+            .map((r) => reasoningByKey.get(r.key) ?? r.text)
+            .filter((t) => Boolean(t.trim()))
+            .join('\n\n')
 
           return (
             <AgentProcessSection
               key={coalesced.key}
               reasoningContent={combinedReasoning}
               toolsItems={coalesced.toolsItems}
-              isReasoningLoading={processStreaming}
-              isReasoningStreaming={processStreaming}
-              isStreaming={activeStreaming}
+              isReasoningLoading={streamingHere}
+              isReasoningStreaming={streamingHere}
+              isStreaming={streamingHere}
               hasAnswerText={coalesced.hasSubsequentText}
               hasPrecedingText={coalesced.hasPrecedingText}
             >
               {coalesced.steps.map((item, stepIdx) => {
-                const isLastStep = stepIdx === coalesced.steps.length - 1
-                const stepStreamingHere = processStreaming && isLastStep
+                const stepStreamingHere = streamingHere && stepIdx === coalesced.steps.length - 1
 
                 if (item.kind === 'reasoning') {
                   const content =
@@ -106,21 +94,7 @@ function AssistantDisplayTimelineInner(props: {
                     <AgentThinkSection
                       key={item.key}
                       content={content}
-                      isStreaming={isStreaming && stepStreamingHere}
-                    />
-                  )
-                }
-
-                if (item.kind === 'text') {
-                  const cited = citedByKey.get(item.key) ?? visibleAnswerText(item.text)
-                  if (!cited?.trim()) return null
-                  return (
-                    <AgentMarkdownRenderer
-                      key={item.key}
-                      content={cited}
-                      variant="ancillary"
-                      isStreaming={isTextStreaming && stepStreamingHere}
-                      wrapXProvider={false}
+                      isStreaming={stepStreamingHere}
                     />
                   )
                 }
@@ -136,7 +110,7 @@ function AssistantDisplayTimelineInner(props: {
                     completedTools={item.completedTools}
                     activeToolName={item.activeToolName}
                     activeToolArgs={item.activeToolArgs}
-                    isStreaming={Boolean(isStreaming && item.activeToolName && !error)}
+                    isStreaming={Boolean(streamingHere && item.activeToolName)}
                   />
                 )
               })}
@@ -145,24 +119,28 @@ function AssistantDisplayTimelineInner(props: {
         }
 
         if (coalesced.kind === 'text') {
-          const item = coalesced
-          const cited = citedByKey.get(item.key) ?? visibleAnswerText(item.text)
+          const cited = citedByKey.get(coalesced.key) ?? visibleAnswerText(coalesced.text)
           if (!cited) return null
           return (
             <AgentMarkdownRenderer
-              key={item.key}
+              key={coalesced.key}
               content={cited}
               isStreaming={isTextStreaming && streamingHere}
             />
           )
         }
 
-        if (coalesced.kind === 'gate') {
-          const item = coalesced
-          return <AgentGatePartBubble key={item.key} data={item.data} />
-        }
-
-        return null
+        // 伙伴提问：面向用户的交互，按原位置直接展示在正文流中
+        return (
+          <AgentToolChainSection
+            key={coalesced.key}
+            invocations={coalesced.invocations}
+            completedTools={coalesced.completedTools}
+            activeToolName={coalesced.activeToolName}
+            activeToolArgs={coalesced.activeToolArgs}
+            isStreaming={Boolean(streamingHere && coalesced.activeToolName)}
+          />
+        )
       })}
     </>
   )

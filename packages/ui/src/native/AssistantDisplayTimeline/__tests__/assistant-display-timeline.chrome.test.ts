@@ -11,7 +11,7 @@ const src = readFileSync(
 describe('Native AssistantDisplayTimeline chrome', () => {
   it('should render think, tools, text and permission cards in timeline order', () => {
     expect(src).toContain("item.kind === 'reasoning'")
-    expect(src).toContain("item.kind === 'text'")
+    expect(src).toContain("coalesced.kind === 'text'")
     expect(src).toContain("item.kind === 'gate'")
     expect(src).toContain('<AgentThinkSection')
     expect(src).toContain('<AgentToolChainSection')
@@ -19,8 +19,8 @@ describe('Native AssistantDisplayTimeline chrome', () => {
     expect(src).toContain('<AgentGatePartCard')
   })
 
-  it('should only keep the last non-gate segment in the streaming state', () => {
-    expect(src).toContain('restIsOnlyGates')
+  it('should only keep the last chronological segment in the streaming state', () => {
+    expect(src).toContain('activeStreaming && index === coalescedItems.length - 1')
     expect(src).toContain('isMarkdownStreaming={isThinkStreaming && stepStreamingHere}')
   })
 
@@ -39,6 +39,6 @@ describe('Native AssistantDisplayTimeline chrome', () => {
     expect(src).toContain('<AgentProcessSection')
     expect(src).toContain('hasAnswerText={coalesced.hasSubsequentText}')
     expect(src).toContain('hasPrecedingText={coalesced.hasPrecedingText}')
-    expect(src).toContain('variant="ancillary"')
+    expect(src).toContain('key={coalesced.key}')
   })
 })

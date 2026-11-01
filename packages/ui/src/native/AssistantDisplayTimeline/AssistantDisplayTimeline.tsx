@@ -14,10 +14,6 @@ import { AgentThinkSection } from '../AgentThinkSection'
 import { AgentToolChainSection } from '../AgentToolChain'
 import { useNativeTheme } from '../theme'
 
-function restIsOnlyGates(items: readonly { kind: string }[], index: number): boolean {
-  return items.slice(index + 1).every((item) => item.kind === 'gate')
-}
-
 function visibleAnswerText(text: string): string | null {
   const parsed = parseRedactedThinking(text)
   if (parsed.cleanContent) return parsed.cleanContent
@@ -52,10 +48,7 @@ function AssistantDisplayTimelineInner(props: {
   } = props
   const { tokens } = useNativeTheme()
   const activeStreaming = Boolean(isStreaming && !error)
-  const coalescedItems = useMemo(
-    () => coalesceTimelineItemsForDisplay(items, { isStreaming: activeStreaming }),
-    [activeStreaming, items]
-  )
+  const coalescedItems = useMemo(() => coalesceTimelineItemsForDisplay(items), [items])
 
   const citedByKey = useMemo(() => {
     const entries = items.flatMap((item) => {
@@ -77,37 +70,32 @@ function AssistantDisplayTimelineInner(props: {
   return (
     <View style={{ gap: tokens.spacing.sm, alignSelf: 'stretch', width: '100%' }}>
       {coalescedItems.map((coalesced, index) => {
-        const streamingHere = restIsOnlyGates(coalescedItems, index) && !error
+        // 只有时间线最末尾的一项处于生成中；前面的工作过程段、正文和提问卡片都已经结束
+        const streamingHere = activeStreaming && index === coalescedItems.length - 1
 
         if (coalesced.kind === 'process') {
           const reasoningByKey = new Map<string, string>()
           for (const r of coalesced.reasoningItems) {
             reasoningByKey.set(r.key, parseRedactedThinking('', r.text).cleanReasoning || r.text)
           }
-          const cleanReasonings = [
-            ...coalesced.reasoningItems.map((r) => reasoningByKey.get(r.key) ?? r.text),
-            ...coalesced.textItems.map((t) => t.text)
-          ].filter((t) => Boolean(t.trim()))
-          const combinedReasoning = cleanReasonings.join('\n\n')
-          const lastTimelineItem = items[items.length - 1]
-          const trailingWorkActive = Boolean(lastTimelineItem && lastTimelineItem.kind !== 'text')
-          const processStreaming =
-            (!coalesced.hasSubsequentText || trailingWorkActive) && Boolean(isStreaming && !error)
+          const combinedReasoning = coalesced.reasoningItems
+            .map((r) => reasoningByKey.get(r.key) ?? r.text)
+            .filter((t) => Boolean(t.trim()))
+            .join('\n\n')
 
           return (
             <AgentProcessSection
-              key="process:0"
+              key={coalesced.key}
               reasoningContent={combinedReasoning}
               toolsItems={coalesced.toolsItems}
-              isReasoningLoading={isThinkLoading && processStreaming}
-              isReasoningStreaming={isThinkStreaming && processStreaming}
-              isStreaming={activeStreaming}
+              isReasoningLoading={isThinkLoading && streamingHere}
+              isReasoningStreaming={isThinkStreaming && streamingHere}
+              isStreaming={streamingHere}
               hasAnswerText={coalesced.hasSubsequentText}
               hasPrecedingText={coalesced.hasPrecedingText}
             >
               {coalesced.steps.map((item, stepIdx) => {
-                const isLastStep = stepIdx === coalesced.steps.length - 1
-                const stepStreamingHere = processStreaming && isLastStep
+                const stepStreamingHere = streamingHere && stepIdx === coalesced.steps.length - 1
 
                 if (item.kind === 'reasoning') {
                   const content =
@@ -124,20 +112,6 @@ function AssistantDisplayTimelineInner(props: {
                   )
                 }
 
-                if (item.kind === 'text') {
-                  const cited = citedByKey.get(item.key) ?? visibleAnswerText(item.text)
-                  if (!cited?.trim()) return null
-                  return (
-                    <AgentMarkdownRenderer
-                      key={item.key}
-                      content={cited}
-                      variant="ancillary"
-                      isStreaming={isTextStreaming && stepStreamingHere}
-                      onImagePress={onImagePress}
-                    />
-                  )
-                }
-
                 if (item.kind === 'gate') {
                   return <AgentGatePartCard key={item.key} data={item.data} />
                 }
@@ -149,7 +123,7 @@ function AssistantDisplayTimelineInner(props: {
                     completedTools={item.completedTools}
                     activeToolName={item.activeToolName}
                     activeToolArgs={item.activeToolArgs}
-                    isStreaming={Boolean(isStreaming && item.activeToolName && !error)}
+                    isStreaming={Boolean(streamingHere && item.activeToolName)}
                   />
                 )
               })}
@@ -158,8 +132,7 @@ function AssistantDisplayTimelineInner(props: {
         }
 
         if (coalesced.kind === 'text') {
-          const item = coalesced
-          const cited = citedByKey.get(item.key) ?? visibleAnswerText(item.text)
+          const cited = citedByKey.get(coalesced.key) ?? visibleAnswerText(coalesced.text)
           if (!cited) return null
           const stableAnswerKey = `answer-text:${answerTextOrdinal++}`
           return (
@@ -174,12 +147,17 @@ function AssistantDisplayTimelineInner(props: {
           )
         }
 
-        if (coalesced.kind === 'gate') {
-          const item = coalesced
-          return <AgentGatePartCard key={item.key} data={item.data} />
-        }
-
-        return null
+        // 伙伴提问：面向用户的交互，按原位置直接展示在正文流中
+        return (
+          <AgentToolChainSection
+            key={coalesced.key}
+            invocations={coalesced.invocations}
+            completedTools={coalesced.completedTools}
+            activeToolName={coalesced.activeToolName}
+            activeToolArgs={coalesced.activeToolArgs}
+            isStreaming={Boolean(streamingHere && coalesced.activeToolName)}
+          />
+        )
       })}
     </View>
   )
