@@ -7,7 +7,12 @@ import type {
   EmbedLedgerRecordParams,
   RagVectorKind
 } from '@baishou/shared'
-import { logger, normalizeUnixToSeconds } from '@baishou/shared'
+import {
+  extractDiaryDateFromEmbedInput,
+  logger,
+  normalizeUnixToSeconds,
+  parseDiaryEmbeddingSourceId
+} from '@baishou/shared'
 import { eq, and, or, sql } from 'drizzle-orm'
 import { getAppDb } from '../db'
 import {
@@ -163,14 +168,44 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
       await db.run(sql.raw('SAVEPOINT rag_replace_source_sp'))
       try {
         if (params.replaceExisting) {
-          await db
-            .delete(memoryEmbeddingsTable)
-            .where(
-              and(
-                eq(memoryEmbeddingsTable.sourceType, params.sourceType),
-                eq(memoryEmbeddingsTable.sourceId, params.sourceId)
+          if (params.sourceType === 'diary') {
+            const parsedSource = parseDiaryEmbeddingSourceId(params.sourceId)
+            const bareId = parsedSource?.diaryId?.trim() || ''
+            const diaryDate = extractDiaryDateFromEmbedInput({
+              metadataJson,
+              chunkText: params.chunks[0]?.chunkText
+            })
+            const matchConditions = [eq(memoryEmbeddingsTable.sourceId, params.sourceId)]
+            if (bareId && bareId !== params.sourceId) {
+              matchConditions.push(eq(memoryEmbeddingsTable.sourceId, bareId))
+            }
+            if (diaryDate) {
+              matchConditions.push(
+                sql`json_extract(${memoryEmbeddingsTable.metadataJson}, '$.date') = ${diaryDate}`
               )
-            )
+              matchConditions.push(
+                sql`${memoryEmbeddingsTable.chunkText} LIKE ${`[${diaryDate} 日记:]%`}`
+              )
+            }
+            await db
+              .delete(memoryEmbeddingsTable)
+              .where(
+                and(
+                  eq(memoryEmbeddingsTable.sourceType, 'diary'),
+                  eq(memoryEmbeddingsTable.vaultId, vaultId),
+                  or(...matchConditions)
+                )
+              )
+          } else {
+            await db
+              .delete(memoryEmbeddingsTable)
+              .where(
+                and(
+                  eq(memoryEmbeddingsTable.sourceType, params.sourceType),
+                  eq(memoryEmbeddingsTable.sourceId, params.sourceId)
+                )
+              )
+          }
         }
 
         const BATCH_SIZE = 50
@@ -245,6 +280,21 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
                 updatedAt: now
               }
             })
+          if (params.replaceExisting && params.sourceType === 'diary') {
+            await db.run(sql`
+              DELETE FROM embed_ledger
+              WHERE vault_id = ${vaultId}
+                AND source_type = 'diary'
+                AND source_id != ${params.sourceId}
+                AND chunk_count > 0
+                AND NOT EXISTS (
+                  SELECT 1 FROM memory_embeddings m
+                  WHERE m.vault_id = embed_ledger.vault_id
+                    AND m.source_type = 'diary'
+                    AND m.source_id = embed_ledger.source_id
+                )
+            `)
+          }
         }
 
         await db.run(sql.raw('RELEASE rag_replace_source_sp'))

@@ -4,6 +4,7 @@ import {
   buildDiaryEmbeddingTextArgs,
   coerceDiaryCalendarDate,
   diaryDateToSourceCreatedSeconds,
+  formatLocalDate,
   hashEmbedSourceContent,
   mergeEmbedContentHashIntoMetadata
 } from '@baishou/shared'
@@ -46,7 +47,10 @@ export function buildDesktopDiaryReEmbedArgs(params: {
     groupId: buildDiaryEmbeddingGroupId(),
     vaultId: params.vaultId,
     metadataJson: mergeEmbedContentHashIntoMetadata(
-      JSON.stringify({ updated_at: updatedAtMs }),
+      JSON.stringify({
+        updated_at: updatedAtMs,
+        ...(d ? { date: formatLocalDate(d) } : {})
+      }),
       contentHash
     ),
     sourceCreatedAt: d ? diaryDateToSourceCreatedSeconds(d) * 1000 : Date.now(),

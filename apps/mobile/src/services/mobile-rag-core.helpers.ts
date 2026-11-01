@@ -4,10 +4,13 @@ import {
   diaryDateToSourceCreatedSeconds,
   buildDiaryEmbeddingGroupId,
   buildDiaryEmbeddingSourceId,
+  canonicalizeEmbedLedgerSourceId,
   clearRagDiaryEmbedFailure,
   formatAiApiCallError,
+  formatLocalDate,
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
+  LEGACY_DIARY_EMBED_GROUP_IDS,
   logger,
   markRagDiaryEmbedFailure,
   buildDiaryEmbeddingTextArgs,
@@ -243,10 +246,12 @@ export async function loadEmbeddedDiaryIndex(
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
   embeddedContentHashMap: Map<string, string>
+  embeddedDateMap: Map<string, { contentHash?: string; updatedAt?: number }>
 }> {
   const embeddedIds = new Set<string>()
   const embeddedUpdatedAtMap = new Map<string, number>()
   const embeddedContentHashMap = new Map<string, string>()
+  const embeddedDateMap = new Map<string, { contentHash?: string; updatedAt?: number }>()
   if (!options?.skipReconcile) {
     try {
       await deps.hsRepo.reconcileEmbedLedger?.({ vaultId, sourceType: 'diary' })
@@ -258,43 +263,73 @@ export async function loadEmbeddedDiaryIndex(
     execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
   }
   if (!client?.execute) {
-    return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap }
+    return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap, embeddedDateMap }
   }
 
+  const legacyPlaceholders = LEGACY_DIARY_EMBED_GROUP_IDS.map(() => '?').join(', ')
   const result = await client.execute({
     sql: `
       SELECT
         source_id AS sourceId,
         MAX(CAST(json_extract(metadata_json, '$.updated_at') AS INTEGER)) AS maxUpdatedAt,
-        MAX(COALESCE(json_extract(metadata_json, '$.content_hash'), '')) AS contentHash
+        MAX(COALESCE(json_extract(metadata_json, '$.content_hash'), '')) AS contentHash,
+        MAX(COALESCE(NULLIF(json_extract(metadata_json, '$.date'), ''), CASE WHEN substr(chunk_text, 1, 1) = '[' AND substr(chunk_text, 12, 5) = ' 日记:]' THEN substr(chunk_text, 2, 10) ELSE '' END)) AS diaryDate
       FROM ${HYBRID_SEARCH_TABLE}
       WHERE source_type = 'diary'
-        AND (group_id = ? OR group_id LIKE 'diary:%')
+        AND (group_id = ? OR group_id LIKE 'diary:%' OR group_id IN (${legacyPlaceholders}))
         AND vault_id = ?
       GROUP BY source_id
     `,
-    args: [DIARY_EMBED_GROUP_ID, vaultId]
+    args: [DIARY_EMBED_GROUP_ID, ...LEGACY_DIARY_EMBED_GROUP_IDS, vaultId]
   })
 
   for (const row of (result.rows || []) as Array<{
     sourceId?: string | number
     maxUpdatedAt?: number | string | null
     contentHash?: string | null
+    diaryDate?: string | null
     metadataJson?: string
   }>) {
     if (row.sourceId == null) continue
-    const sourceId = String(row.sourceId)
-    embeddedIds.add(sourceId)
+    const rawSourceId = String(row.sourceId)
+    const canonicalId = canonicalizeEmbedLedgerSourceId('diary', rawSourceId, vaultId)
+    const keys = [rawSourceId, canonicalId]
+    for (const key of keys) {
+      embeddedIds.add(key)
+    }
     if (row.maxUpdatedAt !== undefined || row.contentHash !== undefined) {
       const maxUpdatedAt = Number(row.maxUpdatedAt)
       if (Number.isFinite(maxUpdatedAt) && maxUpdatedAt > 0) {
-        const currentMax = embeddedUpdatedAtMap.get(sourceId) ?? 0
-        if (maxUpdatedAt > currentMax) {
-          embeddedUpdatedAtMap.set(sourceId, maxUpdatedAt)
+        for (const key of keys) {
+          const currentMax = embeddedUpdatedAtMap.get(key) ?? 0
+          if (maxUpdatedAt > currentMax) {
+            embeddedUpdatedAtMap.set(key, maxUpdatedAt)
+          }
         }
       }
       if (typeof row.contentHash === 'string' && row.contentHash.trim()) {
-        embeddedContentHashMap.set(sourceId, row.contentHash.trim())
+        for (const key of keys) {
+          embeddedContentHashMap.set(key, row.contentHash.trim())
+        }
+      }
+      const day =
+        typeof row.diaryDate === 'string' ? (row.diaryDate.trim().split('T')[0] ?? '') : ''
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        const prev = embeddedDateMap.get(day)
+        const validUpdated =
+          Number.isFinite(maxUpdatedAt) && maxUpdatedAt > 0 ? maxUpdatedAt : undefined
+        const hash =
+          typeof row.contentHash === 'string' && row.contentHash.trim()
+            ? row.contentHash.trim()
+            : undefined
+        embeddedDateMap.set(day, {
+          contentHash: hash ?? prev?.contentHash,
+          updatedAt:
+            validUpdated !== undefined &&
+            (prev?.updatedAt === undefined || validUpdated > prev.updatedAt)
+              ? validUpdated
+              : prev?.updatedAt
+        })
       }
       continue
     }
@@ -303,22 +338,45 @@ export async function loadEmbeddedDiaryIndex(
       const meta = JSON.parse(row.metadataJson) as {
         updated_at?: number
         content_hash?: string
+        date?: string
       }
       if (typeof meta.updated_at === 'number') {
-        const currentMax = embeddedUpdatedAtMap.get(sourceId) ?? 0
-        if (meta.updated_at > currentMax) {
-          embeddedUpdatedAtMap.set(sourceId, meta.updated_at)
+        for (const key of keys) {
+          const currentMax = embeddedUpdatedAtMap.get(key) ?? 0
+          if (meta.updated_at > currentMax) {
+            embeddedUpdatedAtMap.set(key, meta.updated_at)
+          }
         }
       }
       if (typeof meta.content_hash === 'string' && meta.content_hash.trim()) {
-        embeddedContentHashMap.set(sourceId, meta.content_hash.trim())
+        for (const key of keys) {
+          embeddedContentHashMap.set(key, meta.content_hash.trim())
+        }
+      }
+      const day = typeof meta.date === 'string' ? (meta.date.trim().split('T')[0] ?? '') : ''
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        const prev = embeddedDateMap.get(day)
+        const validUpdated =
+          typeof meta.updated_at === 'number' && meta.updated_at > 0 ? meta.updated_at : undefined
+        const hash =
+          typeof meta.content_hash === 'string' && meta.content_hash.trim()
+            ? meta.content_hash.trim()
+            : undefined
+        embeddedDateMap.set(day, {
+          contentHash: hash ?? prev?.contentHash,
+          updatedAt:
+            validUpdated !== undefined &&
+            (prev?.updatedAt === undefined || validUpdated > prev.updatedAt)
+              ? validUpdated
+              : prev?.updatedAt
+        })
       }
     } catch {
       /* ignore malformed metadata */
     }
   }
 
-  return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap }
+  return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap, embeddedDateMap }
 }
 
 export async function embedDiaryEntry(
@@ -349,7 +407,10 @@ export async function embedDiaryEntry(
   const d = coerceDiaryCalendarDate(params.date)
   const contentHash = options?.contentHash?.trim() || hashEmbedSourceContent(params.content ?? '')
   const metadataJson = mergeEmbedContentHashIntoMetadata(
-    JSON.stringify({ updated_at: params.updatedAt.getTime() }),
+    JSON.stringify({
+      updated_at: params.updatedAt.getTime(),
+      ...(d ? { date: formatLocalDate(d) } : {})
+    }),
     contentHash
   )
   const { text, chunkPrefix } = buildDiaryEmbeddingTextArgs(params.content, params.date)

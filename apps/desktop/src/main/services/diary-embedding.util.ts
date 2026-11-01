@@ -2,6 +2,7 @@ import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import { and, eq, inArray, like, or, sql } from 'drizzle-orm'
 import {
   buildDiaryEmbeddingSourceId,
+  canonicalizeEmbedLedgerSourceId,
   DIARY_EMBED_GROUP_ID,
   isLegacyDiaryEmbeddingSourceId,
   LEGACY_DIARY_EMBED_GROUP_IDS
@@ -44,8 +45,7 @@ export async function purgeLegacyDiaryEmbeddingsForVault(
       .where(
         and(
           eq(memoryEmbeddingsTable.sourceType, 'diary'),
-          inArray(memoryEmbeddingsTable.sourceId, chunk),
-          inArray(memoryEmbeddingsTable.groupId, [...LEGACY_DIARY_EMBED_GROUP_IDS])
+          inArray(memoryEmbeddingsTable.sourceId, chunk)
         )
       )
       .returning({ id: memoryEmbeddingsTable.id })
@@ -90,7 +90,8 @@ export async function countDiaryEmbeddingsForVault(vaultId: string): Promise<num
         eq(memoryEmbeddingsTable.sourceType, 'diary'),
         or(
           eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
-          like(memoryEmbeddingsTable.groupId, 'diary:%')
+          like(memoryEmbeddingsTable.groupId, 'diary:%'),
+          inArray(memoryEmbeddingsTable.groupId, [...LEGACY_DIARY_EMBED_GROUP_IDS])
         ),
         eq(memoryEmbeddingsTable.vaultId, vaultId)
       )
@@ -134,7 +135,8 @@ export async function countUnindexedDiariesForActiveVault(): Promise<number> {
     .select({
       sourceId: memoryEmbeddingsTable.sourceId,
       maxUpdatedAt: sql<number>`MAX(CAST(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.updated_at') AS INTEGER))`,
-      contentHash: sql<string>`MAX(COALESCE(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.content_hash'), ''))`
+      contentHash: sql<string>`MAX(COALESCE(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.content_hash'), ''))`,
+      diaryDate: sql<string>`MAX(COALESCE(NULLIF(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.date'), ''), CASE WHEN substr(${memoryEmbeddingsTable.chunkText}, 1, 1) = '[' AND substr(${memoryEmbeddingsTable.chunkText}, 12, 5) = ' 日记:]' THEN substr(${memoryEmbeddingsTable.chunkText}, 2, 10) ELSE '' END))`
     })
     .from(memoryEmbeddingsTable)
     .where(
@@ -142,28 +144,56 @@ export async function countUnindexedDiariesForActiveVault(): Promise<number> {
         eq(memoryEmbeddingsTable.sourceType, 'diary'),
         or(
           eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
-          like(memoryEmbeddingsTable.groupId, 'diary:%')
+          like(memoryEmbeddingsTable.groupId, 'diary:%'),
+          inArray(memoryEmbeddingsTable.groupId, [...LEGACY_DIARY_EMBED_GROUP_IDS])
         ),
         eq(memoryEmbeddingsTable.vaultId, vaultId)
       )
     )
     .groupBy(memoryEmbeddingsTable.sourceId)
 
-  const embeddedIds = new Set(existingRows.map((row) => row.sourceId))
+  const embeddedIds = new Set<string>()
   const embeddedUpdatedAtMap = new Map<string, number>()
   const embeddedContentHashMap = new Map<string, string>()
+  const embeddedDateMap = new Map<string, { contentHash?: string; updatedAt?: number }>()
   for (const row of existingRows) {
-    if (row.sourceId && Number.isFinite(row.maxUpdatedAt)) {
-      embeddedUpdatedAtMap.set(row.sourceId, Number(row.maxUpdatedAt))
+    if (!row.sourceId) continue
+    const canonicalId = canonicalizeEmbedLedgerSourceId('diary', row.sourceId, vaultId)
+    for (const key of [row.sourceId, canonicalId]) {
+      embeddedIds.add(key)
+      const maxUpdated = Number(row.maxUpdatedAt)
+      if (Number.isFinite(maxUpdated) && maxUpdated > 0) {
+        const prev = embeddedUpdatedAtMap.get(key) ?? 0
+        if (maxUpdated > prev) embeddedUpdatedAtMap.set(key, maxUpdated)
+      }
+      if (typeof row.contentHash === 'string' && row.contentHash.trim()) {
+        embeddedContentHashMap.set(key, row.contentHash.trim())
+      }
     }
-    if (row.sourceId && typeof row.contentHash === 'string' && row.contentHash.trim()) {
-      embeddedContentHashMap.set(row.sourceId, row.contentHash.trim())
+    const day = typeof row.diaryDate === 'string' ? (row.diaryDate.trim().split('T')[0] ?? '') : ''
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      const prev = embeddedDateMap.get(day)
+      const maxUpdated = Number(row.maxUpdatedAt)
+      const validUpdated = Number.isFinite(maxUpdated) && maxUpdated > 0 ? maxUpdated : undefined
+      const hash =
+        typeof row.contentHash === 'string' && row.contentHash.trim()
+          ? row.contentHash.trim()
+          : undefined
+      embeddedDateMap.set(day, {
+        contentHash: hash ?? prev?.contentHash,
+        updatedAt:
+          validUpdated !== undefined &&
+          (prev?.updatedAt === undefined || validUpdated > prev.updatedAt)
+            ? validUpdated
+            : prev?.updatedAt
+      })
     }
   }
 
   const unindexed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
     resolveSourceId: (meta) => buildDiaryEmbeddingSourceId(vaultId, meta.id as number | string),
-    embeddedContentHashMap
+    embeddedContentHashMap,
+    embeddedDateMap
   })
   return unindexed.length
 }

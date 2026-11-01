@@ -1,8 +1,9 @@
 import { BrowserWindow } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
-import { eq, like, or, sql, and } from 'drizzle-orm'
+import { eq, inArray, like, or, sql, and } from 'drizzle-orm'
 import {
   buildDiaryEmbeddingSourceId,
+  canonicalizeEmbedLedgerSourceId,
   clearRagDiaryEmbedFailure,
   filterUnindexedDiaries,
   formatAiApiCallError,
@@ -10,6 +11,7 @@ import {
   isRagMemoryEnabled,
   limitExecute,
   i18n,
+  LEGACY_DIARY_EMBED_GROUP_IDS,
   logger,
   markRagDiaryEmbedFailure,
   resolveBatchEmbedConcurrency,
@@ -62,6 +64,7 @@ async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
   embeddedContentHashMap: Map<string, string>
+  embeddedDateMap: Map<string, { contentHash?: string; updatedAt?: number }>
 }> {
   const storage = new DesktopEmbeddingStorage()
   await storage.reconcileEmbedLedger({ vaultId, sourceType: 'diary' })
@@ -71,7 +74,8 @@ async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
     .select({
       sourceId: memoryEmbeddingsTable.sourceId,
       maxUpdatedAt: sql<number>`MAX(CAST(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.updated_at') AS INTEGER))`,
-      contentHash: sql<string>`MAX(COALESCE(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.content_hash'), ''))`
+      contentHash: sql<string>`MAX(COALESCE(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.content_hash'), ''))`,
+      diaryDate: sql<string>`MAX(COALESCE(NULLIF(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.date'), ''), CASE WHEN substr(${memoryEmbeddingsTable.chunkText}, 1, 1) = '[' AND substr(${memoryEmbeddingsTable.chunkText}, 12, 5) = ' 日记:]' THEN substr(${memoryEmbeddingsTable.chunkText}, 2, 10) ELSE '' END))`
     })
     .from(memoryEmbeddingsTable)
     .where(
@@ -79,27 +83,54 @@ async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
         eq(memoryEmbeddingsTable.sourceType, 'diary'),
         or(
           eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
-          like(memoryEmbeddingsTable.groupId, 'diary:%')
+          like(memoryEmbeddingsTable.groupId, 'diary:%'),
+          inArray(memoryEmbeddingsTable.groupId, [...LEGACY_DIARY_EMBED_GROUP_IDS])
         ),
         eq(memoryEmbeddingsTable.vaultId, vaultId)
       )
     )
     .groupBy(memoryEmbeddingsTable.sourceId)
 
-  const embeddedIds = new Set(existingRows.map((row) => row.sourceId))
+  const embeddedIds = new Set<string>()
   const embeddedUpdatedAtMap = new Map<string, number>()
   const embeddedContentHashMap = new Map<string, string>()
+  const embeddedDateMap = new Map<string, { contentHash?: string; updatedAt?: number }>()
 
   for (const row of existingRows) {
-    if (typeof row.maxUpdatedAt === 'number' && row.maxUpdatedAt > 0) {
-      embeddedUpdatedAtMap.set(row.sourceId, row.maxUpdatedAt)
+    if (!row.sourceId) continue
+    const canonicalId = canonicalizeEmbedLedgerSourceId('diary', row.sourceId, vaultId)
+    for (const key of [row.sourceId, canonicalId]) {
+      embeddedIds.add(key)
+      const maxUpdated = Number(row.maxUpdatedAt)
+      if (Number.isFinite(maxUpdated) && maxUpdated > 0) {
+        const prev = embeddedUpdatedAtMap.get(key) ?? 0
+        if (maxUpdated > prev) embeddedUpdatedAtMap.set(key, maxUpdated)
+      }
+      if (typeof row.contentHash === 'string' && row.contentHash.trim()) {
+        embeddedContentHashMap.set(key, row.contentHash.trim())
+      }
     }
-    if (row.sourceId && typeof row.contentHash === 'string' && row.contentHash.trim()) {
-      embeddedContentHashMap.set(row.sourceId, row.contentHash.trim())
+    const day = typeof row.diaryDate === 'string' ? (row.diaryDate.trim().split('T')[0] ?? '') : ''
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      const prev = embeddedDateMap.get(day)
+      const maxUpdated = Number(row.maxUpdatedAt)
+      const validUpdated = Number.isFinite(maxUpdated) && maxUpdated > 0 ? maxUpdated : undefined
+      const hash =
+        typeof row.contentHash === 'string' && row.contentHash.trim()
+          ? row.contentHash.trim()
+          : undefined
+      embeddedDateMap.set(day, {
+        contentHash: hash ?? prev?.contentHash,
+        updatedAt:
+          validUpdated !== undefined &&
+          (prev?.updatedAt === undefined || validUpdated > prev.updatedAt)
+            ? validUpdated
+            : prev?.updatedAt
+      })
     }
   }
 
-  return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap }
+  return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap, embeddedDateMap }
 }
 
 function broadcastRagProgress(payload: Record<string, unknown>): void {
@@ -189,14 +220,15 @@ export async function runControlledDiaryBatchEmbed(
     await assertBatchEmbedCanContinue()
     const diaryManager = await getDiaryManagerForVault(vault.name)
     const diaries = await diaryManager.listForEmbedDetection()
-    const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
+    const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap, embeddedDateMap } =
       await loadEmbeddedDiaryIndex(vault.id)
     const resolveSourceId = (meta: { id: unknown }) =>
       buildDiaryEmbeddingSourceId(vault.id, meta.id as number | string)
     const diariesToEmbed = sortDiariesByDateAsc(
       filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
         resolveSourceId,
-        embeddedContentHashMap
+        embeddedContentHashMap,
+        embeddedDateMap
       })
     )
     if (diariesToEmbed.length === 0) continue
