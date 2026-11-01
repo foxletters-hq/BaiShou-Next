@@ -20,13 +20,10 @@ AppPublisherURL=https://github.com/foxletters-hq/BaiShou-Next
 DefaultDirName={autopf}\BaiShou
 DefaultGroupName=白守
 DisableDirPage=no
-; 默认以当前用户权限安装（写入 %LOCALAPPDATA%\Programs\BaiShou），免 UAC 且降低杀软对 Program Files 的误报拦截；
-; 同时启用 UsePreviousPrivileges=yes 与 PrivilegesRequiredOverridesAllowed=commandline：
-; - 已安装在 HKLM（如 C:\Program Files\BaiShou）的存量老用户升级时，Inno Setup 会自动检测旧版记录并提权，原地覆盖旧目录；
-; - 首次安装或已安装在 HKCU 的用户，保持当前用户权限无感安装/覆盖。
-PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=commandline
-UsePreviousPrivileges=yes
+; 保持与历史版本一致的系统级安装模式（HKLM），使存量老用户（如安装在 D:\Software\BaiShou 或 Program Files）
+; 升级时能自动读取 HKLM 卸载注册表中的 Inno Setup: App Path 并原地覆盖旧版本目录；
+; 安装完成后通过 [Run] 段的 runasoriginaluser 标志降权启动主程序。
+PrivilegesRequired=admin
 ; 勿用 CloseApplications=force：Electron 常不响应 Restart Manager，安装向导会长时间卡住。
 ; 进程占用改由下方 [Code] 检测，并提示用户关闭或代为结束。
 CloseApplications=no
