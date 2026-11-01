@@ -7,10 +7,10 @@
     "downloadUrl": "https://github.com/foxletters-hq/BaiShou-Next/releases/download/v1.5.1/BaiShou-Android.apk"
   },
   "windows": {
-    "version": "1.5.1",
-    "tag": "v1.5.1",
+    "version": "1.5.2",
+    "tag": "v1.5.2",
     "artifact": "BaiShou-Windows-Setup.exe",
-    "downloadUrl": "https://github.com/foxletters-hq/BaiShou-Next/releases/download/v1.5.1/BaiShou-Windows-Setup.exe"
+    "downloadUrl": "https://github.com/foxletters-hq/BaiShou-Next/releases/download/v1.5.2/BaiShou-Windows-Setup.exe"
   },
-  "updatedAt": "2026-10-24T20:02:54.310Z"
+  "updatedAt": "2026-11-01T04:20:48.659Z"
 }
