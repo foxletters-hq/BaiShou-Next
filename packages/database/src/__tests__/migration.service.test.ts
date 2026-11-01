@@ -478,6 +478,46 @@ describe('MigrationService', () => {
       ])
     })
 
+    it('_ensureCompatSchema should normalize bare diary source_id, legacy diary_batch group_id, and deduplicate doubled diary chunks', async () => {
+      const db = dbManager.getDb()
+      await (service as any)._ensureMemoryEmbeddingsTable()
+      await db.run(sql`
+        INSERT INTO memory_embeddings (
+          embedding_id, source_type, source_id, group_id, vault_id,
+          chunk_index, chunk_text, metadata_json, embedding, dimension, model_id, created_at
+        ) VALUES
+          ('dup-old-bare', 'diary', '10', 'diary_batch', 'vlt_personal', 0, '[2026-10-28 日记:]\n第一段', '{}', X'00', 3, 'm', 1),
+          ('dup-new-scoped', 'diary', 'vlt_personal#510', 'diary', 'vlt_personal', 0, '[2026-10-28 日记:]\n第一段', '{"date":"2026-10-28"}', X'00', 3, 'm', 2),
+          ('dup-new-scoped-c1', 'diary', 'vlt_personal#510', 'diary', 'vlt_personal', 1, '[2026-10-28 日记:]\n第二段', '{"date":"2026-10-28"}', X'00', 3, 'm', 2)
+      `)
+
+      await (service as any)._ensureCompatSchema()
+
+      const rows = (await db.all(
+        sql`SELECT embedding_id, source_id, group_id, chunk_index FROM memory_embeddings ORDER BY chunk_index`
+      )) as Array<{
+        embedding_id: string
+        source_id: string
+        group_id: string
+        chunk_index: number
+      }>
+
+      expect(rows).toEqual([
+        {
+          embedding_id: 'dup-new-scoped',
+          source_id: 'vlt_personal#510',
+          group_id: 'diary',
+          chunk_index: 0
+        },
+        {
+          embedding_id: 'dup-new-scoped-c1',
+          source_id: 'vlt_personal#510',
+          group_id: 'diary',
+          chunk_index: 1
+        }
+      ])
+    })
+
     it('_ensureCompatSchema should migrate legacy default assistant_id in agent_sessions to latte', async () => {
       const db = dbManager.getDb()
       await db.run(sql`

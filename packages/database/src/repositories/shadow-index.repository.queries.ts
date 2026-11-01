@@ -139,10 +139,19 @@ export class ShadowIndexQueryOps {
 
   async findByIds(ids: number[]): Promise<ShadowJournalRow[]> {
     if (ids.length === 0) return []
-    return (await this.ctx.database
-      .select()
-      .from(shadowJournalIndexTable)
-      .where(this.ctx.withVault(inArray(shadowJournalIndexTable.id, ids)))) as ShadowJournalRow[]
+    const BATCH_SIZE = 400
+    const results: ShadowJournalRow[] = []
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const chunk = ids.slice(i, i + BATCH_SIZE)
+      const rows = (await this.ctx.database
+        .select()
+        .from(shadowJournalIndexTable)
+        .where(
+          this.ctx.withVault(inArray(shadowJournalIndexTable.id, chunk))
+        )) as ShadowJournalRow[]
+      results.push(...rows)
+    }
+    return results
   }
 
   async findById(id: number): Promise<ShadowJournalRow | null> {

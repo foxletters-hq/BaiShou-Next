@@ -9,6 +9,7 @@ import {
   buildDiaryEmbeddingDatePrefix,
   buildDiaryEmbeddingTextArgs,
   aggregateEmbedLedgerFromVectorRows,
+  extractDiaryDateFromEmbedInput,
   extractEmbedContentHashFromMetadata,
   mergeEmbedContentHashIntoMetadata,
   hashEmbedSourceContent,
@@ -261,6 +262,39 @@ describe('filterUnindexedDiaries', () => {
     )
     expect(result.map((d) => d.id)).toEqual([1])
     expect(hashReads).toBe(0)
+  })
+
+  it('matches embedded diaries by date when shadow index id drifts across devices', () => {
+    const hash = hashEmbedSourceContent('今天在香港办卡')
+    const diaries = [
+      {
+        id: 501,
+        date: new Date(2026, 9, 28),
+        updatedAt: new Date('2026-11-01T00:00:00Z'),
+        contentHash: hash
+      }
+    ]
+    const result = filterUnindexedDiaries(
+      diaries,
+      new Set(['vlt_abc#12']),
+      new Map([['vlt_abc#12', new Date('2026-10-28T00:00:00Z').getTime()]]),
+      {
+        resolveSourceId: (d) => buildDiaryEmbeddingSourceId('vlt_abc', d.id),
+        embeddedContentHashMap: new Map([['vlt_abc#12', hash]]),
+        embeddedDateMap: new Map([
+          [
+            '2026-10-28',
+            { contentHash: hash, updatedAt: new Date('2026-10-28T00:00:00Z').getTime() }
+          ]
+        ])
+      }
+    )
+    expect(result).toHaveLength(0)
+    expect(
+      extractDiaryDateFromEmbedInput({
+        chunkText: '[2026-10-28 日记:]\n今天在香港办卡'
+      })
+    ).toBe('2026-10-28')
   })
 })
 
