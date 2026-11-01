@@ -271,12 +271,13 @@ export async function runControlledDiaryBatchEmbedCore(
             ? await listVaultDiaryMetas(shadowDb, vaultId)
             : []
       )
-      const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
+      const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap, embeddedDateMap } =
         await loadEmbeddedDiaryIndex(deps, vaultId)
       const diariesToEmbed = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap, {
         resolveSourceId: (meta: { id: unknown }) =>
           buildDiaryEmbeddingSourceId(vaultId, meta.id as number),
-        embeddedContentHashMap
+        embeddedContentHashMap,
+        embeddedDateMap
       })
       if (diariesToEmbed.length === 0) continue
       vaultPlans.push({

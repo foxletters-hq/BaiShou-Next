@@ -42,6 +42,7 @@ describe('desktop diary embed text', () => {
     expect(args.contentHash).toBe(hashEmbedSourceContent('开会纪要'))
     expect(JSON.parse(args.metadataJson)).toEqual({
       updated_at: new Date(2026, 8, 1, 12, 0, 0).getTime(),
+      date: '2026-09-01',
       content_hash: args.contentHash
     })
   })

@@ -13,13 +13,14 @@ export async function countUnindexedDiariesForActiveVault(
   const vaultId = await vaultScope.resolveActiveVaultId()
   const diaries = await deps.diaryService.listForEmbedDetection()
   if (!diaries.length) return 0
-  const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
+  const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap, embeddedDateMap } =
     await loadEmbeddedDiaryIndex(deps, vaultId, {
       skipReconcile: true
     })
   const unindexed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
     resolveSourceId: (meta) => buildDiaryEmbeddingSourceId(vaultId, meta.id as number | string),
-    embeddedContentHashMap
+    embeddedContentHashMap,
+    embeddedDateMap
   })
   return unindexed.length
 }

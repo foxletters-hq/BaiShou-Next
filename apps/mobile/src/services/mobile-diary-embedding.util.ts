@@ -41,14 +41,19 @@ export async function purgeLegacyDiaryEmbeddingsForVault(
     .filter((id) => isLegacyDiaryEmbeddingSourceId(id))
   if (numericIds.length === 0 || !rawClient?.execute) return 0
 
-  const result = await rawClient.execute({
-    sql: `DELETE FROM ${HYBRID_SEARCH_TABLE}
-          WHERE source_type = 'diary'
-            AND source_id IN (${numericIds.map(() => '?').join(', ')})
-            AND group_id IN (${legacyGroupPlaceholders()})`,
-    args: [...numericIds, ...LEGACY_DIARY_EMBED_GROUP_IDS]
-  })
-  return Number((result as { rowsAffected?: number }).rowsAffected ?? 0)
+  const BATCH_SIZE = 400
+  let purged = 0
+  for (let i = 0; i < numericIds.length; i += BATCH_SIZE) {
+    const chunk = numericIds.slice(i, i + BATCH_SIZE)
+    const result = await rawClient.execute({
+      sql: `DELETE FROM ${HYBRID_SEARCH_TABLE}
+            WHERE source_type = 'diary'
+              AND source_id IN (${chunk.map(() => '?').join(', ')})`,
+      args: [...chunk]
+    })
+    purged += Number((result as { rowsAffected?: number }).rowsAffected ?? 0)
+  }
+  return purged
 }
 
 /** 一次性清理所有旧格式日记向量 */
@@ -77,9 +82,9 @@ export async function countDiaryEmbeddingsForVault(
   const result = await rawClient.execute({
     sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}
           WHERE source_type = 'diary'
-            AND (group_id = ? OR group_id LIKE 'diary:%')
+            AND (group_id = ? OR group_id LIKE 'diary:%' OR group_id IN (${legacyGroupPlaceholders()}))
             AND vault_id = ?`,
-    args: [DIARY_EMBED_GROUP_ID, vaultId]
+    args: [DIARY_EMBED_GROUP_ID, ...LEGACY_DIARY_EMBED_GROUP_IDS, vaultId]
   })
   const row = result.rows?.[0] as Record<string, number> | undefined
   return Number(row?.count ?? 0)
