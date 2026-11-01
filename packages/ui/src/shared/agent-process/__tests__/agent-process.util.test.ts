@@ -376,4 +376,73 @@ describe('coalesceTimelineItemsForDisplay', () => {
       expect(coalesced[2]!.text).toBe('好，那就先让它空着。')
     }
   })
+
+  it('should keep all intermediate commentary inside process while streaming subsequent tools and reasoning', () => {
+    const items: AssistantDisplayTimelineItem[] = [
+      { kind: 'reasoning', key: 'r1', text: '先查第一轮图谱' },
+      {
+        kind: 'tools',
+        key: 't1',
+        invocations: [],
+        completedTools: [{ name: 'recall_relations', durationMs: 28 }]
+      },
+      {
+        kind: 'text',
+        key: 'txt1',
+        text: '关系图里确实有东西，并不是空的。我把实体和关系都逐一查过，再做汇总。'
+      },
+      {
+        kind: 'tools',
+        key: 't2',
+        invocations: [],
+        completedTools: [{ name: 'recall_relations', durationMs: 53 }]
+      },
+      {
+        kind: 'text',
+        key: 'txt2',
+        text: '关系图比预想的大很多。「白守用户」这个中心节点自己就挂着 36 条边，单次查询最多只返回 20 条；我再补查两轮，把剩下的边也查出来。'
+      },
+      {
+        kind: 'tools',
+        key: 't3',
+        invocations: [],
+        completedTools: [{ name: 'recall_relations', durationMs: 75 }]
+      },
+      {
+        kind: 'reasoning',
+        key: 'r2',
+        text: '正在整理完整节点与边的汇报结构…'
+      }
+    ]
+
+    const streamingCoalesced = coalesceTimelineItemsForDisplay(items, { isStreaming: true })
+    expect(streamingCoalesced).toHaveLength(1)
+    expect(streamingCoalesced[0]!.kind).toBe('process')
+    if (streamingCoalesced[0]!.kind === 'process') {
+      expect(streamingCoalesced[0]!.hasSubsequentText).toBe(false)
+      expect(streamingCoalesced[0]!.textItems).toHaveLength(2)
+      expect(streamingCoalesced[0]!.steps.map((s) => s.key)).toEqual([
+        'r1',
+        't1',
+        'txt1',
+        't2',
+        'txt2',
+        't3',
+        'r2'
+      ])
+    }
+
+    const settledCoalesced = coalesceTimelineItemsForDisplay(items, { isStreaming: false })
+    expect(settledCoalesced).toHaveLength(2)
+    expect(settledCoalesced[0]!.kind).toBe('process')
+    if (settledCoalesced[0]!.kind === 'process') {
+      expect(settledCoalesced[0]!.hasSubsequentText).toBe(true)
+      expect(settledCoalesced[0]!.textItems).toHaveLength(1)
+      expect(settledCoalesced[0]!.textItems[0]!.key).toBe('txt1')
+    }
+    expect(settledCoalesced[1]!.kind).toBe('text')
+    if (settledCoalesced[1]!.kind === 'text') {
+      expect(settledCoalesced[1]!.key).toBe('txt2')
+    }
+  })
 })

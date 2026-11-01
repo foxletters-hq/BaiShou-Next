@@ -21,13 +21,13 @@ describe('Native AssistantDisplayTimeline chrome', () => {
 
   it('should only keep the last non-gate segment in the streaming state', () => {
     expect(src).toContain('restIsOnlyGates')
-    expect(src).toContain('isMarkdownStreaming={isThinkStreaming && streamingHere}')
+    expect(src).toContain('isMarkdownStreaming={isThinkStreaming && stepStreamingHere}')
   })
 
   it('should spin the think header only while reasoning is still being generated', () => {
     expect(src).toContain('isThinkLoading')
-    expect(src).toContain('isLoading={isThinkLoading && streamingHere}')
-    expect(src).not.toContain('isLoading={isStreaming && streamingHere}')
+    expect(src).toContain('isLoading={isThinkLoading && stepStreamingHere}')
+    expect(src).not.toContain('isLoading={isStreaming && stepStreamingHere}')
   })
 
   it('should keep tool rows collapsed while they are running', () => {
