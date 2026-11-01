@@ -30,7 +30,6 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
     status,
     currentVersion,
     updateInfo,
-    downloadProgress,
     error,
     autoCheck,
     checkForUpdates,
@@ -81,9 +80,7 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
           version: updateInfo?.version
         })
       case UpdateStatus.DOWNLOADING:
-        return t('updater.downloading', 'Downloading {{progress}}%', {
-          progress: Math.round(downloadProgress)
-        })
+        return t('updater.downloading_simple', '正在跳转下载…')
       case UpdateStatus.DOWNLOADED:
         return t('updater.downloaded', 'Ready to install')
       case UpdateStatus.NOT_AVAILABLE:
@@ -132,16 +129,12 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
   if (embedded) {
     return (
       <div className={`version-manager ${embedded ? 'version-manager-embedded' : ''}`}>
-        <div className="about-flat-label">{t('updater.section_title', '应用更新')}</div>
-        {renderPrimaryAction()}
-        {status === UpdateStatus.DOWNLOADING ? (
-          <div className="version-progress-wrap version-progress-wrap-embedded">
-            <div className="version-progress-track">
-              <div className="version-progress-fill" style={{ width: `${downloadProgress}%` }} />
-            </div>
-            <span className="version-progress-label">{Math.round(downloadProgress)}%</span>
-          </div>
-        ) : null}
+        <div className="version-manager-embedded-row">
+          <span className="version-manager-embedded-title">
+            {t('updater.section_title', '应用更新')}
+          </span>
+          {renderPrimaryAction()}
+        </div>
       </div>
     )
   }
@@ -187,15 +180,6 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
           </div>
           {renderPrimaryAction()}
         </div>
-
-        {status === UpdateStatus.DOWNLOADING && (
-          <div className="version-progress-wrap">
-            <div className="version-progress-track">
-              <div className="version-progress-fill" style={{ width: `${downloadProgress}%` }} />
-            </div>
-            <span className="version-progress-label">{Math.round(downloadProgress)}%</span>
-          </div>
-        )}
 
         <div className="version-panel-divider" />
 

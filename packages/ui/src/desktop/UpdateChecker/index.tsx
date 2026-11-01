@@ -17,7 +17,6 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
     status,
     currentVersion,
     updateInfo,
-    downloadProgress,
     error,
     autoCheck,
     checkForUpdates,
@@ -84,9 +83,7 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
           version: updateInfo?.version
         })
       case UpdateStatus.DOWNLOADING:
-        return t('updater.downloading', '下载中 {{progress}}%', {
-          progress: Math.round(downloadProgress)
-        })
+        return t('updater.downloading_simple', '正在跳转下载…')
       case UpdateStatus.DOWNLOADED:
         return t('updater.downloaded', '下载完成，准备安装')
       case UpdateStatus.NOT_AVAILABLE:
@@ -121,10 +118,10 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
         )
       case UpdateStatus.DOWNLOADING:
         return (
-          <div className="update-progress-bar">
-            <div className="update-progress-fill" style={{ width: `${downloadProgress}%` }} />
-            <span className="update-progress-text">{Math.round(downloadProgress)}%</span>
-          </div>
+          <button className="update-action-btn primary" onClick={handleDownload}>
+            <Download size={16} />
+            {t('updater.download', '下载更新')}
+          </button>
         )
       case UpdateStatus.DOWNLOADED:
         return (

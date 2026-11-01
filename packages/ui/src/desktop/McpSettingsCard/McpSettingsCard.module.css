@@ -162,7 +162,8 @@
   gap: var(--spacing-sm-plus);
   padding: var(--spacing-sm) var(--spacing-md-tight);
   border-radius: var(--radius-sm);
-  background: var(--bg-surface-normal);
+  border: 1px solid var(--border-control);
+  background: transparent;
   min-width: 0;
 }
 
@@ -197,6 +198,7 @@
   flex-shrink: 0;
 }
 
+.copyTagBtn,
 .copySseTagBtn {
   flex-shrink: 0;
   display: inline-flex;
@@ -217,12 +219,14 @@
     border-color var(--duration-swift) ease;
 }
 
+.copyTagBtn:hover,
 .copySseTagBtn:hover {
   background: var(--bg-surface-high);
   color: var(--color-primary);
   border-color: var(--border-strong);
 }
 
+.copyTagBtn:active,
 .copySseTagBtn:active {
   transform: scale(0.96);
 }

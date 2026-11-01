@@ -153,6 +153,16 @@ describe('McpToolsListPanel', () => {
     const copyButtons = screen.getAllByTitle('复制 MCP 地址')
     expect(copyButtons).toHaveLength(2)
 
+    const mcpTextNodes = screen.getAllByText('MCP')
+    expect(mcpTextNodes).toHaveLength(2)
+    const sseTextNodes = screen.getAllByText('SSE')
+    expect(sseTextNodes).toHaveLength(2)
+
+    const firstRowActionContainer = copyButtons[0]!.parentElement!
+    const firstRowButtons = Array.from(firstRowActionContainer.querySelectorAll('button'))
+    expect(firstRowButtons[0]?.textContent).toContain('SSE')
+    expect(firstRowButtons[1]?.textContent).toContain('MCP')
+
     fireEvent.click(copyButtons[1]!)
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(

@@ -9,7 +9,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      'react-native': path.resolve(__dirname, 'src/test-utils/react-native-vitest-mock.ts')
+      'react-native': path.resolve(__dirname, 'src/test-utils/react-native-vitest-mock.ts'),
+      '@baishou/store': path.resolve(__dirname, '../store/src/index.ts')
     }
   },
   test: {

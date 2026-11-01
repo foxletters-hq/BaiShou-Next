@@ -383,8 +383,9 @@
   gap: 0;
 }
 
-.about-surface-card .version-manager-embedded .about-flat-label {
-  margin-bottom: var(--spacing-md);
+.about-surface-card .about-flat-section:has(.version-manager-embedded),
+.about-surface-card:has(.version-manager-embedded) .about-flat-section-only {
+  padding-bottom: var(--spacing-md-plus);
 }
 
 .about-surface-card > .privacy-section {
