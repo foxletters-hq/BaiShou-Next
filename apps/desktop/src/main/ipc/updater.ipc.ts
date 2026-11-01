@@ -62,12 +62,4 @@ export function registerUpdaterIPC(): void {
       win.webContents.send('updater:status-change', state)
     }
   })
-
-  // 注册下载进度事件推送到渲染进程
-  service.onDownloadProgress((progress) => {
-    const windows = BrowserWindow.getAllWindows()
-    for (const win of windows) {
-      win.webContents.send('updater:download-progress', progress)
-    }
-  })
 }

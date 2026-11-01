@@ -93,14 +93,12 @@ export const useUpdaterStore = create<UpdaterState & UpdaterActions>()(
           return
         }
 
-        set({ status: UpdateStatus.DOWNLOADING, downloadProgress: 0 })
-
         try {
           await (window as any).api.updater.download()
         } catch (error: any) {
           set({
             status: UpdateStatus.ERROR,
-            error: error.message || '下载更新失败'
+            error: error.message || '打开下载直链失败'
           })
         }
       },
@@ -144,10 +142,6 @@ export const useUpdaterStore = create<UpdaterState & UpdaterActions>()(
             updateInfo: state.updateInfo || get().updateInfo,
             error: state.status === UpdateStatus.ERROR ? state.error : null
           })
-        })
-
-        updater.onDownloadProgress((progress: number) => {
-          set({ downloadProgress: progress })
         })
       }
     }),

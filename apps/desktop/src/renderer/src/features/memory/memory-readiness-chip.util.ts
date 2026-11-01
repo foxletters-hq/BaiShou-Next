@@ -38,20 +38,23 @@ export function formatVectorPendingValue(input: VectorPendingChipInput, t: Trans
   if (diaryPending > 0 || !input.parts) {
     return t('memory.readiness_vector_pending', '未整理 {{count}} 篇', { count: diaryPending })
   }
-  const otherParts = [
-    {
-      key: 'memory.pending_embed_part_memories',
-      fallback: '伙伴记忆 {{count}} 条',
-      count: nonNegative(input.parts.memories)
-    },
-    {
-      key: 'memory.pending_embed_part_graph_nodes',
-      fallback: '图谱节点向量 {{count}} 个',
-      count: nonNegative(input.parts.graphNodes)
-    }
-  ].filter((part) => part.count > 0)
-  if (otherParts.length === 0) {
+  const partsText: string[] = []
+  const memoriesCount = nonNegative(input.parts.memories)
+  if (memoriesCount > 0) {
+    partsText.push(
+      t('memory.pending_embed_part_memories', '伙伴记忆 {{count}} 条', { count: memoriesCount })
+    )
+  }
+  const graphNodesCount = nonNegative(input.parts.graphNodes)
+  if (graphNodesCount > 0) {
+    partsText.push(
+      t('memory.pending_embed_part_graph_nodes', '图谱节点向量 {{count}} 个', {
+        count: graphNodesCount
+      })
+    )
+  }
+  if (partsText.length === 0) {
     return t('memory.readiness_vector_pending', '未整理 {{count}} 篇', { count: embedPending })
   }
-  return otherParts.map((part) => t(part.key, part.fallback, { count: part.count })).join(' · ')
+  return partsText.join(' · ')
 }

@@ -23,8 +23,7 @@ type ProgressCallback = (progress: number) => void
 export class UpdaterService {
   private autoCheck = true
   private statusChangeCallbacks: StatusChangeCallback[] = []
-  private progressCallbacks: ProgressCallback[] = []
-  /** channel.json 检查到的新版安装包直链 */
+  /** channel.json 检查到的新版安装包直链或发布页直链 */
   private pendingChannelDownloadUrl: string | null = null
 
   constructor() {
@@ -34,29 +33,18 @@ export class UpdaterService {
   /** 初始化事件监听（electron-updater 备用） */
   private initEventListeners(): void {
     autoUpdater.on('update-available', (info) => {
+      const releaseUrl = this.buildReleaseUrl(info.version)
+      this.pendingChannelDownloadUrl = releaseUrl
       this.notifyStatusChange(UpdateStatus.AVAILABLE, {
         version: info.version,
         releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : '',
         releaseDate: info.releaseDate,
-        releaseUrl: this.buildReleaseUrl(info.version)
+        releaseUrl
       })
     })
 
     autoUpdater.on('update-not-available', () => {
       this.notifyStatusChange(UpdateStatus.NOT_AVAILABLE)
-    })
-
-    autoUpdater.on('download-progress', (progress) => {
-      this.notifyProgress(progress.percent)
-    })
-
-    autoUpdater.on('update-downloaded', (info) => {
-      this.notifyStatusChange(UpdateStatus.DOWNLOADED, {
-        version: info.version,
-        releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : '',
-        releaseDate: info.releaseDate,
-        releaseUrl: this.buildReleaseUrl(info.version)
-      })
     })
 
     autoUpdater.on('error', (error) => {
@@ -77,22 +65,13 @@ export class UpdaterService {
     }
   }
 
-  /** 通知下载进度 */
-  private notifyProgress(progress: number): void {
-    for (const callback of this.progressCallbacks) {
-      callback(progress)
-    }
-  }
-
   /** 注册状态变更回调 */
   onStatusChange(callback: StatusChangeCallback): void {
     this.statusChangeCallbacks.push(callback)
   }
 
-  /** 注册下载进度回调 */
-  onDownloadProgress(callback: ProgressCallback): void {
-    this.progressCallbacks.push(callback)
-  }
+  /** 注册下载进度回调（已废弃：已改为转直链下载，无需进度监听） */
+  onDownloadProgress(_callback: ProgressCallback): void {}
 
   /** 获取当前版本（营销版本，供 UI 展示） */
   getCurrentVersion(): string {
@@ -149,7 +128,7 @@ export class UpdaterService {
 
     let updateInfo: UpdateInfo | null = null
     if (hasUpdate) {
-      this.pendingChannelDownloadUrl = downloadUrl
+      this.pendingChannelDownloadUrl = downloadUrl || releaseUrl
       updateInfo = {
         version: latestVersion,
         releaseNotes: '',
@@ -189,6 +168,8 @@ export class UpdaterService {
       let updateInfo: UpdateInfo | null = null
 
       if (hasUpdate && result.updateInfo) {
+        const releaseUrl = this.buildReleaseUrl(result.updateInfo.version)
+        this.pendingChannelDownloadUrl = releaseUrl
         updateInfo = {
           version: result.updateInfo.version,
           releaseNotes:
@@ -196,7 +177,7 @@ export class UpdaterService {
               ? result.updateInfo.releaseNotes
               : '',
           releaseDate: result.updateInfo.releaseDate,
-          releaseUrl: this.buildReleaseUrl(result.updateInfo.version)
+          releaseUrl
         }
       }
 
@@ -237,22 +218,18 @@ export class UpdaterService {
     })
   }
 
-  /** 下载更新：channel 直链用浏览器打开，否则走 electron-updater */
+  /** 下载更新：用系统默认浏览器直接转到直链 */
   async downloadUpdate(): Promise<void> {
-    if (this.pendingChannelDownloadUrl) {
-      await shell.openExternal(this.pendingChannelDownloadUrl)
-      return
-    }
-
-    this.notifyStatusChange(UpdateStatus.DOWNLOADING)
+    const targetUrl =
+      this.pendingChannelDownloadUrl || this.buildReleaseUrl(this.getCurrentVersion())
 
     try {
-      await autoUpdater.downloadUpdate()
+      await shell.openExternal(targetUrl)
     } catch (error) {
       throw new UpdateCheckError(
         error instanceof Error
           ? error.message
-          : i18n.t('auto.apps.desktop.src.main.services.updater.service.L251', '下载更新失败')
+          : i18n.t('auto.apps.desktop.src.main.services.updater.service.L251', '打开下载链接失败')
       )
     }
   }

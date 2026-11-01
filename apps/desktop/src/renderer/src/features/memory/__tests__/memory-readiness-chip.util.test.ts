@@ -37,7 +37,11 @@ describe('formatVectorPendingValue', () => {
   it('counts only diaries as articles when parts are provided', () => {
     expect(
       formatVectorPendingValue(
-        { embedPending: 3, pendingGraphCount: 0, parts: parts({ diaries: 2, memories: 1, total: 3 }) },
+        {
+          embedPending: 3,
+          pendingGraphCount: 0,
+          parts: parts({ diaries: 2, memories: 1, total: 3 })
+        },
         translate
       )
     ).toBe('未整理 2 篇')
