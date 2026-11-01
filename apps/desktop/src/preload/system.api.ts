@@ -84,10 +84,8 @@ export const systemApi = {
       ipcRenderer.on('updater:status-change', handler)
       return () => ipcRenderer.off('updater:status-change', handler)
     },
-    onDownloadProgress: (callback: (progress: number) => void) => {
-      const handler = (_: any, progress: number) => callback(progress)
-      ipcRenderer.on('updater:download-progress', handler)
-      return () => ipcRenderer.off('updater:download-progress', handler)
+    onDownloadProgress: (_callback: (progress: number) => void) => {
+      return () => {}
     }
   }
 }

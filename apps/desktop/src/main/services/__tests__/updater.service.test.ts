@@ -176,16 +176,15 @@ describe('UpdaterService', () => {
       expect(mockAutoUpdater.downloadUpdate).not.toHaveBeenCalled()
     })
 
-    it('should call autoUpdater.downloadUpdate when no channel url', async () => {
-      mockAutoUpdater.downloadUpdate.mockResolvedValue(undefined)
-
+    it('opens fallback release url in browser when no channel download url', async () => {
       await updaterService.downloadUpdate()
 
-      expect(mockAutoUpdater.downloadUpdate).toHaveBeenCalled()
+      expect(shellMock.openExternal).toHaveBeenCalledWith(expect.stringContaining('releases/tag/v'))
+      expect(mockAutoUpdater.downloadUpdate).not.toHaveBeenCalled()
     })
 
-    it('should throw UpdateCheckError when download fails', async () => {
-      mockAutoUpdater.downloadUpdate.mockRejectedValue(new Error('Download failed'))
+    it('should throw UpdateCheckError when opening url fails', async () => {
+      shellMock.openExternal.mockRejectedValueOnce(new Error('Browser failed to launch'))
 
       await expect(updaterService.downloadUpdate()).rejects.toThrow(UpdateCheckError)
     })
@@ -213,8 +212,6 @@ describe('UpdaterService', () => {
     it('should register event listeners on initialization', () => {
       expect(mockAutoUpdater.on).toHaveBeenCalledWith('update-available', expect.any(Function))
       expect(mockAutoUpdater.on).toHaveBeenCalledWith('update-not-available', expect.any(Function))
-      expect(mockAutoUpdater.on).toHaveBeenCalledWith('download-progress', expect.any(Function))
-      expect(mockAutoUpdater.on).toHaveBeenCalledWith('update-downloaded', expect.any(Function))
       expect(mockAutoUpdater.on).toHaveBeenCalledWith('error', expect.any(Function))
     })
 
@@ -239,21 +236,6 @@ describe('UpdaterService', () => {
             version: '2.0.0'
           })
         })
-      }
-    })
-
-    it('should emit download progress events', () => {
-      const progressHandler = vi.fn()
-      updaterService.onDownloadProgress(progressHandler)
-
-      const downloadProgressCallback = mockAutoUpdater.on.mock.calls.find(
-        (call: any[]) => call[0] === 'download-progress'
-      )?.[1]
-
-      if (downloadProgressCallback) {
-        downloadProgressCallback({ percent: 50 })
-
-        expect(progressHandler).toHaveBeenCalledWith(50)
       }
     })
   })
