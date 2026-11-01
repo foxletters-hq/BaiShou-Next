@@ -11,6 +11,21 @@
   gap: 0;
 }
 
+.version-manager-embedded-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+.version-manager-embedded-title {
+  font-size: var(--settings-font-row-size);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
 .version-panel {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);

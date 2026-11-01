@@ -187,13 +187,7 @@ describe('coalesceTimelineItemsForDisplay', () => {
     ]
 
     const coalesced = coalesceTimelineItemsForDisplay(items)
-    expect(coalesced.map((c) => c.key)).toEqual([
-      'proc-r1',
-      'txt1',
-      'proc-t2',
-      'txt2',
-      'proc-t3'
-    ])
+    expect(coalesced.map((c) => c.key)).toEqual(['proc-r1', 'txt1', 'proc-t2', 'txt2', 'proc-t3'])
 
     const last = coalesced[4]!
     expect(last.kind).toBe('process')

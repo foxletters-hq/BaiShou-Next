@@ -195,7 +195,10 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
                   return (
                     <View
                       key={w.id}
-                      style={[styles.workspaceItem, { backgroundColor: colors.bgApp }]}
+                      style={[
+                        styles.workspaceItem,
+                        { borderColor: colors.borderControl, borderWidth: 1 }
+                      ]}
                     >
                       <View style={styles.workspaceItemHeader}>
                         <View style={styles.workspaceTitleGroup}>
@@ -207,36 +210,6 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
                           </Text>
                         </View>
                         <View style={styles.workspaceActions}>
-                          <Pressable
-                            onPress={() => onCopyEndpoint(itemMcpUrl)}
-                            accessibilityLabel={t(
-                              'settings.mcp_copy_workspace_url',
-                              '复制 {{name}} 的 MCP 地址',
-                              { name: w.name }
-                            )}
-                            style={({ pressed }) => [
-                              styles.workspaceActionBtn,
-                              {
-                                backgroundColor: colors.primary,
-                                borderColor: colors.primary,
-                                opacity: pressed ? 0.8 : 1
-                              }
-                            ]}
-                          >
-                            <Copy
-                              size={14}
-                              color={colors.textOnPrimary}
-                              strokeWidth={DEFAULT_STROKE_WIDTH}
-                            />
-                            <Text
-                              style={[
-                                styles.workspaceActionBtnText,
-                                { color: colors.textOnPrimary }
-                              ]}
-                            >
-                              MCP
-                            </Text>
-                          </Pressable>
                           {itemSseUrl && onCopySseEndpoint ? (
                             <Pressable
                               onPress={() => onCopySseEndpoint(itemSseUrl)}
@@ -269,6 +242,36 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
                               </Text>
                             </Pressable>
                           ) : null}
+                          <Pressable
+                            onPress={() => onCopyEndpoint(itemMcpUrl)}
+                            accessibilityLabel={t(
+                              'settings.mcp_copy_workspace_url',
+                              '复制 {{name}} 的 MCP 地址',
+                              { name: w.name }
+                            )}
+                            style={({ pressed }) => [
+                              styles.workspaceActionBtn,
+                              {
+                                backgroundColor: colors.primary,
+                                borderColor: colors.primary,
+                                opacity: pressed ? 0.8 : 1
+                              }
+                            ]}
+                          >
+                            <Copy
+                              size={14}
+                              color={colors.textOnPrimary}
+                              strokeWidth={DEFAULT_STROKE_WIDTH}
+                            />
+                            <Text
+                              style={[
+                                styles.workspaceActionBtnText,
+                                { color: colors.textOnPrimary }
+                              ]}
+                            >
+                              MCP
+                            </Text>
+                          </Pressable>
                         </View>
                       </View>
                       <Text

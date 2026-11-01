@@ -233,7 +233,24 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
                   <div className={styles.workspaceItemActions}>
                     <button
                       type="button"
-                      className={styles.copyBtn}
+                      className={styles.copyTagBtn}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void copyText(itemSseUrl)
+                      }}
+                      aria-label={t(
+                        'settings.mcp_copy_workspace_sse_url',
+                        '复制 {{name}} 的 SSE 地址',
+                        { name: w.name }
+                      )}
+                      title={itemSseUrl}
+                    >
+                      <span>SSE</span>
+                      <Copy size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.copyTagBtn}
                       onClick={(e) => {
                         e.stopPropagation()
                         void copyText(itemMcpUrl)
@@ -247,23 +264,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
                       )}
                       title={t('settings.mcp_copy_url', '复制 MCP 地址')}
                     >
-                      <Copy size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.copySseTagBtn}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        void copyText(itemSseUrl)
-                      }}
-                      aria-label={t(
-                        'settings.mcp_copy_workspace_sse_url',
-                        '复制 {{name}} 的 SSE 地址',
-                        { name: w.name }
-                      )}
-                      title={itemSseUrl}
-                    >
-                      <span>SSE</span>
+                      <span>MCP</span>
                       <Copy size={13} />
                     </button>
                   </div>
