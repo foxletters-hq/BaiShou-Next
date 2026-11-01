@@ -51,7 +51,11 @@ function AssistantDisplayTimelineInner(props: {
     onImagePress
   } = props
   const { tokens } = useNativeTheme()
-  const coalescedItems = useMemo(() => coalesceTimelineItemsForDisplay(items), [items])
+  const activeStreaming = Boolean(isStreaming && !error)
+  const coalescedItems = useMemo(
+    () => coalesceTimelineItemsForDisplay(items, { isStreaming: activeStreaming }),
+    [activeStreaming, items]
+  )
 
   const citedByKey = useMemo(() => {
     const entries = items.flatMap((item) => {
@@ -97,13 +101,13 @@ function AssistantDisplayTimelineInner(props: {
               toolsItems={coalesced.toolsItems}
               isReasoningLoading={isThinkLoading && processStreaming}
               isReasoningStreaming={isThinkStreaming && processStreaming}
-              isStreaming={Boolean(isStreaming && !error)}
+              isStreaming={activeStreaming}
               hasAnswerText={coalesced.hasSubsequentText}
               hasPrecedingText={coalesced.hasPrecedingText}
             >
               {coalesced.steps.map((item, stepIdx) => {
                 const isLastStep = stepIdx === coalesced.steps.length - 1
-                const stepStreamingHere = processStreaming && isLastStep && streamingHere
+                const stepStreamingHere = processStreaming && isLastStep
 
                 if (item.kind === 'reasoning') {
                   const content =
@@ -114,8 +118,8 @@ function AssistantDisplayTimelineInner(props: {
                     <AgentThinkSection
                       key={item.key}
                       content={content}
-                      isLoading={isThinkLoading && streamingHere}
-                      isMarkdownStreaming={isThinkStreaming && streamingHere}
+                      isLoading={isThinkLoading && stepStreamingHere}
+                      isMarkdownStreaming={isThinkStreaming && stepStreamingHere}
                     />
                   )
                 }

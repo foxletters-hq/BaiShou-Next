@@ -41,7 +41,11 @@ function AssistantDisplayTimelineInner(props: {
     citationAnchorKey = 'turn',
     appendCitationMarkers = false
   } = props
-  const coalescedItems = useMemo(() => coalesceTimelineItemsForDisplay(items), [items])
+  const activeStreaming = Boolean(isStreaming && !error)
+  const coalescedItems = useMemo(
+    () => coalesceTimelineItemsForDisplay(items, { isStreaming: activeStreaming }),
+    [activeStreaming, items]
+  )
 
   const citedByKey = useMemo(() => {
     const entries = items.flatMap((item) => {
@@ -85,13 +89,13 @@ function AssistantDisplayTimelineInner(props: {
               toolsItems={coalesced.toolsItems}
               isReasoningLoading={processStreaming}
               isReasoningStreaming={processStreaming}
-              isStreaming={Boolean(isStreaming && !error)}
+              isStreaming={activeStreaming}
               hasAnswerText={coalesced.hasSubsequentText}
               hasPrecedingText={coalesced.hasPrecedingText}
             >
               {coalesced.steps.map((item, stepIdx) => {
                 const isLastStep = stepIdx === coalesced.steps.length - 1
-                const stepStreamingHere = processStreaming && isLastStep && streamingHere
+                const stepStreamingHere = processStreaming && isLastStep
 
                 if (item.kind === 'reasoning') {
                   const content =

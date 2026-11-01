@@ -347,38 +347,62 @@ function isSubstantialReplyText(text: string): boolean {
   )
 }
 
+export interface CoalesceTimelineOptions {
+  /** 当前消息是否仍处于流式生成中；流式期间工具前的过渡短语保持在工作过程内，不提前兜底为最终正文 */
+  isStreaming?: boolean
+}
+
+function isAskOnlyTimelineWorkItem(item: AssistantDisplayTimelineItem): boolean {
+  if (item.kind === 'gate') {
+    return item.data?.request?.action?.trim() === 'companion_ask'
+  }
+  if (item.kind === 'tools') {
+    const names = [
+      ...(item.invocations?.map((tool) => tool.toolName) ?? []),
+      ...(item.completedTools?.map((tool) => tool.name) ?? []),
+      ...(item.activeToolName ? [item.activeToolName] : [])
+    ]
+    return names.length > 0 && names.every((name) => name === 'companion_ask')
+  }
+  return false
+}
+
+function hasNonAskToolAfter(
+  items: readonly AssistantDisplayTimelineItem[],
+  fromIndex: number
+): boolean {
+  for (let i = fromIndex + 1; i < items.length; i++) {
+    const item = items[i]!
+    if ((item.kind === 'tools' || item.kind === 'gate') && !isAskOnlyTimelineWorkItem(item)) {
+      return true
+    }
+  }
+  return false
+}
+
 /**
  * 将整个回合的工作过程（所有思考、工具调用、权限确认记录，以及工具结束前的中间过渡短语）
  * 统一收拢为顶部的单个 process 项，保留主汇报与工具后正文作为最终内容，实现「工作过程 + 最终内容」两段式展示。
  */
 export function coalesceTimelineItemsForDisplay(
-  items: readonly AssistantDisplayTimelineItem[]
+  items: readonly AssistantDisplayTimelineItem[],
+  options?: CoalesceTimelineOptions
 ): CoalescedTimelineItem[] {
   if (items.length === 0) return []
 
-  // 找到最后一个含可见正文的 text 索引，以及在此之前的最后一个工具调用（tools / gate）索引。
-  // 1. 仅当工具调用之后确实产出了新的可见正文时，工具调用之前的短过渡语才归入工作过程；
-  // 2. 工具全部执行完毕之后的续轮思考（如末尾调用 emoji_send 触发的思考）不再把已产出的正文吞入工作过程；
-  // 3. 若工具之前的某段文字本身已经是多行/结构化的实质性汇报（例如在 companion_ask 提问前先给出了完整报告），
-  //    也保留在 finalTextItems 中与后续回答一并展示给用户。
-  let lastVisibleTextIndex = -1
+  const settled = !options?.isStreaming
+
+  // 扫描完整时间线，定位最后一个工具调用（tools / gate）索引：
+  // 1. 任何位于最后一个工具调用之前的短过渡语（i < lastToolIndex），默认归入工作过程；
+  // 2. 若工具之前的某段文字本身已经是多行/结构化的实质性汇报，且其后仅有 companion_ask 提问工具，
+  //    则保留在 finalTextItems 中与后续收尾一并展示；
+  // 3. 仅当回合已结束（settled）且没有任何工具后正文时，才把最后一段可见文字从工作过程中兜底提出来作为最终正文，
+  //    避免流式期间后续工具与深度思考仍在执行时提前把中间过渡语当成最终回答并错误收起工作过程栏。
+  let lastToolIndex = -1
   for (let i = 0; i < items.length; i++) {
     const item = items[i]!
-    if (item.kind === 'text') {
-      const parsed = parseRedactedThinking(item.text)
-      const visibleText = parsed.cleanContent || (!parsed.cleanReasoning ? item.text : '')
-      if (visibleText.trim()) {
-        lastVisibleTextIndex = i
-      }
-    }
-  }
-
-  let lastToolBeforeVisibleTextIndex = -1
-  const workSearchBound = lastVisibleTextIndex >= 0 ? lastVisibleTextIndex : items.length
-  for (let i = 0; i < workSearchBound; i++) {
-    const item = items[i]!
     if (item.kind === 'tools' || item.kind === 'gate') {
-      lastToolBeforeVisibleTextIndex = i
+      lastToolIndex = i
     }
   }
 
@@ -443,13 +467,25 @@ export function coalesceTimelineItemsForDisplay(
       text: visibleText
     }
 
-    if (i < lastToolBeforeVisibleTextIndex && !isSubstantialReplyText(visibleText)) {
+    const isPreAskSubstantialReport =
+      isSubstantialReplyText(visibleText) && !hasNonAskToolAfter(items, i)
+
+    if (i < lastToolIndex && !isPreAskSubstantialReport) {
       ensureKeyPrefix(item.key)
       steps.push(cleanTextItem)
       textItems.push(cleanTextItem)
     } else {
       finalTextItems.push(cleanTextItem)
     }
+  }
+
+  if (settled && finalTextItems.length === 0 && textItems.length > 0) {
+    const rescuedText = textItems.pop()!
+    const stepIndex = steps.lastIndexOf(rescuedText)
+    if (stepIndex >= 0) {
+      steps.splice(stepIndex, 1)
+    }
+    finalTextItems.push(rescuedText)
   }
 
   const result: CoalescedTimelineItem[] = []
