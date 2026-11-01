@@ -158,18 +158,18 @@ export function parseJournalMarkdown(raw: string, fallbackDate: string): ParsedJ
     }
   }
 
-  const now = new Date()
+  const fallbackDateTime = /^\d{4}-\d{2}-\d{2}$/.test(parsedDate)
+    ? parseDateStr(parsedDate)
+    : new Date()
+  const createdAt = safeParseDateTime(meta['created_at'] || meta['createdAt'], fallbackDateTime)
   return {
     id: meta['id'] ? Number(meta['id']) : 0,
     date: parsedDate,
     content,
     tags,
     tagColors,
-    createdAt: safeParseDateTime(
-      meta['created_at'] || meta['createdAt'],
-      meta['date'] ? parseDateStr(parsedDate) : now
-    ),
-    updatedAt: safeParseDateTime(meta['updated_at'] || meta['updatedAt'], now),
+    createdAt,
+    updatedAt: safeParseDateTime(meta['updated_at'] || meta['updatedAt'], createdAt),
     weather: meta['weather'] || undefined,
     mood: resolveMoodId(meta['mood']) ?? undefined,
     location: meta['location'] || undefined,

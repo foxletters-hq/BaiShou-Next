@@ -174,9 +174,34 @@ export function countPendingMemoriesAgainstLedger(
   return pending
 }
 
+/** 从日记向量 metadata_json 或分块前缀 `[YYYY-MM-DD 日记:]` 提取日记日历日期（YYYY-MM-DD） */
+export function extractDiaryDateFromEmbedInput(input?: {
+  metadataJson?: string | null
+  chunkText?: string | null
+}): string {
+  const rawMeta = input?.metadataJson?.trim()
+  if (rawMeta) {
+    try {
+      const parsed = JSON.parse(rawMeta) as Record<string, unknown>
+      if (typeof parsed.date === 'string') {
+        const day = parsed.date.trim().split('T')[0] ?? ''
+        if (/^\d{4}-\d{2}-\d{2}$/.test(day)) return day
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  const text = input?.chunkText ?? ''
+  if (text.startsWith('[') && text.slice(11, 16) === ' 日记:]') {
+    const day = text.slice(1, 11)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) return day
+  }
+  return ''
+}
+
 /** 筛选尚未嵌入或日记内容已更新、需重新嵌入的条目 */
 export function filterUnindexedDiaries<
-  T extends { id: unknown; updatedAt?: Date; contentHash?: string }
+  T extends { id: unknown; date?: Date | string; updatedAt?: Date; contentHash?: string }
 >(
   diaries: T[],
   embeddedIds: Set<string>,
@@ -185,19 +210,34 @@ export function filterUnindexedDiaries<
     resolveSourceId?: (diary: T) => string
     embeddedContentHashMap?: Map<string, string>
     resolveContentHash?: (diary: T) => string | undefined
+    /** 按 YYYY-MM-DD 日期兜底匹配（跨端或重建影子索引后 journals_index.id 漂移时识别已嵌入日记） */
+    embeddedDateMap?: Map<string, { contentHash?: string; updatedAt?: number }>
   }
 ): T[] {
   const resolveSourceId = options?.resolveSourceId ?? ((d) => String(d.id))
   const embeddedContentHashMap = options?.embeddedContentHashMap
   const resolveContentHash = options?.resolveContentHash
+  const embeddedDateMap = options?.embeddedDateMap
 
   return diaries.filter((d) => {
     const sId = resolveSourceId(d)
-    if (!embeddedIds.has(sId)) {
+    const hasById = embeddedIds.has(sId)
+    let fallbackDateEntry: { contentHash?: string; updatedAt?: number } | undefined
+    if (embeddedDateMap && d.date != null) {
+      const parsedDate = coerceDiaryCalendarDate(d.date)
+      const dateKey = parsedDate ? formatLocalDate(parsedDate) : ''
+      if (dateKey) {
+        fallbackDateEntry = embeddedDateMap.get(dateKey)
+      }
+    }
+    if (!hasById && !fallbackDateEntry) {
       return true
     }
 
-    const ledgerHash = embeddedContentHashMap?.get(sId)?.trim() ?? ''
+    const ledgerHash =
+      (hasById ? embeddedContentHashMap?.get(sId)?.trim() : undefined) ||
+      fallbackDateEntry?.contentHash?.trim() ||
+      ''
     if (ledgerHash) {
       const diaryHash = (resolveContentHash?.(d) ?? d.contentHash ?? '').trim()
       // 长度不同说明账本还是旧摘要算法，不能当成正文已改；改回按 updated_at 判断。
@@ -206,7 +246,8 @@ export function filterUnindexedDiaries<
       }
     }
 
-    const existingUpdatedAt = embeddedUpdatedAtMap.get(sId)
+    const existingUpdatedAt =
+      (hasById ? embeddedUpdatedAtMap.get(sId) : undefined) ?? fallbackDateEntry?.updatedAt
     if (existingUpdatedAt === undefined) {
       return true
     }

@@ -1,4 +1,10 @@
-import { embeddingVectorToBytes, logger, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
+import {
+  embeddingVectorToBytes,
+  extractDiaryDateFromEmbedInput,
+  logger,
+  MEMORY_EMBED_GROUP_ID,
+  parseDiaryEmbeddingSourceId
+} from '@baishou/shared'
 import type {
   ISqlExecutor,
   EmbedLedgerFailureParams,
@@ -139,16 +145,46 @@ export class HybridSearchEmbeddingStore {
     if (!vaultId) {
       throw new Error('replaceSourceEmbeddings: vaultId is required')
     }
+    const metadataJson = params.metadataJson || '{}'
     if (params.replaceExisting) {
-      await this.db.execute({
-        sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND (source_id = ? OR embedding_id = ?)`,
-        args: [params.sourceType, params.sourceId, params.sourceId]
-      })
+      if (params.sourceType === 'diary') {
+        const parsedSource = parseDiaryEmbeddingSourceId(params.sourceId)
+        const bareId = parsedSource?.diaryId?.trim() || ''
+        const diaryDate = extractDiaryDateFromEmbedInput({
+          metadataJson,
+          chunkText: params.chunks[0]?.chunkText
+        })
+        const conditions = ['source_id = ?', 'embedding_id = ?']
+        const deleteArgs: Array<string | number> = [
+          params.sourceType,
+          vaultId,
+          params.sourceId,
+          params.sourceId
+        ]
+        if (bareId && bareId !== params.sourceId) {
+          conditions.push('source_id = ?')
+          deleteArgs.push(bareId)
+        }
+        if (diaryDate) {
+          conditions.push("json_extract(metadata_json, '$.date') = ?")
+          deleteArgs.push(diaryDate)
+          conditions.push('chunk_text LIKE ?')
+          deleteArgs.push(`[${diaryDate} 日记:]%`)
+        }
+        await this.db.execute({
+          sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND vault_id = ? AND (${conditions.join(' OR ')})`,
+          args: deleteArgs
+        })
+      } else {
+        await this.db.execute({
+          sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND (source_id = ? OR embedding_id = ?)`,
+          args: [params.sourceType, params.sourceId, params.sourceId]
+        })
+      }
     }
     const createdAtSec = Math.floor(Date.now() / 1000)
     const srcVal = params.sourceCreatedAt || Date.now()
     const sourceCreatedAtSec = srcVal > 100000000000 ? Math.floor(srcVal / 1000) : srcVal
-    const metadataJson = params.metadataJson || '{}'
 
     const BATCH_SIZE = 25
     for (let i = 0; i < params.chunks.length; i += BATCH_SIZE) {
@@ -201,6 +237,28 @@ export class HybridSearchEmbeddingStore {
         modelId: params.modelId,
         dimension: params.dimension
       })
+      if (params.replaceExisting && params.sourceType === 'diary') {
+        try {
+          await this.db.execute({
+            sql: `
+              DELETE FROM ${EMBED_LEDGER_TABLE}
+              WHERE vault_id = ?
+                AND source_type = 'diary'
+                AND source_id != ?
+                AND chunk_count > 0
+                AND NOT EXISTS (
+                  SELECT 1 FROM ${HYBRID_SEARCH_TABLE} m
+                  WHERE m.vault_id = ${EMBED_LEDGER_TABLE}.vault_id
+                    AND m.source_type = 'diary'
+                    AND m.source_id = ${EMBED_LEDGER_TABLE}.source_id
+                )
+            `,
+            args: [vaultId, params.sourceId]
+          })
+        } catch {
+          /* ignore if embed_ledger table does not exist in test mock */
+        }
+      }
     }
   }
 

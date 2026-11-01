@@ -163,7 +163,13 @@ export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
     migrationDir = path.join((process as any).resourcesPath || process.cwd(), 'database', 'drizzle')
   }
 
-  const migrationService = new MigrationService(db, client, migrationDir)
+  const storageRoot =
+    typeof client?.name === 'string' && client.name && client.name !== ':memory:'
+      ? path.dirname(client.name)
+      : undefined
+  const migrationService = new MigrationService(db, client, migrationDir, undefined, {
+    storageRoot
+  })
   await migrationService.runMigrations()
 }
 

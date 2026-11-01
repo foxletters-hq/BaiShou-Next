@@ -30,8 +30,8 @@ import {
 export type { EmbeddedMigrations, MigrationJournal } from './migration.service.types'
 
 export const AGENT_SCHEMA_COMPAT_VERSION_KEY = '__agent_schema_compat_version'
-/** v2：补跑历史会话 default→latte 绑定修复（v1 已打戳的库也需要再执行一次） */
-export const AGENT_SCHEMA_COMPAT_VERSION = 'v2'
+/** v3：补跑日记向量旧 group_id / 裸 source_id 规范化与重复向量自愈去重 */
+export const AGENT_SCHEMA_COMPAT_VERSION = 'v3'
 
 /**
  * Agent DB 迁移服务
