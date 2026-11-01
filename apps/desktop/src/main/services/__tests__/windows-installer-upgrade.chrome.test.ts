@@ -10,11 +10,10 @@ function read(rel: string): string {
 }
 
 describe('Windows installer upgrade coverage and single-instance startup', () => {
-  it('should default to per-user privileges while preserving existing install mode on upgrade', () => {
+  it('should use admin install mode so existing HKLM installs are overwritten in-place on upgrade', () => {
     const iss = read('../../../../setup.iss')
-    expect(iss).toContain('PrivilegesRequired=lowest')
-    expect(iss).toContain('PrivilegesRequiredOverridesAllowed=commandline')
-    expect(iss).toContain('UsePreviousPrivileges=yes')
+    expect(iss).toContain('PrivilegesRequired=admin')
+    expect(iss).not.toContain('PrivilegesRequired=lowest')
     expect(iss).toMatch(/\[Run\][\s\S]*Flags:[^\r\n]*\brunasoriginaluser\b/)
   })
 
