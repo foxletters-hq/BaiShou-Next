@@ -32,7 +32,7 @@
 }
 
 .pathValue {
-  font-family: 'JetBrains Mono', 'Roboto Mono', ui-monospace, monospace;
+  font-family: var(--font-family-mono);
   font-size: var(--ui-fs-sm);
   line-height: 18px;
   text-align: center;

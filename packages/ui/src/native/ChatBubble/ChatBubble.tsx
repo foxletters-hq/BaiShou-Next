@@ -126,7 +126,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     onEditingChange
   )
   const displayName = isUser
-    ? userProfile?.nickname || t('agent.chat.you_label', '你')
+    ? userProfile?.nickname?.trim() || ''
     : aiProfile?.name || t('agent.chat.ai_label', 'AI')
 
   const toolInvocations = useMemo(
@@ -225,11 +225,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   {message.timestamp ? (
                     <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
                   ) : null}
-                  <Text style={nameLabelStyle}>{displayName}</Text>
+                  {displayName ? <Text style={nameLabelStyle}>{displayName}</Text> : null}
                 </>
               ) : (
                 <>
-                  <Text style={nameLabelStyle}>{displayName}</Text>
+                  {displayName ? <Text style={nameLabelStyle}>{displayName}</Text> : null}
                   {message.timestamp ? (
                     <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
                   ) : null}

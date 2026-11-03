@@ -44,7 +44,7 @@
 
 .workspacePathText {
   font-size: var(--settings-font-meta-size);
-  font-family: 'Fira Code', 'Consolas', monospace;
+  font-family: var(--font-family-mono);
   color: var(--text-secondary);
   line-height: 1.4;
   word-break: break-all;

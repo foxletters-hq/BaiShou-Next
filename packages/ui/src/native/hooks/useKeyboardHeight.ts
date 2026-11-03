@@ -85,6 +85,7 @@ export function useKeyboardHeight(options?: UseKeyboardHeightOptions): {
       if (Platform.OS === 'android') {
         hideTimerRef.current = setTimeout(() => {
           hideTimerRef.current = null
+          if (Keyboard.isVisible?.() !== true) return
           const fromMetrics = readKeyboardHeightFromMetrics(windowHeight)
           if (fromMetrics > 0) {
             applyKeyboardHeight(setKeyboardHeight, fromMetrics)
