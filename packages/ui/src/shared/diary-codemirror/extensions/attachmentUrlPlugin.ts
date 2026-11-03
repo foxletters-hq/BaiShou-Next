@@ -47,6 +47,7 @@ function processAttachments(view: EditorView, resolveUrl: (fileName: string) => 
 
   dom.querySelectorAll('img[src^="attachment/"]').forEach((el) => {
     const img = el as HTMLImageElement
+    if (img.classList.contains('cm-image-resizable')) return
     if (img.dataset.processed) return
     const url = resolveUrl(img.getAttribute('src')!)
     img.dataset.originalSrc = img.getAttribute('src')!

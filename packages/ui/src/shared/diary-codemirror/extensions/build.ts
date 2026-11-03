@@ -3,7 +3,7 @@ import { ensureSyntaxTree } from '@codemirror/language'
 import type { DecorationSet } from '@codemirror/view'
 import { buildSafeDecorationSet, type DecorationMark } from './decorationMarks'
 import { getCursorPositions } from './cursor'
-import { scanImageRanges } from './buildImages'
+import { collectImageDecorations } from './buildImages'
 import { collectListLineDecorations } from './buildList'
 import { collectLineSyntaxDecorations } from './buildLineSyntax'
 import { collectTableDecorations } from './buildTable'
@@ -42,7 +42,12 @@ export function buildMarkerHidingDecorations(
       ? collectSkillPropertyDecorations(state, activeLines, marks)
       : new Set<number>()
   const skipLineSyntax = new Set<number>([...fencedCodeLines, ...propertyLines])
-  const imageRanges = scanImageRanges(state)
+  const imageRanges = collectImageDecorations(state, cursors, platform, marks)
+  for (const r of imageRanges) {
+    const first = state.doc.lineAt(r.from).number
+    const last = state.doc.lineAt(r.to).number
+    for (let n = first; n <= last; n += 1) skipLineSyntax.add(n)
+  }
   collectListLineDecorations(state, cursors, marks, skipLineSyntax)
   collectLineSyntaxDecorations(state, activeLines, marks, skipLineSyntax, platform)
   const tableBlocks = collectTableBlockRanges(state)
