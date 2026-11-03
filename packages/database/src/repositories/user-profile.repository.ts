@@ -1,5 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
+import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
+import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 import {
   USER_DEFAULT_AVATAR_SENTINEL,
   isCustomUserAvatar,
@@ -24,47 +26,55 @@ export class UserProfileRepository {
 
   constructor(private readonly db: any) {}
 
+  private run<T>(fn: () => Promise<T>): Promise<T> {
+    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn))
+  }
+
   /**
    * 获取用户档案聚合 JSON。
    */
   async getProfile(): Promise<UserProfile> {
-    const result = await this.db
-      .select({ value: systemSettingsTable.value })
-      .from(systemSettingsTable)
-      .where(eq(systemSettingsTable.key, KEY))
-      .limit(1)
+    return this.run(async () => {
+      const result = await this.db
+        .select({ value: systemSettingsTable.value })
+        .from(systemSettingsTable)
+        .where(eq(systemSettingsTable.key, KEY))
+        .limit(1)
 
-    if (result.length === 0) {
-      return withNormalizedAvatar(DEFAULT_PROFILE)
-    }
+      if (result.length === 0) {
+        return withNormalizedAvatar(DEFAULT_PROFILE)
+      }
 
-    try {
-      return withNormalizedAvatar(JSON.parse(result[0].value) as UserProfile)
-    } catch (e) {
-      console.error(`[UserProfileRepository] Failed to parse: ${e}`)
-      return withNormalizedAvatar(DEFAULT_PROFILE)
-    }
+      try {
+        return withNormalizedAvatar(JSON.parse(result[0].value) as UserProfile)
+      } catch (e) {
+        console.error(`[UserProfileRepository] Failed to parse: ${e}`)
+        return withNormalizedAvatar(DEFAULT_PROFILE)
+      }
+    })
   }
 
   /**
    * 保存或更新完整的档案 JSON。
    */
   async saveProfile(profile: UserProfile): Promise<void> {
-    const jsonStr = JSON.stringify(profile)
+    return this.run(async () => {
+      const jsonStr = JSON.stringify(profile)
 
-    await this.db
-      .insert(systemSettingsTable)
-      .values({
-        key: KEY,
-        value: jsonStr,
-        updatedAt: new Date()
-      })
-      .onConflictDoUpdate({
-        target: systemSettingsTable.key,
-        set: {
+      await this.db
+        .insert(systemSettingsTable)
+        .values({
+          key: KEY,
           value: jsonStr,
           updatedAt: new Date()
-        }
-      })
+        })
+        .onConflictDoUpdate({
+          target: systemSettingsTable.key,
+          set: {
+            value: jsonStr,
+            updatedAt: new Date()
+          }
+        })
+    })
   }
 }
