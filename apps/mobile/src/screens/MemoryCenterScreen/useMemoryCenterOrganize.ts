@@ -260,6 +260,15 @@ export function useMemoryCenterOrganize(input: {
       })
       return
     }
+    const currentRag = getCachedMobileRagState()
+    if (currentRag.isRunning && currentRag.type !== 'batchEmbed') {
+      logger.warn('[MemoryOrganize] start ignored: migration in progress', {
+        type: currentRag.type,
+        isRunning: currentRag.isRunning
+      })
+      toast.showInfo(t('settings.rag_migration_running_toast', '知识库正在迁移中，请稍后再试'))
+      return
+    }
     organizePressLock.current = true
     try {
       let nextModels = globalModels
@@ -411,6 +420,29 @@ export function useMemoryCenterOrganize(input: {
           await refresh()
           return
         }
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        const isConflict =
+          errorMsg.includes('migration-running') ||
+          errorMsg.includes(
+            t(
+              'auto.apps.mobile.src.services.mobile.rag.service.impl.helpers.L146',
+              '嵌入任务正在进行中'
+            )
+          )
+        if (isConflict) {
+          const liveState = getCachedMobileRagState()
+          if (!liveState.isRunning || liveState.type === 'batchEmbed') {
+            patchCachedMobileRagState({
+              isRunning: false,
+              type: 'idle',
+              statusText: '',
+              error: undefined
+            })
+          }
+          toast.showInfo(t('settings.rag_migration_running_toast', '知识库正在迁移中，请稍后再试'))
+          await refresh()
+          return
+        }
         const friendlyError = localizeAiApiErrorMessage(error, t)
         patchCachedMobileRagState({
           isRunning: false,
@@ -436,9 +468,15 @@ export function useMemoryCenterOrganize(input: {
   startOrganizeRef.current = startOrganize
   const onStartOrganize = useCallback(() => {
     const current = getCachedMobileRagState()
-    if ((current.isRunning && current.type === 'batchEmbed') || organizePressLock.current) return
+    if (current.isRunning) {
+      if (current.type === 'reembed' || current.type === 'migration') {
+        toast.showInfo(t('settings.rag_migration_running_toast', '知识库正在迁移中，请稍后再试'))
+      }
+      return
+    }
+    if (organizePressLock.current) return
     void startOrganizeRef.current()
-  }, [])
+  }, [t, toast])
   const onUnifiedOrganize = useCallback(() => {
     void startOrganizeRef.current()
   }, [])

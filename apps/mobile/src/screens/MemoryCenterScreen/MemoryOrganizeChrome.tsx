@@ -59,18 +59,22 @@ function useMemoryOrganizeUi(input: {
   }, [])
 
   const organizing = ragState.isRunning && ragState.type === 'batchEmbed'
+  const isMigrating =
+    ragState.isRunning && (ragState.type === 'reembed' || ragState.type === 'migration')
   const isInterrupted = interrupted || Boolean(ragState.paused || ragState.cancelling)
   const pendingArticleCount = memoryOrganizePendingArticleCount({
     pendingEmbedCount: input.pendingEmbedParts.total,
     pendingGraphCount: input.pendingGraphCount,
     pendingDiaryCount: input.pendingEmbedParts.diaries
   })
-  const organizeCardKind = memoryOrganizeCardKind({
-    running: organizing,
-    pendingCount: input.organizeSnapshotReady ? pendingArticleCount : 0,
-    interrupted: isInterrupted,
-    hasError: Boolean(ragState.error)
-  })
+  const organizeCardKind = isMigrating
+    ? 'hidden'
+    : memoryOrganizeCardKind({
+        running: organizing,
+        pendingCount: input.organizeSnapshotReady ? pendingArticleCount : 0,
+        interrupted: isInterrupted,
+        hasError: Boolean(ragState.error)
+      })
   const leftoverSnapshot = snapshotMemoryEmbedPhases(
     input.pendingEmbedParts,
     input.pendingGraphCount
@@ -98,7 +102,7 @@ function useMemoryOrganizeUi(input: {
     pendingGraphCount: input.pendingGraphCount,
     pendingDiaryCount: input.pendingEmbedParts.diaries
   })
-  return { leftoverRagState, organizeCardKind, organizeFab, pendingArticleCount }
+  return { leftoverRagState, organizeCardKind, organizeFab, pendingArticleCount, isMigrating }
 }
 
 export function MemoryOrganizeProgressHost(props: {
@@ -111,7 +115,7 @@ export function MemoryOrganizeProgressHost(props: {
   const dialog = useDialog()
   const { services } = useBaishou()
   const [detailOpen, setDetailOpen] = useState(false)
-  const { leftoverRagState, organizeCardKind } = useMemoryOrganizeUi(props)
+  const { leftoverRagState, organizeCardKind, isMigrating } = useMemoryOrganizeUi(props)
 
   const onViewDetails = useCallback(() => setDetailOpen(true), [])
   const onCloseDetails = useCallback(() => setDetailOpen(false), [])
@@ -152,7 +156,7 @@ export function MemoryOrganizeProgressHost(props: {
       })
   }, [dialog, services, t])
 
-  if (organizeCardKind === 'hidden') return null
+  if (isMigrating || organizeCardKind === 'hidden') return null
 
   return (
     <>
@@ -191,8 +195,8 @@ export function MemoryOnboardingHost(props: {
   organizeSnapshotReady: boolean
   children: React.ReactNode
 }) {
-  const { organizeCardKind } = useMemoryOrganizeUi(props)
-  if (organizeCardKind !== 'hidden' || !props.children) return null
+  const { organizeCardKind, isMigrating } = useMemoryOrganizeUi(props)
+  if (isMigrating || organizeCardKind !== 'hidden' || !props.children) return null
   return <>{props.children}</>
 }
 
@@ -204,8 +208,9 @@ export function MemoryOrganizeFabHost(props: {
   fabBottom: number
   onStartOrganize: () => void
 }) {
-  const { organizeCardKind, organizeFab, pendingArticleCount } = useMemoryOrganizeUi(props)
-  if (organizeCardKind === 'running') return null
+  const { organizeCardKind, organizeFab, pendingArticleCount, isMigrating } =
+    useMemoryOrganizeUi(props)
+  if (isMigrating || organizeCardKind === 'running') return null
   return (
     <MemoryOrganizeFab
       disabled={props.busy || organizeFab.kind === 'loading'}

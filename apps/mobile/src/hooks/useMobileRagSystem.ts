@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type SetStateAction } from 'react'
+import { useCallback, useState, useSyncExternalStore, type SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import type { TFunction } from 'i18next'
@@ -48,20 +48,16 @@ export function useMobileRagSystem(ragService: MobileRagService | undefined) {
   const toast = useNativeToast()
   const dialog = useDialog()
   const [hasMismatchModel, setHasMismatchModel] = useState(false)
-  const [ragState, setRagStateInner] = useState<RagState>(() => getCachedMobileRagState())
-
-  useEffect(() => {
-    return subscribeMobileRagRuntime(() => {
-      setRagStateInner(getCachedMobileRagState())
-    })
-  }, [])
+  // 直接订阅模块级运行态缓存，避免在 useState updater 里写缓存产生渲染期副作用。
+  const ragState = useSyncExternalStore(
+    subscribeMobileRagRuntime,
+    getCachedMobileRagState,
+    getCachedMobileRagState
+  )
 
   const setRagState = useCallback((update: SetStateAction<RagState>) => {
-    setRagStateInner((prev) => {
-      const next = typeof update === 'function' ? update(prev) : update
-      setCachedMobileRagState(next)
-      return next
-    })
+    const prev = getCachedMobileRagState()
+    setCachedMobileRagState(typeof update === 'function' ? update(prev) : update)
   }, [])
 
   const checkModelMismatch = useCallback(async () => {
@@ -88,11 +84,23 @@ export function useMobileRagSystem(ragService: MobileRagService | undefined) {
   const handleReembedAfterModelChange = useCallback(async (): Promise<boolean> => {
     if (!ragService) return false
 
+    const currentState = getCachedMobileRagState()
+    if (currentState.isRunning && currentState.type === 'batchEmbed') {
+      toast.showWarning(t('settings.rag_indexing_in_progress', '正在整理记忆，请稍后再试'))
+      return false
+    }
+
     const confirmed = await dialog.confirm(
       `${t('settings.rag_model_mismatch_desc')}\n\n${t('settings.rag_trigger_migration')}?`,
       { confirmText: t('settings.rag_trigger_migration') }
     )
     if (!confirmed) return false
+
+    const beforeStart = getCachedMobileRagState()
+    if (beforeStart.isRunning && beforeStart.type === 'batchEmbed') {
+      toast.showWarning(t('settings.rag_indexing_in_progress', '正在整理记忆，请稍后再试'))
+      return false
+    }
 
     setRagState({ ...idleRagState(), isRunning: true, type: 'reembed', statusText: '' })
     try {
