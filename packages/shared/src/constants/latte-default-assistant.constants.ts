@@ -4,6 +4,7 @@ import {
   DEFAULT_ASSISTANT_CONTEXT_WINDOW
 } from './assistant-memory-defaults.constants'
 import {
+  DEFAULT_LATTE_ASSISTANT_DESCRIPTIONS,
   getDefaultLatteAssistantDescription,
   getDefaultLatteAssistantSystemPrompt
 } from './latte-assistant-prompt.defaults'
@@ -96,6 +97,23 @@ export function getSystemLatteAssistantSeed(locale?: string): SystemLatteAssista
 
 export function isSystemLatteAssistantId(id: string | null | undefined): boolean {
   return id === SYSTEM_LATTE_ASSISTANT_ID
+}
+
+/** 判断名称是否仍为出厂默认（Latte 或历史默认伙伴名），未被用户改名 */
+export function isFactoryLatteAssistantName(name: string | null | undefined): boolean {
+  const trimmed = name?.trim()
+  if (!trimmed) return true
+  if (trimmed.toLowerCase() === LATTE_ASSISTANT_NAME.toLowerCase()) return true
+  return (LEGACY_DEFAULT_ASSISTANT_NAMES as readonly string[]).includes(trimmed)
+}
+
+/** 判断描述是否仍为出厂默认（空或四语言默认描述） */
+export function isFactoryLatteAssistantDescription(
+  description: string | null | undefined
+): boolean {
+  const trimmed = description?.trim()
+  if (!trimmed) return true
+  return Object.values(DEFAULT_LATTE_ASSISTANT_DESCRIPTIONS).some((desc) => desc === trimmed)
 }
 
 /** Core / IPC：禁止删除系统 Latte 时的稳定错误码 */

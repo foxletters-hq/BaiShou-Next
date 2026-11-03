@@ -5,7 +5,10 @@ import {
   getSystemLatteAssistantSeed
 } from '@baishou/shared'
 import { ensureSystemLatteAssistant } from '../ensure-system-latte-assistant'
-import { ensureDefaultLatteAssistant } from '../ensure-default-latte-assistant'
+import {
+  ensureDefaultLatteAssistant,
+  syncDefaultLatteAssistantLocale
+} from '../ensure-default-latte-assistant'
 import type { AssistantManagerService } from '../assistant-manager.service'
 
 describe('ensureSystemLatteAssistant', () => {
@@ -88,10 +91,10 @@ describe('ensureSystemLatteAssistant', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
-  it('replaces a legacy factory prompt with the current default during merge', async () => {
+  it('replaces a legacy factory prompt with the current default during merge when name is factory', async () => {
     const legacy = {
       id: DEFAULT_LATTE_ASSISTANT_ID,
-      name: 'My Latte',
+      name: '默认伙伴',
       systemPrompt: getSystemLatteAssistantSeed('en').systemPrompt,
       customSystemPrompt: 'my custom',
       isDefault: true
@@ -107,10 +110,53 @@ describe('ensureSystemLatteAssistant', () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         id: SYSTEM_LATTE_ASSISTANT_ID,
+        name: 'Latte',
         systemPrompt: getSystemLatteAssistantSeed('zh').systemPrompt,
         customSystemPrompt: 'my custom'
       })
     )
+  })
+
+  it('preserves user-renamed assistant name (e.g. 酒狐) and generic legacy prompt during merge without injecting Latte persona', async () => {
+    const legacy = {
+      id: DEFAULT_LATTE_ASSISTANT_ID,
+      name: '酒狐',
+      description: '',
+      systemPrompt: '你是一个友善且有创意的AI助手。',
+      customSystemPrompt: '',
+      isDefault: true
+    }
+    findById.mockImplementation(async (id: string) => {
+      if (id === SYSTEM_LATTE_ASSISTANT_ID) return null
+      if (id === DEFAULT_LATTE_ASSISTANT_ID) return legacy
+      return null
+    })
+
+    await ensureSystemLatteAssistant(manager, 'zh')
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: SYSTEM_LATTE_ASSISTANT_ID,
+        name: '酒狐',
+        description: '',
+        systemPrompt: '你是一个友善且有创意的AI助手。'
+      })
+    )
+  })
+
+  it('does not overwrite a user-renamed assistant (e.g. 酒狐) back to Latte on locale sync', async () => {
+    const renamed = {
+      id: SYSTEM_LATTE_ASSISTANT_ID,
+      name: '酒狐',
+      description: '我的专属狐狸伙伴',
+      systemPrompt: getSystemLatteAssistantSeed('zh').systemPrompt,
+      isDefault: true
+    }
+    findById.mockResolvedValue(renamed)
+
+    await syncDefaultLatteAssistantLocale(manager, 'en')
+
+    expect(update).not.toHaveBeenCalled()
   })
 
   it('upgrades a factory default persona but preserves custom prompts', async () => {

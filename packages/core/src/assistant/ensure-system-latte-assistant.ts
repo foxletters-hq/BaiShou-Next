@@ -2,10 +2,26 @@ import {
   DEFAULT_LATTE_ASSISTANT_ID,
   SYSTEM_LATTE_ASSISTANT_ID,
   getSystemLatteAssistantSeed,
+  isFactoryLatteAssistantName,
   isFactoryLatteAssistantSystemPrompt,
   logger
 } from '@baishou/shared'
 import type { AssistantManagerService } from './assistant-manager.service'
+
+function shouldUpgradeToFactoryLattePrompt(input: {
+  name?: string | null
+  systemPrompt?: string | null
+}): boolean {
+  const prompt = input.systemPrompt?.trim() ?? ''
+  if (!isFactoryLatteAssistantSystemPrompt(prompt)) {
+    return false
+  }
+  // 用户已改名（如「酒狐」）：视为用户自定义伙伴，不再用出厂模板覆盖其提示词
+  if (!isFactoryLatteAssistantName(input.name)) {
+    return false
+  }
+  return true
+}
 
 export type EnsureSystemLatteResult = {
   created: boolean
@@ -55,7 +71,7 @@ export async function ensureSystemLatteAssistant(
   const existing = await assistantManager.findById(SYSTEM_LATTE_ASSISTANT_ID, vaultId)
   if (existing) {
     // 用户自定义人设不动；只升级还能识别为出厂默认的旧人设（例如旧版含应用名的文案）
-    if (isFactoryLatteAssistantSystemPrompt(existing.systemPrompt)) {
+    if (shouldUpgradeToFactoryLattePrompt(existing)) {
       const seed = getSystemLatteAssistantSeed(locale)
       if ((existing.systemPrompt ?? '') !== seed.systemPrompt) {
         await assistantManager.update(SYSTEM_LATTE_ASSISTANT_ID, {
@@ -83,11 +99,12 @@ export async function ensureSystemLatteAssistant(
   const legacyDefault = await assistantManager.findById(DEFAULT_LATTE_ASSISTANT_ID, vaultId)
   if (legacyDefault) {
     const seed = getSystemLatteAssistantSeed(locale)
-    const legacyPromptIsFactory = isFactoryLatteAssistantSystemPrompt(legacyDefault.systemPrompt)
+    const legacyNameIsFactory = isFactoryLatteAssistantName(legacyDefault.name)
+    const legacyPromptIsFactory = shouldUpgradeToFactoryLattePrompt(legacyDefault)
     await assistantManager.create({
       id: SYSTEM_LATTE_ASSISTANT_ID,
-      name: legacyDefault.name || seed.name,
-      description: legacyDefault.description || seed.description,
+      name: legacyNameIsFactory ? seed.name : legacyDefault.name || seed.name,
+      description: legacyDefault.description || (legacyNameIsFactory ? seed.description : ''),
       avatarPath: legacyDefault.avatarPath || seed.avatarPath,
       systemPrompt: legacyPromptIsFactory
         ? seed.systemPrompt

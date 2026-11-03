@@ -3,6 +3,7 @@ import {
   getSystemLatteAssistantSeed,
   isAssistantCustomAvatar,
   isFactoryLatteAssistantSystemPrompt,
+  isFactoryLatteAssistantName,
   LEGACY_DEFAULT_ASSISTANT_NAMES,
   normalizePersistedAvatarPath
 } from '@baishou/shared'
@@ -22,6 +23,10 @@ function shouldTreatAsFactoryLatteAssistant(input: {
   name: string
   systemPrompt?: string | null
 }): boolean {
+  // 用户已改名（如「酒狐」）：不要在多语言同步时把名字/描述/头像改回 Latte
+  if (!isFactoryLatteAssistantName(input.name)) {
+    return false
+  }
   return (
     isLegacyDefaultAssistantName(input.name) ||
     isFactoryLatteAssistantSystemPrompt(input.systemPrompt)
