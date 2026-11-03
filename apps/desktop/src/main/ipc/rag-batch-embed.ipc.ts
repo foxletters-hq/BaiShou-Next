@@ -144,6 +144,14 @@ export function registerRagBatchEmbedIpc(): void {
     if (isBatchEmbedSessionActive()) {
       return { ok: false, alreadyRunning: true }
     }
+    try {
+      const { getEmbeddingService } = await import('./rag.ipc')
+      if (getEmbeddingService().isMigrationRunning()) {
+        return { ok: false, alreadyRunning: true, migrating: true }
+      }
+    } catch {
+      // ignore
+    }
     beginBatchEmbedControl()
     await config.load()
     const sendProgress = sendBatchProgress

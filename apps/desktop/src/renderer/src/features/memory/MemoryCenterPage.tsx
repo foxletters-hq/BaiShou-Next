@@ -85,6 +85,11 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
   const startBatchEmbed = useCallback(async (): Promise<
     'ok' | 'cancelled' | 'already-running' | 'failed'
   > => {
+    const current = getCachedRagActiveState()
+    if (current.isRunning && current.type === 'migration') {
+      toast.showInfo(t('settings.rag_migration_running_toast', '知识库正在迁移中，请稍后再试'))
+      return 'already-running'
+    }
     const snap = getMemoryReadinessSnapshot()
     const parts = snap.pendingEmbedParts
     const graphExtract = snap.pendingGraphCount
@@ -102,6 +107,10 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
     })
     try {
       const result = await (window as any).api?.rag?.triggerBatchEmbed()
+      if (result?.migrating) {
+        toast.showInfo(t('settings.rag_migration_running_toast', '知识库正在迁移中，请稍后再试'))
+        return 'already-running'
+      }
       if (result?.alreadyRunning) return 'already-running'
       if (result?.cancelled) return 'cancelled'
       if (result && result.ok === false) return 'failed'
@@ -120,6 +129,11 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
   }, [t, toast])
 
   const startOrganizeMemory = useCallback(async () => {
+    const current = getCachedRagActiveState()
+    if (current.isRunning && current.type === 'migration') {
+      toast.showInfo(t('settings.rag_migration_running_toast', '知识库正在迁移中，请稍后再试'))
+      return
+    }
     if (getMemoryReadinessLoading()) {
       await refreshMemoryReadiness()
     } else {

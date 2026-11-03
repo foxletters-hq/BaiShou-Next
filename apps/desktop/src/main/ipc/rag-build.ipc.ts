@@ -1,4 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
+import i18n from 'i18next'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import type { EmbeddingMigrationRollbackConfig, MemoryRawRecord } from '@baishou/shared'
 import { getAppDb, setAppDbResetBlocker } from '../db'
@@ -22,6 +23,7 @@ import {
   MEMORY_SOURCE_TYPE,
   RAG_MIGRATION_STATUS,
   toSerializableAiError,
+  isBatchEmbedSessionActive,
   memoryClearVectorKindsOf,
   parseMemoryClearKinds,
   shouldTombstoneMemoryRecord,
@@ -229,6 +231,9 @@ export function registerRagBuildIPC() {
   ipcMain.handle(
     'rag:trigger-migration',
     async (event, options?: { rollbackConfig?: EmbeddingMigrationRollbackConfig }) => {
+      if (isBatchEmbedSessionActive()) {
+        throw new Error(i18n.t('settings.rag_indexing_in_progress', '正在整理记忆，请稍后再试'))
+      }
       await config.load()
       const migrationState = await migrationStateService.getState()
       const rollbackConfig =
@@ -258,6 +263,9 @@ export function registerRagBuildIPC() {
   )
 
   ipcMain.handle('rag:resume-migration', async (event) => {
+    if (isBatchEmbedSessionActive()) {
+      throw new Error(i18n.t('settings.rag_indexing_in_progress', '正在整理记忆，请稍后再试'))
+    }
     await config.load()
     const state = await migrationStateService.getState()
     if (!state.canResume) {

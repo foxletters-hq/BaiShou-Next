@@ -65,11 +65,13 @@ export function MemoryOrganizePanelHost(props: {
   // 是否还有待整理内容与状态条同一口径：伙伴记忆、图谱节点向量虽然不算「篇」，也属于待整理，
   // 不能因为待整理日记为 0 就显示「整理完毕」
   const hasPendingWork = readiness.pendingEmbedCount > 0 || readiness.pendingGraphCount > 0
+  const isMigrating = ragState.isRunning && ragState.type === 'migration'
   const running =
+    isMigrating ||
     (ragState.isRunning && ragState.type === 'batchEmbed') ||
     Boolean(readiness.graphExtracting && readiness.graphExtracting.total > 0) ||
     Boolean(readiness.indexing)
-  const leftover = (hasPendingWork || Boolean(ragState.error)) && !running
+  const leftover = !isMigrating && (hasPendingWork || Boolean(ragState.error)) && !running
   const leftoverState = leftover
     ? {
         ...ragState,

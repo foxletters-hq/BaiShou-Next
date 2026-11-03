@@ -131,6 +131,11 @@ export function useRagSystem(
   }
 
   const handleBatchEmbed = async () => {
+    const runningState = getCachedRagActiveState()
+    if (runningState.isRunning && runningState.type === 'migration') {
+      toast.showWarning(t('settings.rag_migration_running_toast', '知识库正在迁移中，请稍后再试'))
+      return
+    }
     if (
       !(await confirm(
         t(
@@ -226,6 +231,11 @@ export function useRagSystem(
   }
 
   const handleTriggerMigration = async () => {
+    const runningState = getCachedRagActiveState()
+    if (runningState.isRunning && runningState.type === 'batchEmbed') {
+      toast.showWarning(t('settings.rag_indexing_in_progress', '正在整理记忆，请稍后再试'))
+      return
+    }
     if (
       !(await confirm(
         t('settings.rag_trigger_migration', '执行向量库迁移') + '?',
@@ -299,6 +309,11 @@ export function useRagSystem(
   }
 
   const handleResumeMigration = async () => {
+    const runningState = getCachedRagActiveState()
+    if (runningState.isRunning && runningState.type === 'batchEmbed') {
+      toast.showWarning(t('settings.rag_indexing_in_progress', '正在整理记忆，请稍后再试'))
+      return
+    }
     setIsProcessing(true)
     patchCachedRagActiveState({ error: undefined })
     try {
