@@ -225,4 +225,29 @@ describe('MissingSummaryDetector', () => {
 
     vi.useRealTimers()
   })
+
+  it('getAllMissing() should trust disk summaries when DB cache lags behind external archives', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-31T12:00:00Z'))
+
+    const fakeDiary = makeDiary('2026-03-24T12:00:00Z')
+    const diaryRepo = { list: vi.fn().mockResolvedValue([fakeDiary]) }
+    const summaryRepo = { getSummaries: vi.fn().mockResolvedValue([]) }
+    const diskIndex = {
+      listAllSummaries: vi.fn().mockResolvedValue([
+        {
+          type: SummaryType.weekly,
+          startDate: new Date(2026, 2, 23),
+          endDate: new Date(2026, 2, 29, 23, 59, 59),
+          fullPath: 'D:/external/Archives/Weekly/2026-03-23.md'
+        }
+      ])
+    }
+
+    const detector = new MissingSummaryDetector(diaryRepo as any, summaryRepo as any, diskIndex)
+    const missing = await detector.getAllMissing('zh')
+
+    expect(missing.filter((m) => m.type === SummaryType.weekly)).toHaveLength(0)
+    vi.useRealTimers()
+  })
 })

@@ -146,6 +146,41 @@ describe('SummarySyncService (Ghost indexing)', () => {
     )
   })
 
+  it('fullScanArchives({ diskVaultNames }) should sync active external summaries into DB', async () => {
+    const externalStart = new Date(2026, 6, 1)
+    const externalEnd = new Date(2026, 6, 31, 23, 59, 59)
+    const externalPath = 'D:/external/Archives/Monthly/2026-07-01.md'
+
+    mockFileService.listSummariesAcrossVaults.mockResolvedValue([])
+    mockFileService.listAllSummaries.mockResolvedValue([
+      {
+        type: SummaryType.monthly,
+        startDate: externalStart,
+        endDate: externalEnd,
+        fullPath: externalPath
+      }
+    ])
+    mockFileService.readSummaryAtAbsolutePath.mockResolvedValue('external content')
+    mockRepo.getByDateRange.mockResolvedValue(null)
+    mockRepo.findAllByTypeAndStartDay.mockResolvedValue([])
+    mockRepo.getSummaries.mockResolvedValue([])
+
+    await service.fullScanArchives({
+      activeVaultName: 'MainVault',
+      activeVaultId: VAULT_MAIN,
+      diskVaultNames: ['MainVault']
+    })
+
+    expect(mockFileService.readSummaryAtAbsolutePath).toHaveBeenCalledWith(externalPath)
+    expect(mockRepo.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: SummaryType.monthly,
+        content: 'external content',
+        vaultId: VAULT_MAIN
+      })
+    )
+  })
+
   it('fullScanArchives() should skip ghost cleanup when disk scan is empty but DB has records', async () => {
     mockFileService.listAllSummaries.mockResolvedValue([])
     mockRepo.getSummaries.mockResolvedValue([

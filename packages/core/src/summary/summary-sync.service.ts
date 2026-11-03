@@ -20,6 +20,14 @@ export type SyncSummaryFileOptions = {
   vaultId?: string
 }
 
+type SummaryDiskFile = {
+  type: SummaryType
+  startDate: Date
+  endDate: Date
+  fullPath: string
+  vaultName?: string
+}
+
 function toEpochMs(value: unknown): number | undefined {
   if (value instanceof Date) {
     const ms = value.getTime()
@@ -72,6 +80,16 @@ export class SummarySyncService {
     const mapped = normalizeVaultId(options?.vaultIdByName?.[vaultName])
     if (mapped) return mapped
     return deriveLegacyVaultId(vaultName)
+  }
+
+  private resolveActiveVaultId(options?: DiskResyncOptions): string | undefined {
+    return (
+      normalizeVaultId(options?.activeVaultId) ??
+      (options?.activeVaultName
+        ? this.resolveVaultIdForName(options.activeVaultName, options)
+        : normalizeVaultId(this.resolveVaultId?.())) ??
+      undefined
+    )
   }
 
   /**
@@ -222,15 +240,37 @@ export class SummarySyncService {
     const syncOptsBase: SyncSummaryFileOptions | undefined = options?.skipUnchangedByMtime
       ? { skipUnchangedByMtime: true }
       : undefined
+    const activeVaultId = this.resolveActiveVaultId(options)
 
     if (vaultNames.length > 0) {
       const allFiles = await this.fileService.listSummariesAcrossVaults(vaultNames)
-      const byVault = new Map<string, typeof allFiles>()
+      const byVault = new Map<string, SummaryDiskFile[]>()
+      const seenByVault = new Map<string, Set<string>>()
+      const scannedVaultIds = new Set<string>()
+
+      const addFile = (file: SummaryDiskFile, vaultId: string): void => {
+        const key = `${file.type}:${file.startDate.getTime()}`
+        const seen = seenByVault.get(vaultId) ?? new Set<string>()
+        if (seen.has(key)) return
+        seen.add(key)
+        seenByVault.set(vaultId, seen)
+        const list = byVault.get(vaultId) ?? []
+        list.push(file)
+        byVault.set(vaultId, list)
+      }
+
       for (const f of allFiles) {
         const vaultId = this.resolveVaultIdForName(f.vaultName, options)
-        const list = byVault.get(vaultId) ?? []
-        list.push(f)
-        byVault.set(vaultId, list)
+        scannedVaultIds.add(vaultId)
+        addFile(f, vaultId)
+      }
+
+      // 外部总结目录不在任何 vault 的 Archives/ 内，且 listSummariesAcrossVaults
+      // 可能因历史路径仅扫仓内目录；这里将活跃仓盘上全部总结（含外部目录）并入，
+      // 防止后续 pruneGhostsForVault 把刚写入的外部总结记录当幽灵删除。
+      if (activeVaultId) {
+        const diskFiles = (await this.fileService.listAllSummaries().catch(() => [])) ?? []
+        for (const f of diskFiles) addFile(f, activeVaultId)
       }
 
       for (const [vaultId, files] of byVault) {
@@ -241,16 +281,15 @@ export class SummarySyncService {
             vaultId
           })
         }
-        await this.pruneGhostsForVault(vaultId, files)
+        // 仅清理真正完成磁盘扫描的仓；外部目录补扫不得扩大清理范围
+        if (scannedVaultIds.has(vaultId)) {
+          await this.pruneGhostsForVault(vaultId, files)
+        }
       }
       return
     }
 
-    const vaultId =
-      normalizeVaultId(options?.activeVaultId) ??
-      (options?.activeVaultName
-        ? this.resolveVaultIdForName(options.activeVaultName, options)
-        : normalizeVaultId(this.resolveVaultId?.()))
+    const vaultId = activeVaultId
 
     const allFiles = await this.fileService.listAllSummaries()
     for (const f of allFiles) {

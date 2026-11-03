@@ -112,7 +112,8 @@ export async function createSummaryPipelineServices(options: {
   const summaryFileService = new SummaryFileService(pathService, fileSystem, rawManager)
   const missingSummaryDetector = new MissingSummaryDetector(
     diaryRepoAdapter as never,
-    summaryRepo as never
+    summaryRepo as never,
+    summaryFileService
   )
   const summaryGenerator = new SummaryGeneratorService(
     diaryRepoAdapter as never,

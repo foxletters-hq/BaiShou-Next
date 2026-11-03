@@ -253,7 +253,11 @@ export function registerSummaryIPC() {
         }
       } as any
 
-      const detector = new MissingSummaryDetector(diaryRepoAdapter, summaryRepo)
+      const detector = new MissingSummaryDetector(
+        diaryRepoAdapter,
+        summaryRepo,
+        new SummaryFileService(pathService, fileSystem)
+      )
       const globalModels = await settingsManager.get<{ monthlySummarySource?: string }>(
         'global_models'
       )

@@ -285,4 +285,64 @@ This is legacy markdown content.`
       expect(read).toBe('new week')
     })
   })
+
+  describe('cross-vault scan with external summaries directory', () => {
+    it('should include external summaries for the active vault', async () => {
+      const vaultDir = path.join(tempDir, 'Personal')
+      const externalDir = path.join(tempDir, 'ExternalArchives')
+      await fs.mkdir(path.join(externalDir, 'Weekly'), { recursive: true })
+      await fs.mkdir(path.join(vaultDir, 'Archives', 'Monthly'), { recursive: true })
+      await fs.writeFile(path.join(externalDir, 'Weekly', '2026-05-18.md'), 'external', 'utf8')
+      await fs.writeFile(
+        path.join(vaultDir, 'Archives', 'Monthly', '2026-05-01.md'),
+        'internal',
+        'utf8'
+      )
+
+      const crossService = new SummaryFileService(
+        {
+          getSummariesBaseDirectory: vi.fn().mockResolvedValue(externalDir),
+          getLegacyArchivesDirectory: vi.fn().mockResolvedValue(path.join(vaultDir, 'Archives')),
+          getActiveVaultPath: vi.fn().mockResolvedValue(vaultDir),
+          getVaultDirectory: vi.fn().mockResolvedValue(vaultDir),
+          getVaultSystemDirectory: vi.fn().mockResolvedValue(path.join(vaultDir, '.baishou'))
+        } as any,
+        createNodeFileSystem()
+      )
+
+      const listed = await crossService.listSummariesAcrossVaults(['Personal'])
+      expect(listed.some((s) => s.fullPath.includes('ExternalArchives'))).toBe(true)
+      expect(listed.some((s) => s.type === SummaryType.monthly)).toBe(true)
+    })
+
+    it('should read external summaries configured for a non-active vault', async () => {
+      const activeVaultDir = path.join(tempDir, 'Active')
+      const otherVaultDir = path.join(tempDir, 'Other')
+      const externalDir = path.join(tempDir, 'OtherExternal')
+      await fs.mkdir(path.join(otherVaultDir, '.baishou'), { recursive: true })
+      await fs.mkdir(path.join(externalDir, 'Weekly'), { recursive: true })
+      await fs.writeFile(
+        path.join(otherVaultDir, '.baishou', 'external_paths.json'),
+        JSON.stringify({ summariesDirectory: externalDir }),
+        'utf8'
+      )
+      await fs.writeFile(path.join(externalDir, 'Weekly', '2026-05-18.md'), 'other', 'utf8')
+
+      const crossService = new SummaryFileService(
+        {
+          getSummariesBaseDirectory: vi.fn().mockResolvedValue(activeVaultDir),
+          getLegacyArchivesDirectory: vi.fn().mockResolvedValue(null),
+          getActiveVaultPath: vi.fn().mockResolvedValue(activeVaultDir),
+          getVaultDirectory: vi.fn().mockResolvedValue(otherVaultDir),
+          getVaultSystemDirectory: vi.fn().mockResolvedValue(path.join(otherVaultDir, '.baishou'))
+        } as any,
+        createNodeFileSystem()
+      )
+
+      const listed = await crossService.listSummariesForVault('Other')
+      expect(listed).toHaveLength(1)
+      expect(listed[0]?.fullPath).toContain('OtherExternal')
+      expect(listed[0]?.vaultName).toBe('Other')
+    })
+  })
 })
