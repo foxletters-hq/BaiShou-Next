@@ -318,6 +318,11 @@ describe('memory center chrome', () => {
     expect(slot).toContain('MemoryOrganizePanelHost')
     expect(slot).toContain('onOpenOrganize={() => setOrganizeOpen(true)}')
     expect(slot).toContain('onContinue={() => {')
+
+    const host = readFileSync(join(here, '..', 'MemoryOrganizePanelHost.tsx'), 'utf8')
+    expect(host).toContain('isMigrating')
+    expect(host).toContain("ragState.type === 'migration'")
+    expect(page).toContain('rag_migration_running_toast')
     expect(bar).toContain('onOpenOrganize')
     expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain(
       'RagMemoryOrganizeModal'
