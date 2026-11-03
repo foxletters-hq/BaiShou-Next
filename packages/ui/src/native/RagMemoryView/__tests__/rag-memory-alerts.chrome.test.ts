@@ -32,6 +32,14 @@ describe('native RagMemoryAlerts batch embed chrome', () => {
     expect(alerts).toContain('memory.review_suspects')
     expect(alerts).toContain('onReviewSuspects')
   })
+
+  it('should separate alertBox from following entry cards with standard spacing', () => {
+    const alertBoxStyle = styles.slice(
+      styles.indexOf('alertBox: {'),
+      styles.indexOf('alertTitle: {')
+    )
+    expect(alertBoxStyle).toContain('marginBottom: sharedTokens.spacing.sm')
+  })
 })
 
 const actions = readFileSync(

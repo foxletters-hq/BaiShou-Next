@@ -50,6 +50,7 @@ export const ragMemoryStyles = StyleSheet.create({
   statLabel: { fontSize: mobileTypography.caption.fontSize, textAlign: 'center' },
   alertBox: {
     marginTop: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.sm,
     borderRadius: sharedTokens.radius.md,
     padding: sharedTokens.spacing.mdTight,
     borderWidth: 1
