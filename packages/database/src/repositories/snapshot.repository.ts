@@ -2,6 +2,7 @@ import { AppDatabase } from '../types'
 import { compressionSnapshotsTable } from '../schema/compression-snapshots'
 import { eq, desc, asc, inArray, and } from 'drizzle-orm'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
+import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 
 export interface Snapshot {
   id: number
@@ -19,7 +20,7 @@ export class SnapshotRepository {
   constructor(private readonly db: AppDatabase) {}
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.db, fn)
+    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn))
   }
 
   /**

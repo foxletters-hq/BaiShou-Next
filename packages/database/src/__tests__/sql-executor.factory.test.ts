@@ -67,4 +67,61 @@ describe('createSqlExecutor', () => {
     await wrapped.execute('SELECT 1')
     expect(getAllAsync).toHaveBeenCalledWith('SELECT 1', [])
   })
+
+  it('retries when expo-sqlite throws database is locked error on query', async () => {
+    let callCount = 0
+    const getAllAsync = vi.fn().mockImplementation(async () => {
+      callCount++
+      if (callCount === 1) {
+        throw new Error(
+          "Call to function 'NativeStatement.finalizeAsync' has been rejected.\n→ Caused by: Error code : database is locked"
+        )
+      }
+      return [{ id: 100 }]
+    })
+    const runAsync = vi.fn()
+    const wrapped = createSqlExecutor({ getAllAsync, runAsync })
+
+    const res = await wrapped.execute('SELECT * FROM memory_embeddings')
+    expect(callCount).toBe(2)
+    expect(res.rows).toEqual([{ id: 100 }])
+  })
+
+  it('retries when expo-sqlite throws database is locked error on write', async () => {
+    let callCount = 0
+    const getAllAsync = vi.fn()
+    const runAsync = vi.fn().mockImplementation(async () => {
+      callCount++
+      if (callCount === 1) {
+        throw new Error('sqlite3_step failed: Error code : database is locked')
+      }
+      return { changes: 1 }
+    })
+    const wrapped = createSqlExecutor({ getAllAsync, runAsync })
+
+    const res = await wrapped.execute('DELETE FROM memory_embeddings WHERE id = 1')
+    expect(callCount).toBe(2)
+    expect(res.rowsAffected).toBe(1)
+  })
+
+  it('serializes concurrent expo-sqlite queries through database lock', async () => {
+    const order: number[] = []
+    const getAllAsync = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.includes('first')) {
+        await new Promise((r) => setTimeout(r, 20))
+        order.push(1)
+        return []
+      }
+      order.push(2)
+      return []
+    })
+    const runAsync = vi.fn()
+    const wrapped = createSqlExecutor({ getAllAsync, runAsync })
+
+    const p1 = wrapped.execute('SELECT 1 as first')
+    const p2 = wrapped.execute('SELECT 2 as second')
+
+    await Promise.all([p1, p2])
+    expect(order).toEqual([1, 2])
+  })
 })

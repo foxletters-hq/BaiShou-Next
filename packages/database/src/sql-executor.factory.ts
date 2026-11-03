@@ -1,6 +1,8 @@
 import type { ISqlExecutor } from '@baishou/shared'
 import { sql } from 'drizzle-orm'
 import { isRawSqlReadStatement } from './raw-sql.executor'
+import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
+import { runWithSqliteBusyRetry } from './sqlite-busy.util'
 
 type SqlRow = Record<string, unknown>
 
@@ -53,15 +55,23 @@ export function createSqlExecutor(db: unknown): ISqlExecutor {
         typeof rawClient.runAsync === 'function'
       ) {
         if (isQuery) {
-          const rows = await (
-            rawClient.getAllAsync as (sql: string, args: unknown[]) => Promise<SqlRow[]>
-          )(sqlStr, sqlArgs)
-          return { rows }
+          return withExpoAgentDatabaseLock(rawClient, () =>
+            runWithSqliteBusyRetry(async () => {
+              const rows = await (
+                rawClient.getAllAsync as (sql: string, args: unknown[]) => Promise<SqlRow[]>
+              )(sqlStr, sqlArgs)
+              return { rows }
+            })
+          )
         }
-        const res = await (
-          rawClient.runAsync as (sql: string, args: unknown[]) => Promise<{ changes: number }>
-        )(sqlStr, sqlArgs)
-        return { rows: [], rowsAffected: res.changes }
+        return withExpoAgentDatabaseLock(rawClient, () =>
+          runWithSqliteBusyRetry(async () => {
+            const res = await (
+              rawClient.runAsync as (sql: string, args: unknown[]) => Promise<{ changes: number }>
+            )(sqlStr, sqlArgs)
+            return { rows: [], rowsAffected: res.changes }
+          })
+        )
       }
 
       const drizzleDb = db as {
@@ -71,17 +81,29 @@ export function createSqlExecutor(db: unknown): ISqlExecutor {
 
       if (drizzleDb && typeof drizzleDb.run === 'function' && typeof drizzleDb.all === 'function') {
         if (isQuery) {
-          const rows = await drizzleDb.all(sql.raw(sqlStr), sqlArgs)
-          return { rows }
+          return withExpoAgentDatabaseLock(drizzleDb, () =>
+            runWithSqliteBusyRetry(async () => {
+              const rows = await drizzleDb.all!(sql.raw(sqlStr), sqlArgs)
+              return { rows }
+            })
+          )
         }
-        const res = await drizzleDb.run(sql.raw(sqlStr), sqlArgs)
-        return { rows: [], rowsAffected: res.changes }
+        return withExpoAgentDatabaseLock(drizzleDb, () =>
+          runWithSqliteBusyRetry(async () => {
+            const res = await drizzleDb.run!(sql.raw(sqlStr), sqlArgs)
+            return { rows: [], rowsAffected: res.changes }
+          })
+        )
       }
 
       if (drizzleDb && typeof drizzleDb.run === 'function') {
-        const res = await drizzleDb.run(sql.raw(sqlStr), sqlArgs)
-        const rows = Array.isArray(res) ? (res as SqlRow[]) : []
-        return { rows, rowsAffected: res?.changes }
+        return withExpoAgentDatabaseLock(drizzleDb, () =>
+          runWithSqliteBusyRetry(async () => {
+            const res = await drizzleDb.run!(sql.raw(sqlStr), sqlArgs)
+            const rows = Array.isArray(res) ? (res as SqlRow[]) : []
+            return { rows, rowsAffected: res?.changes }
+          })
+        )
       }
 
       throw new Error('Unsupported database client type for ISqlExecutor wrapping')
