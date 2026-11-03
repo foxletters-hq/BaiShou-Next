@@ -27,6 +27,7 @@ export async function resolveSessionAssistantContext(params: {
       id: string,
       vaultId?: string | null
     ) => Promise<{
+      name?: string | null
       systemPrompt?: string | null
       customSystemPrompt?: string | null
       assistantKind?: string | null
@@ -52,6 +53,7 @@ export async function resolveSessionAssistantContext(params: {
     const vaultId = String(sessionObj?.vaultId ?? '').trim() || null
     let ast:
       | {
+          name?: string | null
           systemPrompt?: string | null
           customSystemPrompt?: string | null
           assistantKind?: string | null
@@ -71,7 +73,11 @@ export async function resolveSessionAssistantContext(params: {
 
     if (ast) {
       assistantKind = normalizeAssistantKind(ast.assistantKind)
-      const combined = buildEffectiveAssistantSystemPrompt(ast.systemPrompt, ast.customSystemPrompt)
+      const combined = buildEffectiveAssistantSystemPrompt(
+        ast.systemPrompt,
+        ast.customSystemPrompt,
+        ast.name
+      )
       if (combined) {
         effectiveSystemPrompt = combined
       }
