@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { DEFAULT_USER_PROFILE } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import {
   loadAgentUserProfileFromSettings,
   peekAgentUserProfileCache,
+  readPersistedAgentUserProfileSnapshot,
+  setAgentUserProfileCache,
   type AgentUserProfileState
 } from '../lib/agent-user-profile.util'
 import {
@@ -14,21 +16,30 @@ import { resolveChatBackgroundForMobileUi } from '../lib/chat-background-display
 import { resolveUserAvatarForMobileUi } from '../lib/user-avatar-display.util'
 import { useThrottledFocusRefresh } from './useThrottledFocusRefresh'
 
-const EMPTY_PROFILE: AgentUserProfileState = { nickname: '' }
+const EMPTY_PROFILE: AgentUserProfileState = { nickname: '', isReady: false }
 
 export function useAgentUserProfile(): AgentUserProfileState {
-  const { t } = useTranslation()
   const { services, dbReady, vaultRevision } = useBaishou()
   const [userProfile, setUserProfile] = useState<AgentUserProfileState>(
     () => peekAgentUserProfileCache() ?? EMPTY_PROFILE
   )
+
+  useEffect(() => {
+    if (userProfile.isReady) return
+    void readPersistedAgentUserProfileSnapshot().then((snapshot) => {
+      if (snapshot) {
+        setAgentUserProfileCache(snapshot)
+        setUserProfile(snapshot)
+      }
+    })
+  }, [userProfile.isReady])
 
   const loadUserProfile = useCallback(async () => {
     if (!dbReady || !services) return
     try {
       const next = await loadAgentUserProfileFromSettings(
         services.settingsManager,
-        t('agent.chat.you_label', '你')
+        DEFAULT_USER_PROFILE.nickname
       )
       setUserProfile(next)
       if (next.chatBackgroundPath) {
@@ -42,9 +53,11 @@ export function useAgentUserProfile(): AgentUserProfileState {
         )
       }
     } catch {
-      setUserProfile({ nickname: t('agent.chat.you_label', '你') })
+      setUserProfile((prev) =>
+        prev.isReady ? prev : { nickname: DEFAULT_USER_PROFILE.nickname, isReady: true }
+      )
     }
-  }, [dbReady, services, t])
+  }, [dbReady, services])
 
   useEffect(() => {
     void loadUserProfile()

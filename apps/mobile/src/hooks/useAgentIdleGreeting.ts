@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AGENT_IDLE_GREETING_FALLBACKS,
@@ -7,22 +7,41 @@ import {
   pickAgentIdleGreetingIndex
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+import {
+  peekAgentUserProfileCache,
+  readPersistedAgentUserProfileSnapshot
+} from '../lib/agent-user-profile.util'
 
 export function useAgentIdleGreeting(enabled: boolean): string {
   const { t } = useTranslation()
-  const { services, dbReady } = useBaishou()
-  const [nickname, setNickname] = useState('')
+  const { services, dbReady, vaultRevision } = useBaishou()
+  const [nickname, setNickname] = useState(
+    () => peekAgentUserProfileCache()?.nickname?.trim() || ''
+  )
   const [index, setIndex] = useState(() =>
     pickAgentIdleGreetingIndex(AGENT_IDLE_GREETING_KEYS.length)
   )
   const prevEnabled = useRef(enabled)
 
   useEffect(() => {
+    if (nickname) return
+    void readPersistedAgentUserProfileSnapshot().then((snapshot) => {
+      const cached = snapshot?.nickname?.trim()
+      if (cached) {
+        setNickname(cached)
+      }
+    })
+  }, [nickname])
+
+  useEffect(() => {
     if (!dbReady || !services) return
     void getUserProfileFromSettings(services.settingsManager).then((profile) => {
-      setNickname(profile?.nickname?.trim() || t('agent.you', '你'))
+      const loaded = profile?.nickname?.trim()
+      if (loaded) {
+        setNickname(loaded)
+      }
     })
-  }, [dbReady, services, t])
+  }, [dbReady, services, vaultRevision])
 
   useEffect(() => {
     if (enabled && !prevEnabled.current) {
@@ -33,5 +52,9 @@ export function useAgentIdleGreeting(enabled: boolean): string {
 
   const key = AGENT_IDLE_GREETING_KEYS[index] ?? AGENT_IDLE_GREETING_KEYS[0]
   const fallback = AGENT_IDLE_GREETING_FALLBACKS[index] ?? AGENT_IDLE_GREETING_FALLBACKS[0]
-  return t(key, fallback, { name: nickname || t('agent.you', '你') })
+  return useMemo(() => {
+    const name =
+      (typeof nickname === 'string' && nickname.trim()) || t('agent.idle_greeting_guest', '朋友')
+    return t(key, fallback, { name })
+  }, [fallback, key, nickname, t])
 }

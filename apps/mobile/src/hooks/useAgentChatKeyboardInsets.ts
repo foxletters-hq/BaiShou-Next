@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState, Keyboard, Platform, type KeyboardEvent } from 'react-native'
 import { sharedTokens } from '@baishou/ui/theme/tokens'
 import {
@@ -50,6 +50,10 @@ export function useAgentChatKeyboardInsets({
   const keyboardVisibleSv = useSharedValue(0)
   /** 记录本轮键盘展开峰值高度，识别 Android 收起动画末帧丢帧导致的半截卡滞 */
   const peakKeyboardHeightSv = useSharedValue(0)
+  /** 记录 JS Keyboard 事件上报的兜底高度，与 useAnimatedReaction 统一驱动 composerBottom */
+  const fallbackKeyboardHeightSv = useSharedValue(0)
+  /** 主动收起键盘后的短暂抑制窗口，拦截发送/失焦瞬间滞后到达的 keyboardDidShow */
+  const suppressShowUntilRef = useRef(0)
   const isBubbleEditingSv = useSharedValue(isBubbleEditing ? 1 : 0)
   const inputDockHeightSv = useSharedValue(inputDockHeight)
   const composerBottom = useSharedValue(0)
@@ -115,16 +119,18 @@ export function useAgentChatKeyboardInsets({
 
   const applyComposerLift = useCallback(
     (rawHeight: number) => {
+      fallbackKeyboardHeightSv.value = rawHeight
       cancelAnimation(composerBottom)
       composerBottom.value = computeComposerInset(rawHeight, tabBarHeight)
     },
-    [composerBottom, tabBarHeight]
+    [composerBottom, fallbackKeyboardHeightSv, tabBarHeight]
   )
 
   const clearComposerLift = useCallback(() => {
+    fallbackKeyboardHeightSv.value = 0
     cancelAnimation(composerBottom)
     composerBottom.value = 0
-  }, [composerBottom])
+  }, [composerBottom, fallbackKeyboardHeightSv])
 
   const handleNativeKeyboardClosed = useCallback(() => {
     syncKeyboardInset(0)
@@ -134,6 +140,7 @@ export function useAgentChatKeyboardInsets({
   }, [syncKeyboardInset, isBubbleEditingSv, resetListSpacerForComposer])
 
   const resetKeyboardInset = useCallback(() => {
+    suppressShowUntilRef.current = Date.now() + 350
     keyboardVisibleSv.value = 0
     peakKeyboardHeightSv.value = 0
     clearComposerLift()
@@ -176,22 +183,34 @@ export function useAgentChatKeyboardInsets({
       return
     }
 
-    const keyboardVisible = Keyboard.isVisible?.() === true
-    keyboardVisibleSv.value = keyboardVisible ? 1 : 0
+    const nativeOpen =
+      keyboard.height.value > 0 && (keyboard.state.value === 1 || keyboard.state.value === 2)
+    const keyboardVisible =
+      Date.now() >= suppressShowUntilRef.current &&
+      Keyboard.isVisible?.() === true &&
+      (Platform.OS === 'ios' || nativeOpen)
     const rawHeight = keyboardVisible ? readKeyboardHeightFromMetrics() : 0
-    peakKeyboardHeightSv.value = rawHeight
-    syncKeyboardInset(rawHeight)
     if (keyboardVisible && rawHeight > 0) {
+      fallbackKeyboardHeightSv.value = rawHeight
+      peakKeyboardHeightSv.value = rawHeight
+      keyboardVisibleSv.value = 1
+      syncKeyboardInset(rawHeight)
       applyComposerLift(rawHeight)
     } else {
+      keyboardVisibleSv.value = 0
+      peakKeyboardHeightSv.value = 0
+      syncKeyboardInset(0)
       clearComposerLift()
     }
   }, [
     enableComposerKeyboardLift,
     isBubbleEditing,
     liftEnabled,
+    keyboard.height,
+    keyboard.state,
     keyboardVisibleSv,
     peakKeyboardHeightSv,
+    fallbackKeyboardHeightSv,
     isBubbleEditingSv,
     clearComposerLift,
     applyComposerLift,
@@ -203,9 +222,11 @@ export function useAgentChatKeyboardInsets({
       height: keyboard.height.value,
       state: keyboard.state.value,
       lift: liftEnabled.value,
-      kbVisible: keyboardVisibleSv.value
+      kbVisible: keyboardVisibleSv.value,
+      fallbackHeight: fallbackKeyboardHeightSv.value,
+      bottom: composerBottom.value
     }),
-    ({ height, state, lift, kbVisible }, prev) => {
+    ({ height, state, lift, kbVisible, fallbackHeight, bottom }, prev) => {
       if (kbVisible === 1 && height > peakKeyboardHeightSv.value) {
         peakKeyboardHeightSv.value = height
       }
@@ -213,14 +234,19 @@ export function useAgentChatKeyboardInsets({
       const peak = peakKeyboardHeightSv.value
       const droppedFromPeak = peak > 0 && height <= peak - 40
       const animationEnded = state === 2 || state === 4
+      const closingFinished = prev != null && prev.state === 3 && state !== 3 && state !== 1
+      const transitionedToClosed = prev != null && prev.state !== 4 && state === 4
+      const heightDroppedToZero = prev != null && prev.height > 0 && height <= 0
       const nativeClosed =
-        state === 4 ||
-        (prev != null && prev.height > 0 && height <= 0) ||
+        transitionedToClosed ||
+        heightDroppedToZero ||
+        closingFinished ||
         (kbVisible === 1 && droppedFromPeak && animationEnded)
 
       if (nativeClosed) {
         keyboardVisibleSv.value = 0
         peakKeyboardHeightSv.value = 0
+        fallbackKeyboardHeightSv.value = 0
         if (composerBottom.value !== 0) {
           composerBottom.value = 0
         }
@@ -228,12 +254,15 @@ export function useAgentChatKeyboardInsets({
         return
       }
 
-      const inset = Math.max(0, Math.ceil(height) - tabBarHeight)
+      const effectiveHeight = height > 0 ? height : state !== 3 ? fallbackHeight : 0
+      const inset = Math.max(0, Math.ceil(effectiveHeight) - tabBarHeight)
       const shouldLift = lift === 1 && kbVisible === 1
 
       if (shouldLift) {
-        composerBottom.value = inset
-      } else if (composerBottom.value !== 0) {
+        if (bottom !== inset) {
+          composerBottom.value = inset
+        }
+      } else if (bottom !== 0) {
         composerBottom.value = 0
       }
     },
@@ -256,8 +285,17 @@ export function useAgentChatKeyboardInsets({
 
     const onShow = (event: KeyboardEvent) => {
       const height = event.endCoordinates.height
-      keyboardVisibleSv.value = 1
+      if (height <= 0) return
+      if (Date.now() < suppressShowUntilRef.current) return
+      if (
+        Platform.OS === 'android' &&
+        (keyboard.state.value === 3 || (keyboard.state.value === 4 && keyboard.height.value <= 0))
+      ) {
+        return
+      }
+      fallbackKeyboardHeightSv.value = height
       peakKeyboardHeightSv.value = height
+      keyboardVisibleSv.value = 1
       const duration = event.duration ?? 250
       syncKeyboardInset(height)
       if (enableComposerKeyboardLift && !isBubbleEditing) {
@@ -291,8 +329,11 @@ export function useAgentChatKeyboardInsets({
     }
   }, [
     syncKeyboardInset,
+    keyboard.height,
+    keyboard.state,
     keyboardVisibleSv,
     peakKeyboardHeightSv,
+    fallbackKeyboardHeightSv,
     enableComposerKeyboardLift,
     isBubbleEditing,
     applyComposerLift,
@@ -316,14 +357,21 @@ export function useAgentChatKeyboardInsets({
 
       if (nextState !== 'active') return
 
-      const keyboardVisible = Keyboard.isVisible?.() === true
-      keyboardVisibleSv.value = keyboardVisible ? 1 : 0
-      const rawHeight = keyboardVisible ? readKeyboardHeightFromMetrics() : 0
+      const nativeOpen =
+        keyboard.height.value > 0 && (keyboard.state.value === 1 || keyboard.state.value === 2)
+      const keyboardVisible = Keyboard.isVisible?.() === true && nativeOpen
+      if (!keyboardVisible) {
+        resetKeyboardInset()
+        return
+      }
+      const rawHeight = readKeyboardHeightFromMetrics() || keyboard.height.value
       if (rawHeight <= 0) {
         resetKeyboardInset()
         return
       }
+      fallbackKeyboardHeightSv.value = rawHeight
       peakKeyboardHeightSv.value = rawHeight
+      keyboardVisibleSv.value = 1
 
       syncKeyboardInset(rawHeight)
       if (enableComposerKeyboardLift && !isBubbleEditing) {
@@ -343,8 +391,11 @@ export function useAgentChatKeyboardInsets({
     applyListSpacerForComposer,
     enableComposerKeyboardLift,
     isBubbleEditing,
+    keyboard.height,
+    keyboard.state,
     keyboardVisibleSv,
-    peakKeyboardHeightSv
+    peakKeyboardHeightSv,
+    fallbackKeyboardHeightSv
   ])
 
   const inputDockAnimatedStyle = useAnimatedStyle(() => ({
@@ -364,12 +415,20 @@ export function useAgentChatKeyboardInsets({
   })
 
   const handleComposerFocus = useCallback(() => {
+    suppressShowUntilRef.current = 0
     if (!enableComposerKeyboardLift || isBubbleEditing) return
     if (Keyboard.isVisible?.() !== true) return
+    if (
+      Platform.OS === 'android' &&
+      (keyboard.height.value <= 0 || (keyboard.state.value !== 1 && keyboard.state.value !== 2))
+    ) {
+      return
+    }
     const rawHeight = readKeyboardHeightFromMetrics()
     if (rawHeight > 0) {
-      keyboardVisibleSv.value = 1
+      fallbackKeyboardHeightSv.value = rawHeight
       peakKeyboardHeightSv.value = rawHeight
+      keyboardVisibleSv.value = 1
       applyComposerLift(rawHeight)
       applyListSpacerForComposer(rawHeight, 0)
     }
@@ -378,8 +437,11 @@ export function useAgentChatKeyboardInsets({
     isBubbleEditing,
     applyComposerLift,
     applyListSpacerForComposer,
+    keyboard.height,
+    keyboard.state,
     keyboardVisibleSv,
-    peakKeyboardHeightSv
+    peakKeyboardHeightSv,
+    fallbackKeyboardHeightSv
   ])
 
   useEffect(() => {

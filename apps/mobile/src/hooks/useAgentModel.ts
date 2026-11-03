@@ -13,6 +13,7 @@ import { useBaishou } from '../providers/BaishouProvider'
 import { useAgentNavigationStore } from '@baishou/store'
 import { listAssistantsForUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
+import { runWithSqliteBusyRetry } from '@baishou/database'
 
 type Assistant = MobileAssistantUi
 
@@ -162,43 +163,45 @@ export function useAgentModel(options: UseAgentModelOptions = {}) {
 
     const loadDefaultConfig = async () => {
       try {
-        if (storageIndexing) {
-          await waitForVaultEcosystemResync()
-        }
-
-        const assistants = await listAssistantsForUi(
-          services.assistantManager,
-          services.attachmentManager,
-          services.fileSystem,
-          { preferFileUri: true, skipAvatarResolve: true }
-        )
-
-        const nextGlobalModels =
-          (await services.settingsManager.get<GlobalModelsConfig>('global_models')) || null
-        setGlobalModels(nextGlobalModels)
-
-        const vaultKey = await services.pathService.getActiveVaultNameForContext()
-        const persisted = useAgentNavigationStore.getState().getContext(vaultKey)
-
-        setCurrentAssistant((prev) => {
-          const stillValid = prev && assistants.find((a) => a.id === prev.id)
-          const normalizedPersistedId =
-            persisted.assistantId === DEFAULT_LATTE_ASSISTANT_ID
-              ? SYSTEM_LATTE_ASSISTANT_ID
-              : persisted.assistantId
-          const fromPersisted =
-            normalizedPersistedId &&
-            assistants.find((assistant) => assistant.id === normalizedPersistedId)
-          const next =
-            stillValid ||
-            fromPersisted ||
-            assistants.find((a) => a.isDefault) ||
-            assistants[0] ||
-            null
-          if (!userManuallySetModelRef.current) {
-            applyResolvedModel(next, nextGlobalModels)
+        await runWithSqliteBusyRetry(async () => {
+          if (storageIndexing) {
+            await waitForVaultEcosystemResync()
           }
-          return next
+
+          const assistants = await listAssistantsForUi(
+            services.assistantManager,
+            services.attachmentManager,
+            services.fileSystem,
+            { preferFileUri: true, skipAvatarResolve: true }
+          )
+
+          const nextGlobalModels =
+            (await services.settingsManager.get<GlobalModelsConfig>('global_models')) || null
+          setGlobalModels(nextGlobalModels)
+
+          const vaultKey = await services.pathService.getActiveVaultNameForContext()
+          const persisted = useAgentNavigationStore.getState().getContext(vaultKey)
+
+          setCurrentAssistant((prev) => {
+            const stillValid = prev && assistants.find((a) => a.id === prev.id)
+            const normalizedPersistedId =
+              persisted.assistantId === DEFAULT_LATTE_ASSISTANT_ID
+                ? SYSTEM_LATTE_ASSISTANT_ID
+                : persisted.assistantId
+            const fromPersisted =
+              normalizedPersistedId &&
+              assistants.find((assistant) => assistant.id === normalizedPersistedId)
+            const next =
+              stillValid ||
+              fromPersisted ||
+              assistants.find((a) => a.isDefault) ||
+              assistants[0] ||
+              null
+            if (!userManuallySetModelRef.current) {
+              applyResolvedModel(next, nextGlobalModels)
+            }
+            return next
+          })
         })
       } catch (e) {
         console.warn('Failed to load default config', e)
