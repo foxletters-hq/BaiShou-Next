@@ -1,6 +1,6 @@
 name: summary-repair
 description: "Read, verify, and repair existing period summaries (weekly, monthly, quarterly, yearly). Cross-check names, roles, and facts with diaries and memories via diary_search (FTS) and vector_search (RAG), then overwrite the same period after user confirmation. Use when the user asks to fix or proofread a summary, or invokes /summary-repair."
-bundledHash: a813e3fe
+bundledHash: fda2a532
 
 # Period Summary Verification & Repair
 
@@ -26,9 +26,9 @@ Keep following the persona rules when speaking to the user. This skill governs *
 2. **Read the target first**: Call `summary_read(mode: "read", type, start_date)` to read the current Markdown body of each target summary. Never rewrite a summary you have not read.
 3. **Establish the roles before editing**:
    - The diary author ("I" / "我") is the **user**.
-   - The AI companion is the **current companion** (for example Latte), not the application and not a system default name.
+   - The AI companion is the **user's companion** (strictly preserve any companion name given by the user in the diaries or companion settings; never overwrite a companion name with the application name or a system default label).
    - Never swap the user's and the companion's identities, feelings, or actions.
-   - Never treat the application name or a system default name as a person's name. If a summary does so, correct it.
+   - Never treat the application name or a system default name as a person's name, and never overwrite the user's companion name with a system default name. If a summary does so, correct it.
 4. **Verify facts with real sources**: Use `diary_list` + `diary_read` for the same period. Use `diary_search` (FTS) to find names, events, and quotations, and `vector_search` (RAG) for semantic evidence. Use `recall_relations` when available to check existing relationship records. If RAG is unavailable, complete at least the FTS + diary-text verification.
 5. **Build a person map before writing**: List every person in the summary and confirm who they are. Check the user, the companion, and other people separately. Do not guess a name when the sources are unclear—ask the user.
 6. **Propose before overwriting**: Use `companion_ask` to show the discovered error(s) (original → corrected) and the repair scope. When multiple summaries or independent fixes are proposed, set `multiple: true` so the user can select which ones to apply. Get confirmation before writing.
@@ -89,7 +89,7 @@ Task Progress:
 Build a person map:
 
 - **User (diary author)**: the "I" in the diaries; use the user's nickname when available.
-- **AI companion**: the current companion's name; never replace it with the application or a system default name.
+- **AI companion**: the user's companion name (strictly preserve any companion name used in the diaries or companion settings; never replace it with the application name or a system default label).
 - **Other people**: keep the names exactly as they appear in the diaries unless the user corrects them.
 
 Check for these common errors:

@@ -189,7 +189,7 @@ Keep following the persona rules when speaking to the user. This skill governs *
 
 1. **Detect missing first, then ask**: When generating missing summaries, first call \`summary_read(mode: "missing")\` (or \`baishou_summary_read\`) to run the bitmap & cascade detector, then call \`companion_ask\` so the user can choose which period(s) to generate. Never batch-call \`summary_write\` without user confirmation.
 2. **Read source material before writing**: Before drafting any summary, you must read the real source material for that period (read diaries for weekly; read weeklies or diaries for monthly; read monthlies for quarterly; read quarterlies for yearly). Never fabricate facts or write from vague memory without reading the sources.
-3. **Never treat the application or system default name as a person's name**: The application name and system defaults are **not** people in the user's life. Never list them under "Key People & Relationship Progress" or attribute human actions to them.
+3. **Preserve any custom companion name; never treat the application or system default name as a person's name**: If the diaries or settings specify a name for the AI companion/assistant, strictly preserve that exact name and never replace it with a system default name. The application name and system defaults are **not** people in the user's life. Never list them under "Key People & Relationship Progress" or attribute human actions to them.
 4. **Follow period boundary & cascade rules strictly**:
    - **Weekly (\`weekly\`)**: Monday through Sunday is one full week. Generated only after the week has ended (Sunday 23:59:59 has passed) and the week has at least one diary entry. \`start_date\` must be the **Monday** of that week (\`YYYY-MM-DD\`).
    - **Monthly (\`monthly\`)**: Generated only after the calendar month has ended and the month has weekly summaries (or diaries). \`start_date\` must be \`YYYY-MM-01\`.
@@ -368,9 +368,9 @@ Keep following the persona rules when speaking to the user. This skill governs *
 2. **Read the target first**: Call \`summary_read(mode: "read", type, start_date)\` to read the current Markdown body of each target summary. Never rewrite a summary you have not read.
 3. **Establish the roles before editing**:
    - The diary author ("I" / "我") is the **user**.
-   - The AI companion is the **current companion** (for example Latte), not the application and not a system default name.
+   - The AI companion is the **user's companion** (strictly preserve any companion name given by the user in the diaries or companion settings; never overwrite a companion name with the application name or a system default label).
    - Never swap the user's and the companion's identities, feelings, or actions.
-   - Never treat the application name or a system default name as a person's name. If a summary does so, correct it.
+   - Never treat the application name or a system default name as a person's name, and never overwrite the user's companion name with a system default name. If a summary does so, correct it.
 4. **Verify facts with real sources**: Use \`diary_list\` + \`diary_read\` for the same period. Use \`diary_search\` (FTS) to find names, events, and quotations, and \`vector_search\` (RAG) for semantic evidence. Use \`recall_relations\` when available to check existing relationship records. If RAG is unavailable, complete at least the FTS + diary-text verification.
 5. **Build a person map before writing**: List every person in the summary and confirm who they are. Check the user, the companion, and other people separately. Do not guess a name when the sources are unclear—ask the user.
 6. **Propose before overwriting**: Use \`companion_ask\` to show the discovered error(s) (original → corrected) and the repair scope. When multiple summaries or independent fixes are proposed, set \`multiple: true\` so the user can select which ones to apply. Get confirmation before writing.
@@ -431,7 +431,7 @@ Task Progress:
 Build a person map:
 
 - **User (diary author)**: the "I" in the diaries; use the user's nickname when available.
-- **AI companion**: the current companion's name; never replace it with the application or a system default name.
+- **AI companion**: the user's companion name (strictly preserve any companion name used in the diaries or companion settings; never replace it with the application name or a system default label).
 - **Other people**: keep the names exactly as they appear in the diaries unless the user corrects them.
 
 Check for these common errors:
