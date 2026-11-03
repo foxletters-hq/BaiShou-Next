@@ -242,7 +242,7 @@ export function useSettingsAccount() {
       const runtime = getAgentDbRuntime()
       if (runtime?.drizzleDb) {
         const vaultName = activeVault?.name || 'Personal'
-        const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+        const vaultId = activeVault?.id?.trim() || deriveLegacyVaultId(vaultName)
         await syncMobileSelfPersonNodeOnRename({
           drizzleDb: runtime.drizzleDb,
           pathService: services.pathService,

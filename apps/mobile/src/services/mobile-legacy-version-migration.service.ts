@@ -289,6 +289,11 @@ function buildImporterDeps(
     const pinned = pinnedTargets.get(legacyVaultName)
     if (pinned) return pinned
 
+    if (rootsEqual(sourceRoot, targetRoot)) {
+      pinnedTargets.set(legacyVaultName, legacyVaultName)
+      return legacyVaultName
+    }
+
     const stored = await getStoredVaultNameMap()
     const existing = await collectExistingTargetVaultNames(runtime)
     const target = resolveLegacyVaultTargetName(legacyVaultName, existing, stored)
@@ -403,7 +408,9 @@ export async function importMobileVersionMigrationSection(
   const pinVaultTargets = new Map<string, string>()
   const legacyVaultForSection = parseWorkspaceSectionId(sectionId)
   if (legacyVaultForSection) {
-    const pinned = await preResolveWorkspaceTargetVault(runtime, legacyVaultForSection)
+    const pinned = source.inPlace
+      ? legacyVaultForSection
+      : await preResolveWorkspaceTargetVault(runtime, legacyVaultForSection)
     pinVaultTargets.set(legacyVaultForSection, pinned)
     if (pinned !== legacyVaultForSection) {
       await mergeVaultNameMap({ [legacyVaultForSection]: pinned })

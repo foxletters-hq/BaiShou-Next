@@ -163,6 +163,9 @@ async function buildImporterDeps(
   const diaryService = await getDiaryManagerForVault(activeVaultName)
 
   const resolveTargetVaultName = async (legacyVaultName: string): Promise<string> => {
+    if (rootsEqual(sourceRoot, targetRoot)) {
+      return legacyVaultName
+    }
     const stored = await getStoredVaultNameMap()
     const existing = new Set(vaultService.getAllVaults().map((v) => v.name))
     const target = resolveLegacyVaultTargetName(legacyVaultName, existing, stored)

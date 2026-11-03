@@ -4,6 +4,7 @@ import { deriveLegacyVaultId } from '@baishou/shared'
 import type { AgentSession } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { subscribeMobileSessionChanged } from '../services/mobile-session-events'
+import { resolveMobileActiveVaultId } from '../utils/mobile-session-vault.util'
 
 /** 每页 20 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
 export const SESSION_PAGE_SIZE = 20
@@ -93,21 +94,19 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
       }
 
       try {
+        const activeVaultId = resolveMobileActiveVaultId(services)
         const activeVault = services.vaultService?.getActiveVault?.()
-        const activeVaultId =
-          activeVault?.id ??
-          deriveLegacyVaultId(
-            (await services.pathService
-              ?.getActiveVaultNameForContext?.()
-              .catch(() => 'Personal')) || 'Personal'
-          )
+        const derivedId = activeVault?.name ? deriveLegacyVaultId(activeVault.name) : undefined
+        const vaultCandidateIds = Array.from(
+          new Set([activeVaultId, derivedId, deriveLegacyVaultId('Personal')].filter(Boolean))
+        ) as string[]
         const normalizedQuery = searchQueryRef.current.trim() || undefined
         const sessionList = await services.sessionManager.list(
           targetLimit + 1,
           offset,
           targetAssistantId.trim(),
           normalizedQuery,
-          activeVaultId
+          vaultCandidateIds
         )
 
         if (reqId !== lastLoadRequestId.current) return

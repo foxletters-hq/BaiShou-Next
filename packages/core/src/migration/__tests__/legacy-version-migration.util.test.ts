@@ -23,6 +23,12 @@ describe('legacy-version-migration.util', () => {
     const resolved = resolveUniqueNameWithTwoDigitSuffix('旅行者', existing)
     expect(resolved).toMatch(/^旅行者\d{2}$/)
     expect(resolved).not.toBe('旅行者')
+
+    // 验证末尾已有数字时不套娃追加
+    const existingPersonal = new Set(['Personal82'])
+    const resolvedPersonal = resolveUniqueNameWithTwoDigitSuffix('Personal82', existingPersonal)
+    expect(resolvedPersonal).toMatch(/^Personal\d{2}$/)
+    expect(resolvedPersonal).not.toContain('Personal82')
     vi.restoreAllMocks()
   })
 

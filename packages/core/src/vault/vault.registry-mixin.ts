@@ -82,13 +82,20 @@ export abstract class VaultRegistryMixin extends VaultIdentityBase {
               return true
             })
           : []
-        this._vaults = filteredList.map((item: any) => ({
-          id: isVaultId(item.id) ? item.id : '',
-          name: item.name,
-          path: item.path,
-          createdAt: parseRegistryTimestamp(item.createdAt, fallbackNow),
-          lastAccessedAt: parseRegistryTimestamp(item.lastAccessedAt, fallbackNow)
-        }))
+        this._vaults = filteredList.map((item: any) => {
+          let id = isVaultId(item.id) ? item.id : ''
+          if (!id && item.name) {
+            id = deriveLegacyVaultId(item.name)
+            shouldSave = true
+          }
+          return {
+            id,
+            name: item.name,
+            path: item.path,
+            createdAt: parseRegistryTimestamp(item.createdAt, fallbackNow),
+            lastAccessedAt: parseRegistryTimestamp(item.lastAccessedAt, fallbackNow)
+          }
+        })
 
         if (hadSkippedVaults) {
           shouldSave = true

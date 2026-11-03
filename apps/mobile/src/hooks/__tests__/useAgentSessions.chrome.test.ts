@@ -48,4 +48,9 @@ describe('mobile useAgentSessions pagination & search chrome', () => {
     )
     expect(listScrollSrc).toContain('handleListScrollEndDrag')
   })
+
+  it('使用 resolveMobileActiveVaultId 防止 activeVault.id 为空串时触发 fail-closed 拦截', () => {
+    expect(hookSrc).toContain('resolveMobileActiveVaultId(services)')
+    expect(hookSrc).not.toContain('activeVault?.id ??')
+  })
 })

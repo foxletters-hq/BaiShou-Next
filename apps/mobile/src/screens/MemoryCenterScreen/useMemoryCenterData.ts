@@ -117,7 +117,7 @@ export function useMemoryCenterData() {
       if (typeof nextGraphCount !== 'number') {
         const activeVault = readActiveVaultSafely(services.vaultService)
         const vaultName = activeVault?.name || 'Personal'
-        const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+        const vaultId = activeVault?.id?.trim() || deriveLegacyVaultId(vaultName)
         try {
           const pending = await mobileListPendingReextract({
             vaultName,

@@ -211,13 +211,16 @@ export function resolveUniqueNameWithTwoDigitSuffix(
   if (!trimmed) return baseName
   if (!existingNames.has(trimmed)) return trimmed
 
+  // 若 baseName 末尾已有数字后缀（如 Personal82 或 Personal8273），剥离末尾数字，避免套娃累加
+  const cleanBase = trimmed.replace(/\d+$/, '') || trimmed
+
   for (let attempt = 0; attempt < 50; attempt++) {
     const suffix = String(Math.floor(Math.random() * 90) + 10)
-    const candidate = `${trimmed}${suffix}`
+    const candidate = `${cleanBase}${suffix}`
     if (!existingNames.has(candidate)) return candidate
   }
 
-  return `${trimmed}${String(Date.now() % 100).padStart(2, '0')}`
+  return `${cleanBase}${String(Date.now() % 100).padStart(2, '0')}`
 }
 
 /**

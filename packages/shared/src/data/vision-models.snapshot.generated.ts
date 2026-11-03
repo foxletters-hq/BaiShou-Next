@@ -4,7 +4,7 @@
  * Source: https://models.dev/api.json + scripts/provider-modelsdev.manifest.json
  */
 export const VISION_MODELS_SNAPSHOT = {
-  syncedAt: '2026-10-30T02:49:49.290Z',
+  syncedAt: '2026-11-03T15:07:25.002Z',
   source: 'https://models.dev/api.json',
   byProvider: {
     openai: [
@@ -111,7 +111,6 @@ export const VISION_MODELS_SNAPSHOT = {
       'grok-4.7',
       'grok-build-0.1',
       'grok-imagine-image',
-      'grok-imagine-image-quality',
       'grok-imagine-video',
       'grok-imagine-video-1.5',
       'grok-imagine-video-1.5-lite'
@@ -410,6 +409,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'z-ai/glm-4.6v',
       'z-ai/glm-5.3-flash',
       'z-ai/glm-5.3-flashx',
+      'z-ai/glm-5.3-flashx-legal',
       'z-ai/glm-5v-turbo',
       '~anthropic/claude-fable-latest',
       '~anthropic/claude-haiku-latest',
@@ -632,7 +632,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'klingai/kling-v2.6-motion-control',
       'klingai/kling-v3.0-i2v',
       'klingai/kling-v3.0-motion-control',
-      'meituan/longcat-2.5-preview',
+      'meituan/longcat-2.5',
       'meta/llama-4-maverick',
       'meta/llama-4-scout',
       'meta/muse-glimmer-30b',
@@ -756,13 +756,13 @@ export const VISION_MODELS_SNAPSHOT = {
       'thinkingmachines/inkling',
       'thinkingmachines/inkling-small',
       'topaz/wonder-3.5',
-      'xiaomi/mimo-v2.5',
       'xiaomi/mimo-v2.6-flash',
       'xiaomi/mimo-v2.6-pro',
       'xiaomi/mimo-v2.6-pro-ultraspeed',
       'zai/glm-4.5v',
       'zai/glm-5.3-flash',
       'zai/glm-5.3-flashx',
+      'zai/glm-5.3-flashx-legal',
       'zai/glm-5v-turbo'
     ]
   },
@@ -1026,7 +1026,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'grok-4.7',
     'grok-build-0.1',
     'grok-imagine-image',
-    'grok-imagine-image-quality',
     'grok-imagine-video',
     'grok-imagine-video-1.5',
     'grok-imagine-video-1.5-lite',
@@ -1052,7 +1051,7 @@ export const VISION_MODELS_SNAPSHOT = {
     'lyria-3-clip-preview',
     'lyria-3-pro-preview',
     'magistral-medium-latest',
-    'meituan/longcat-2.5-preview',
+    'meituan/longcat-2.5',
     'meta-llama/llama-4-maverick',
     'meta-llama/llama-4-scout',
     'meta-llama/llama-guard-4-12b',
@@ -1353,6 +1352,7 @@ export const VISION_MODELS_SNAPSHOT = {
     'z-ai/glm-4.6v',
     'z-ai/glm-5.3-flash',
     'z-ai/glm-5.3-flashx',
+    'z-ai/glm-5.3-flashx-legal',
     'z-ai/glm-5v-turbo',
     'zai-glm-5-3-flash',
     'zai-org/GLM-5.3-Flash',
@@ -1360,6 +1360,7 @@ export const VISION_MODELS_SNAPSHOT = {
     'zai/glm-4.5v',
     'zai/glm-5.3-flash',
     'zai/glm-5.3-flashx',
+    'zai/glm-5.3-flashx-legal',
     'zai/glm-5v-turbo',
     '~anthropic/claude-fable-latest',
     '~anthropic/claude-haiku-latest',

@@ -18,7 +18,7 @@ export function useMobileSuspectCount() {
       return
     }
     const activeVault = readActiveVaultSafely(services.vaultService)
-    const vaultId = activeVault?.id ?? deriveLegacyVaultId(activeVault?.name || 'Personal')
+    const vaultId = activeVault?.id?.trim() || deriveLegacyVaultId(activeVault?.name || 'Personal')
     try {
       const suspects = await mobileListSuspectNodes(runtime.drizzleDb, vaultId)
       setSuspectCount(Array.isArray(suspects) ? suspects.length : 0)
