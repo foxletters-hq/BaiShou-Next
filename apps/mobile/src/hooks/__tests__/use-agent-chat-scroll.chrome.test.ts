@@ -48,4 +48,12 @@ describe('useAgentChatKeyboardInsets retraction guard chrome', () => {
   it('should guard handleComposerFocus with Keyboard.isVisible before lifting composer', () => {
     expect(keyboardInsetsSrc).toContain('if (Keyboard.isVisible?.() !== true) return')
   })
+
+  it('should suppress delayed keyboardDidShow after explicit resetKeyboardInset and reconcile composerBottom in reaction', () => {
+    expect(keyboardInsetsSrc).toContain('suppressShowUntilRef')
+    expect(keyboardInsetsSrc).toContain('fallbackKeyboardHeightSv')
+    expect(keyboardInsetsSrc).toContain('transitionedToClosed')
+    expect(keyboardInsetsSrc).toContain('closingFinished')
+    expect(keyboardInsetsSrc).toContain('bottom: composerBottom.value')
+  })
 })
