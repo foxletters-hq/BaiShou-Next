@@ -285,4 +285,34 @@ describe('mobile memory center chrome', () => {
     expect(page).toContain('modalActionsStyle')
     expect(page).not.toContain("alignSelf: 'flex-start'")
   })
+
+  it('should suppress organize cards and actions during embedding migration', () => {
+    expect(organizeChrome).toContain('isMigrating')
+    expect(organizeChrome).toContain("ragState.type === 'reembed' || ragState.type === 'migration'")
+    expect(organizeChrome).toContain(
+      "if (isMigrating || organizeCardKind === 'hidden') return null"
+    )
+    expect(organizeChrome).toContain(
+      "if (isMigrating || organizeCardKind !== 'hidden' || !props.children) return null"
+    )
+    expect(organizeChrome).toContain(
+      "if (isMigrating || organizeCardKind === 'running') return null"
+    )
+    expect(page).toContain('rag_migration_running_toast')
+
+    const ragSystemHook = readFileSync(
+      join(here, '..', '..', '..', 'hooks', 'useMobileRagSystem.ts'),
+      'utf8'
+    )
+    expect(ragSystemHook).toContain('rag_indexing_in_progress')
+  })
+
+  it('should subscribe rag runtime store without side effects inside state updaters', () => {
+    const ragSystemHook = readFileSync(
+      join(here, '..', '..', '..', 'hooks', 'useMobileRagSystem.ts'),
+      'utf8'
+    )
+    expect(ragSystemHook).toContain('useSyncExternalStore(')
+    expect(ragSystemHook).not.toContain('setRagStateInner')
+  })
 })
