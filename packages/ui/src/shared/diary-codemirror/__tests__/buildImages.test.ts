@@ -3,6 +3,7 @@ import { EditorState } from '@codemirror/state'
 import { Decoration } from '@codemirror/view'
 import { markdown } from '@codemirror/lang-markdown'
 import { collectImageDecorations, scanImageRanges } from '../extensions/buildImages'
+import { buildMarkerHidingDecorations } from '../extensions/build'
 import { ImagePlaceholderWidget } from '../widgets/ImagePlaceholderWidget'
 import { ImageWidget } from '../widgets/ImageWidget'
 
@@ -63,5 +64,35 @@ describe('collectImageDecorations (C-3 / C-4)', () => {
           mark.value.spec.widget instanceof ImagePlaceholderWidget
       )
     ).toBe(true)
+  })
+
+  it('keeps ImageWidget for all images in buildMarkerHidingDecorations without splitting into link marks', () => {
+    const doc = [
+      '![img_1_with_underscore](attachment/img_1.png)',
+      ...Array.from({ length: 30 }, (_, i) => `paragraph ${i}`),
+      '![img_2_with_underscore](attachment/img_2.png)',
+      ...Array.from({ length: 30 }, (_, i) => `paragraph ${i + 30}`),
+      '![img_3_with_underscore](attachment/img_3.png)'
+    ].join('\n')
+    const state = createState(doc)
+    const deco = buildMarkerHidingDecorations(
+      state,
+      { resolveAttachmentUrl: (u) => `local:///${u}`, interactionMode: 'touch' },
+      { hasFocus: false }
+    )
+
+    const imageWidgets: ImageWidget[] = []
+    let linkMarkCount = 0
+    deco.between(0, state.doc.length, (_from, _to, value) => {
+      if (value.spec.widget instanceof ImageWidget) {
+        imageWidgets.push(value.spec.widget)
+      }
+      if (value.spec.class === 'cm-rendered-link' || value.spec.class === 'cm-link') {
+        linkMarkCount += 1
+      }
+    })
+
+    expect(imageWidgets).toHaveLength(3)
+    expect(linkMarkCount).toBe(0)
   })
 })

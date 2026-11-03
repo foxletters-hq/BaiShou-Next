@@ -31,6 +31,8 @@ interface DiaryCardProps {
   /** 语义搜索相似度 0–1 */
   matchSimilarity?: number
   tagColorRegistry?: DiaryTagColorRegistry
+  resolveImageUri?: (src: string) => string | null | undefined
+  loadImageUri?: (src: string) => Promise<string | null>
   onClick?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -51,6 +53,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   isFavorite,
   matchSimilarity,
   tagColorRegistry,
+  resolveImageUri,
+  loadImageUri,
   onClick,
   onEdit,
   onDelete
@@ -112,9 +116,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
   }
 
   const previewMarkdown = useMemo(() => {
-    const text = prepareDiaryCardPreviewMarkdown(contentSnippet)
-    if (!text) return ''
-    return text.length > 500 ? `${text.slice(0, 500)}…` : text
+    if (!contentSnippet) return ''
+    const source = contentSnippet.length > 500 ? contentSnippet.slice(0, 500) : contentSnippet
+    return prepareDiaryCardPreviewMarkdown(source)
   }, [contentSnippet])
   const { visibleTags: previewTags, overflowCount: tagOverflowCount } = limitDiaryPreviewTags(tags)
 
@@ -197,7 +201,12 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
       <View style={styles.contentContainer} pointerEvents="box-none">
         <View onLayout={handleContentLayout} pointerEvents="box-none">
           {previewMarkdown ? (
-            <MarkdownRenderer content={previewMarkdown} variant="preview" />
+            <MarkdownRenderer
+              content={previewMarkdown}
+              variant="preview"
+              resolveImageUri={resolveImageUri}
+              loadImageUri={loadImageUri}
+            />
           ) : (
             <Text
               style={[styles.snippet, { color: colors.textSecondary }]}

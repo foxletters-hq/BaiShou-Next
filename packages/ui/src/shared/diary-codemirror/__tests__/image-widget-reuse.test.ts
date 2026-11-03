@@ -66,4 +66,47 @@ describe('ImageWidget width updates', () => {
     const container = parent.querySelector('.cm-image-container') as HTMLElement
     expect(container.style.width).toBe('420px')
   })
+
+  it('reuses detached DOM and img across destroy and toDOM when scrolling out and back into viewport', () => {
+    const first = new ImageWidget(
+      'local:///scroll-pool.png',
+      'scroll',
+      300,
+      0,
+      30,
+      false,
+      'attachment/scroll-pool.png',
+      {
+        resolveAttachmentUrl: (url) => url,
+        interactionMode: 'mouse'
+      }
+    )
+    const dom = first.toDOM()
+    const img = dom.querySelector('img')
+    Object.defineProperty(dom, 'offsetHeight', { value: 275, configurable: true })
+
+    // Simulate CodeMirror unmounting the widget when scrolled past viewport margin
+    first.destroy(dom)
+    dom.remove()
+
+    const remounted = new ImageWidget(
+      'local:///scroll-pool.png',
+      'scroll',
+      340,
+      0,
+      30,
+      false,
+      'attachment/scroll-pool.png',
+      {
+        resolveAttachmentUrl: (url) => url,
+        interactionMode: 'mouse'
+      }
+    )
+    expect(remounted.estimatedHeight).toBe(275)
+
+    const nextDom = remounted.toDOM()
+    expect(nextDom).toBe(dom)
+    expect(nextDom.querySelector('img')).toBe(img)
+    expect(nextDom.style.width).toBe('340px')
+  })
 })

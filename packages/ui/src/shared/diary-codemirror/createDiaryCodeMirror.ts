@@ -11,7 +11,6 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { searchKeymap } from '@codemirror/search'
 import { livePreviewField } from './extensions/livePreviewPlugin'
 import { tablePreviewField } from './extensions/tablePreviewField'
-import { imagePreviewPlugin } from './extensions/imagePreviewPlugin'
 import { livePreviewSyntaxHighlighting } from './extensions/syntax'
 import { markdownKeymap } from './extensions/keymap'
 import {
@@ -129,7 +128,6 @@ export function createDiaryCodeMirrorExtensions(
     cmPlaceholder(placeholder || ''),
     ...(isTouch ? [tablePreviewField(platform)] : []),
     ...livePreviewField(platform),
-    imagePreviewPlugin(platform),
     livePreviewSyntaxHighlighting(),
     attachmentUrlPlugin(resolveUrl),
     ...(onChange

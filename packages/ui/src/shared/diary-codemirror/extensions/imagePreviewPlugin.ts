@@ -4,19 +4,6 @@ import { forceImageRefresh } from './effects'
 import { getCursorPositions } from './cursor'
 import type { DiaryCmPlatform } from '../types'
 
-const VIEWPORT_BUFFER_LINES = 10
-
-function expandVisibleRanges(view: EditorView): { from: number; to: number }[] {
-  const doc = view.state.doc
-  return view.visibleRanges.map(({ from, to }) => {
-    const startLine = doc.lineAt(from).number
-    const endLine = doc.lineAt(Math.min(to, doc.length)).number
-    const bufStart = Math.max(1, startLine - VIEWPORT_BUFFER_LINES)
-    const bufEnd = Math.min(doc.lines, endLine + VIEWPORT_BUFFER_LINES)
-    return { from: doc.line(bufStart).from, to: doc.line(bufEnd).to }
-  })
-}
-
 function normalizePlatform(
   resolveUrlOrPlatform?: ((url: string) => string) | DiaryCmPlatform
 ): DiaryCmPlatform | undefined {
@@ -30,7 +17,7 @@ function normalizePlatform(
   return resolveUrlOrPlatform
 }
 
-/** 仅对视口附近的图片创建完整 widget，其余用占位符 */
+/** 独立图片预览插件（当前主流程已并入 livePreviewField 统一构建装饰） */
 export function imagePreviewPlugin(
   resolveUrlOrPlatform?: ((url: string) => string) | DiaryCmPlatform
 ) {
@@ -47,7 +34,6 @@ export function imagePreviewPlugin(
       update(update: ViewUpdate) {
         const needsRefresh =
           update.docChanged ||
-          update.viewportChanged ||
           update.selectionSet ||
           update.transactions.some((t) => t.effects.some((e) => e.is(forceImageRefresh)))
 
@@ -61,10 +47,7 @@ export function imagePreviewPlugin(
       build(view: EditorView): DecorationSet {
         const marks: { from: number; to: number; value: Decoration }[] = []
         const cursors = getCursorPositions(view.state)
-        collectImageDecorations(view.state, cursors, platform, marks, {
-          visibleRanges: expandVisibleRanges(view),
-          offscreenPlaceholder: true
-        })
+        collectImageDecorations(view.state, cursors, platform, marks)
         return marks.length > 0 ? Decoration.set(marks, true) : Decoration.none
       }
     },
