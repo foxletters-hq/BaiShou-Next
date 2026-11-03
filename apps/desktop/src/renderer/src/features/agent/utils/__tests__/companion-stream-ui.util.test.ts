@@ -84,4 +84,41 @@ describe('resolveCompanionStreamUi', () => {
     })
     expect(liveWithGate.showStreamingBubble).toBe(true)
   })
+
+  it('should keep streaming bubble active during bridge when persistedMessageId has not matched lastMessage', () => {
+    const historicalAssistant = {
+      id: 'msg-prev-assistant',
+      role: 'assistant' as const,
+      content: '上一轮的回复内容',
+      parts: [{ type: 'text', data: { text: '上一轮的回复内容' } }]
+    }
+
+    // 流式刚刚结束，开启桥接，已得到新消息 ID msg-current-assistant，但列表中的 lastMessage 还是上一轮的历史回复
+    const uiWaitingHandoff = resolveCompanionStreamUi({
+      isStreaming: false,
+      isBridgeActive: true,
+      persistedMessageId: 'msg-current-assistant',
+      isCompressing: false,
+      lastMessage: historicalAssistant,
+      text: '当前轮刚刚流式输出的内容'
+    })
+    expect(uiWaitingHandoff.showStreamingBubble).toBe(true)
+
+    // 当数据库新消息刷新出来后，lastMessage 的 ID 变成了 msg-current-assistant，此时无缝交接
+    const currentAssistant = {
+      id: 'msg-current-assistant',
+      role: 'assistant' as const,
+      content: '当前轮刚刚流式输出的内容',
+      parts: [{ type: 'text', data: { text: '当前轮刚刚流式输出的内容' } }]
+    }
+    const uiHandoffCompleted = resolveCompanionStreamUi({
+      isStreaming: false,
+      isBridgeActive: true,
+      persistedMessageId: 'msg-current-assistant',
+      isCompressing: false,
+      lastMessage: currentAssistant,
+      text: '当前轮刚刚流式输出的内容'
+    })
+    expect(uiHandoffCompleted.showStreamingBubble).toBe(false)
+  })
 })

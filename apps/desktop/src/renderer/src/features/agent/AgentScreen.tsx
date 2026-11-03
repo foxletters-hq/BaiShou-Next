@@ -224,6 +224,7 @@ export const AgentScreen: React.FC = () => {
   const companionStreamUi = resolveCompanionStreamUi({
     isStreaming: flow.stream.isStreaming,
     isBridgeActive: flow.stream.isBridgeActive,
+    persistedMessageId: flow.stream.persistedMessageId,
     isCompressing: flow.stream.isCompressing,
     error: flow.stream.error,
     lastMessage: lastChatMessage,

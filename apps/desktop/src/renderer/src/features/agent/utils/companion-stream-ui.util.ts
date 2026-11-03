@@ -1,6 +1,7 @@
 import { shouldHidePersistedStreamingAssistant } from './persisted-streaming-assistant.util'
 
 export type CompanionStreamUiLastMessage = {
+  id?: string
   role?: string
   content?: string
   reasoning?: string
@@ -54,6 +55,7 @@ function lastAssistantHasPersistedContent(
 export function resolveCompanionStreamUi(input: {
   isStreaming: boolean
   isBridgeActive: boolean
+  persistedMessageId?: string | null
   isCompressing: boolean
   error?: string | null
   lastMessage?: CompanionStreamUiLastMessage | null
@@ -82,7 +84,11 @@ export function resolveCompanionStreamUi(input: {
     liveGatePartsCount: input.liveGatePartsCount
   })
   const assistantPersistedDuringBridge =
-    input.isBridgeActive && lastAssistantHasPersistedContent(input.lastMessage)
+    input.isBridgeActive &&
+    (input.persistedMessageId
+      ? input.lastMessage?.id === input.persistedMessageId &&
+        lastAssistantHasPersistedContent(input.lastMessage)
+      : lastAssistantHasPersistedContent(input.lastMessage))
   const waitingForFirstToken =
     input.isStreaming &&
     !hasVisibleBody &&

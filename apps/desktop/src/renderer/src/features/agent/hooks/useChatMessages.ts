@@ -470,6 +470,61 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     return () => removeListener()
   }, [sessionId, isStreaming, refreshMessages])
 
+  const syncStreamPassRef = useRef(0)
+  const syncStreamFinishToMessages = useCallback(
+    async (targetSessionId: string, expectedMessageId?: string) => {
+      const pass = ++syncStreamPassRef.current
+      const knownAssistantIds = new Set(
+        messageCacheRef.current.filter((m) => m.role === 'assistant').map((m) => m.id)
+      )
+
+      for (let attempt = 0; attempt < 8; attempt++) {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, Math.min(120 * attempt, 360)))
+        }
+        if (currentSessionIdRef.current !== targetSessionId || syncStreamPassRef.current !== pass) {
+          return
+        }
+
+        const success = await refreshLatestMessages(1, targetSessionId)
+        if (
+          !success ||
+          currentSessionIdRef.current !== targetSessionId ||
+          syncStreamPassRef.current !== pass
+        ) {
+          continue
+        }
+
+        persistSessionCache(targetSessionId)
+
+        if (expectedMessageId) {
+          const expectedMsg = messageCacheRef.current.find((m) => m.id === expectedMessageId)
+          if (expectedMsg && !isPersistedAssistantStreamInProgress(expectedMsg)) {
+            clearStreamBridgeForSession(targetSessionId)
+            return
+          }
+        } else {
+          const lastAssistant = [...messageCacheRef.current]
+            .reverse()
+            .find((m) => m.role === 'assistant')
+          if (
+            lastAssistant &&
+            !knownAssistantIds.has(lastAssistant.id) &&
+            !isPersistedAssistantStreamInProgress(lastAssistant)
+          ) {
+            clearStreamBridgeForSession(targetSessionId)
+            return
+          }
+        }
+      }
+
+      if (currentSessionIdRef.current === targetSessionId && syncStreamPassRef.current === pass) {
+        clearStreamBridgeForSession(targetSessionId)
+      }
+    },
+    [refreshLatestMessages, persistSessionCache]
+  )
+
   const prevStreamingRef = useRef(isStreaming)
   useEffect(() => {
     if (isStreaming && sessionId) {
@@ -480,53 +535,22 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
         prevStreamingRef.current = isStreaming
         return
       }
-
-      const knownAssistantIds = new Set(
-        messageCacheRef.current.filter((m) => m.role === 'assistant').map((m) => m.id)
-      )
-
-      const sync = async () => {
-        for (let attempt = 0; attempt < 5; attempt++) {
-          if (attempt > 0) {
-            await new Promise((resolve) => setTimeout(resolve, 150 * attempt))
-          }
-          const success = await refreshLatestMessages(1)
-          if (!success || !sessionId) continue
-          persistSessionCache(sessionId)
-          const lastAssistant = [...messageCacheRef.current]
-            .reverse()
-            .find((m) => m.role === 'assistant')
-          if (
-            lastAssistant &&
-            (!knownAssistantIds.has(lastAssistant.id) ||
-              !isPersistedAssistantStreamInProgress(lastAssistant))
-          ) {
-            clearStreamBridgeForSession(sessionId)
-            return
-          }
-        }
-        clearStreamBridgeForSession(sessionId)
-      }
-      void sync()
+      void syncStreamFinishToMessages(sessionId)
     }
     prevStreamingRef.current = isStreaming
-  }, [isStreaming, sessionId, refreshLatestMessages, persistSessionCache])
+  }, [isStreaming, sessionId, syncStreamFinishToMessages])
 
   useEffect(() => {
     if (!sessionId) return
     const onStreamFinished = (e: Event) => {
-      const detail = (e as CustomEvent<{ sessionId?: string }>).detail
+      const detail = (e as CustomEvent<{ sessionId?: string; messageId?: string; error?: string }>)
+        .detail
       if (!detail?.sessionId || detail.sessionId !== sessionId) return
-      void refreshLatestMessages(2).then((ok) => {
-        if (ok) {
-          persistSessionCache(sessionId)
-          clearStreamBridgeForSession(sessionId)
-        }
-      })
+      void syncStreamFinishToMessages(detail.sessionId, detail.messageId)
     }
     window.addEventListener('baishou:agent-stream-finished', onStreamFinished)
     return () => window.removeEventListener('baishou:agent-stream-finished', onStreamFinished)
-  }, [sessionId, refreshLatestMessages, persistSessionCache])
+  }, [sessionId, syncStreamFinishToMessages])
 
   const {
     loadMore,
