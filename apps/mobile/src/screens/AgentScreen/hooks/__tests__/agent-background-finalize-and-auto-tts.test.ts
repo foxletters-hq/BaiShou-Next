@@ -43,6 +43,8 @@ describe('mobile agent background finalization & auto tts', () => {
 
   it('resyncs session messages when app returns to foreground without timeout hangs', () => {
     expect(sessionSrc).toContain("nextState === 'active'")
-    expect(sessionSrc).toContain('refreshSessionMessages(currentSessionId, { preserveWindow: true })')
+    expect(sessionSrc).toContain(
+      'refreshSessionMessages(currentSessionId, { preserveWindow: true })'
+    )
   })
 })

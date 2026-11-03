@@ -169,7 +169,10 @@ export function useAgentNavigationPersistence({
           const session = await lookupSession(services, saved.sessionId)
           if (cancelled) return
           if (!session) {
-            console.warn('[useAgentNavigation] 持久化会话未找到或无法在此小窝中加载，清空当前会话:', saved.sessionId)
+            console.warn(
+              '[useAgentNavigation] 持久化会话未找到或无法在此小窝中加载，清空当前会话:',
+              saved.sessionId
+            )
             invalidateCurrentSession()
             return
           }

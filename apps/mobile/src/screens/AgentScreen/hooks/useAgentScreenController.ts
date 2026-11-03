@@ -179,7 +179,8 @@ export function useAgentScreenController() {
     }, [])
   )
 
-  const composerKeyboardLiftEnabled = !drawerOpen && !showShortcutSheet && !showRecallSheet
+  const composerKeyboardLiftEnabled =
+    !drawerOpen && !showShortcutSheet && !showRecallSheet && !showCostDialog
   const {
     keyboardInset,
     inputDockAnimatedStyle,
@@ -193,6 +194,14 @@ export function useAgentScreenController() {
     isBubbleEditing,
     enableComposerKeyboardLift: composerKeyboardLiftEnabled
   })
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        resetKeyboardInset()
+      }
+    }, [resetKeyboardInset])
+  )
 
   const readKeyboardInset = useCallback(() => {
     const windowHeight = Dimensions.get('window').height
@@ -300,6 +309,7 @@ export function useAgentScreenController() {
     drawerOpen,
     showShortcutSheet,
     showRecallSheet,
+    showCostDialog,
     resetKeyboardInset,
     inputBarRef,
     flatListRef,

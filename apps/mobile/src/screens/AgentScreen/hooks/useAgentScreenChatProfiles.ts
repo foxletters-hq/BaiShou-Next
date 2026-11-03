@@ -22,8 +22,7 @@ export function useAgentScreenChatProfiles(deps: {
     resolvedCurrentAvatarUri,
     resolvedUserAvatarUri,
     userProfile,
-    messages,
-    t
+    messages
   } = deps
 
   const assistantDisplayName = currentAssistant?.name || LATTE_ASSISTANT_NAME
@@ -38,11 +37,11 @@ export function useAgentScreenChatProfiles(deps: {
   )
   const chatUserProfile = useMemo(
     () => ({
-      nickname: userProfile.nickname || t('agent.chat.you_label', '你'),
+      nickname: userProfile.nickname || '',
       avatarPath: userProfile.avatarPath,
       resolvedAvatarUri: resolvedUserAvatarUri || null
     }),
-    [userProfile, t, resolvedUserAvatarUri]
+    [userProfile, resolvedUserAvatarUri]
   )
   const lastMessage = messages[messages.length - 1]
 

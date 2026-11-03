@@ -197,24 +197,6 @@ export function useAgentScreenSession(deps: {
     void syncWithSession(currentSessionId)
   }, [currentSessionId, syncWithSession])
 
-  const refreshSessionList = useCallback(() => {
-    void loadSessions(true, currentAssistant?.id, {
-      preserveLoadedCount: true,
-      scrollToTop: false
-    })
-  }, [loadSessions, currentAssistant?.id])
-
-  useEffect(() => {
-    if (!drawerOpen || !dbReady || !currentAssistant?.id) return
-    const timer = setTimeout(() => {
-      void loadSessions(true, currentAssistant.id, {
-        preserveLoadedCount: true,
-        scrollToTop: false
-      })
-    }, 280)
-    return () => clearTimeout(timer)
-  }, [drawerOpen, dbReady, currentAssistant?.id, loadSessions])
-
   const {
     assistants,
     pinnedAssistants,
@@ -235,6 +217,28 @@ export function useAgentScreenSession(deps: {
     handleSelectSession,
     loadSessions
   })
+
+  const refreshSessionList = useCallback(() => {
+    void loadSessions(true, currentAssistant?.id, {
+      preserveLoadedCount: true,
+      scrollToTop: false
+    })
+  }, [loadSessions, currentAssistant?.id])
+
+  useEffect(() => {
+    if (!drawerOpen || !dbReady) return
+    if (!currentAssistant?.id || assistants.length === 0) {
+      void loadAssistants()
+    }
+    if (!currentAssistant?.id) return
+    const timer = setTimeout(() => {
+      void loadSessions(true, currentAssistant.id, {
+        preserveLoadedCount: true,
+        scrollToTop: false
+      })
+    }, 280)
+    return () => clearTimeout(timer)
+  }, [drawerOpen, dbReady, currentAssistant?.id, assistants.length, loadAssistants, loadSessions])
 
   useAgentNavigationPersistence({
     dbReady,

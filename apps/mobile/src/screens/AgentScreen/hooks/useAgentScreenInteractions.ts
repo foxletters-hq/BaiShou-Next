@@ -15,6 +15,7 @@ export function useAgentScreenInteractions(deps: {
   drawerOpen: boolean
   showShortcutSheet: boolean
   showRecallSheet: boolean
+  showCostDialog?: boolean
   resetKeyboardInset: () => void
   inputBarRef: RefObject<InputBarRef | null>
   flatListRef: RefObject<ScrollView | null>
@@ -46,6 +47,7 @@ export function useAgentScreenInteractions(deps: {
     drawerOpen,
     showShortcutSheet,
     showRecallSheet,
+    showCostDialog = false,
     resetKeyboardInset,
     inputBarRef,
     flatListRef,
@@ -130,6 +132,7 @@ export function useAgentScreenInteractions(deps: {
       }
     ): Promise<boolean> => {
       resetKeyboardInset()
+      inputBarRef.current?.blur()
       Keyboard.dismiss()
       beginFollowIfAtBottom(flatListRef)
       const ok = await handleSend(text, attachments, sendSearchMode, meta)
@@ -140,11 +143,11 @@ export function useAgentScreenInteractions(deps: {
       }
       return ok
     },
-    [resetKeyboardInset, beginFollowIfAtBottom, handleSend, flatListRef]
+    [resetKeyboardInset, inputBarRef, beginFollowIfAtBottom, handleSend, flatListRef]
   )
 
   useEffect(() => {
-    const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet
+    const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet || showCostDialog
     if (!overlaysOpen) return
     resetKeyboardInset()
     inputBarRef.current?.blur()
@@ -152,7 +155,14 @@ export function useAgentScreenInteractions(deps: {
       Keyboard.dismiss()
     })
     return () => cancelAnimationFrame(frame)
-  }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboardInset, inputBarRef])
+  }, [
+    drawerOpen,
+    showShortcutSheet,
+    showRecallSheet,
+    showCostDialog,
+    resetKeyboardInset,
+    inputBarRef
+  ])
 
   const handleShortcutSelect = useCallback(
     (shortcut: PromptShortcut) => {
