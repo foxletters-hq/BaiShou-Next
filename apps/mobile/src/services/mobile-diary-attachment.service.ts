@@ -78,7 +78,8 @@ export async function uploadDiaryAttachments(
         const ext = origName.includes('.')
           ? origName.slice(origName.lastIndexOf('.'))
           : extFromMime(asset.mimeType)
-        const baseName = origName.replace(/\.[^.]+$/, '') || 'image'
+        const rawBaseName = origName.replace(/\.[^.]+$/, '') || 'image'
+        const baseName = rawBaseName.replace(/[\s()[\]|\\]+/g, '_') || 'image'
         const newFileName = `${baseName}_${Date.now()}${ext}`
         const dest = `${attachDir}/${newFileName}`
 
