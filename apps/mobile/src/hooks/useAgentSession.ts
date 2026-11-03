@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
+import { AppState } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
@@ -243,8 +244,9 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         return false
       }
 
-      const retryCount = options?.retryCount ?? 1
-      const waitForLatestUsage = options?.waitForLatestUsage ?? false
+      const isAppActive = AppState.currentState === 'active'
+      const retryCount = isAppActive ? (options?.retryCount ?? 1) : 1
+      const waitForLatestUsage = isAppActive && (options?.waitForLatestUsage ?? false)
       const commitToUi = options?.commitToUi ?? true
       const commitEpoch = reloadEpochRef.current
 
@@ -264,7 +266,8 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
             waitForLatestUsage &&
             latestAssistant &&
             !messageHasUsageStats(latestAssistant) &&
-            attempt < retryCount - 1
+            attempt < retryCount - 1 &&
+            isAppActive
           ) {
             await new Promise((r) => setTimeout(r, 80 * (attempt + 1)))
             continue
@@ -274,7 +277,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
         } catch (e) {
           console.error('Failed to refresh session messages', e)
           mapped = null
-          if (attempt < retryCount - 1) {
+          if (attempt < retryCount - 1 && isAppActive) {
             await new Promise((r) => setTimeout(r, 80 * (attempt + 1)))
             continue
           }
@@ -524,6 +527,18 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     vaultSwitching,
     refreshSessionMessages
   ])
+
+  // 切回前台时，主动刷新当前会话，确保后台接收完毕的回复立即渲染上屏
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && currentSessionId && !vaultSwitching && !storageIndexing) {
+        if (!isAgentStreamSessionBusy(currentSessionId)) {
+          void refreshSessionMessages(currentSessionId, { preserveWindow: true })
+        }
+      }
+    })
+    return () => sub.remove()
+  }, [currentSessionId, vaultSwitching, storageIndexing, refreshSessionMessages])
 
   return {
     currentSessionId,

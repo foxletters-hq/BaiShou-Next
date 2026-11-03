@@ -313,7 +313,9 @@ export function useAgentScreenController() {
     handleSelectSession,
     streamError,
     isStreaming,
-    toast
+    toast,
+    messages: displayMessages,
+    ttsMode
   })
 
   return {
