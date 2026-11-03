@@ -2,7 +2,7 @@ import { Compartment } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import type { DiaryCmTheme } from '@baishou/ui/shared/diary-codemirror/types'
 
-export const DIARY_CM_FEATURE_TAG = 'live-preview-inline-fenced-v20'
+export const DIARY_CM_FEATURE_TAG = 'live-preview-inline-fenced-v21'
 
 export const diaryEditorState = {
   view: null as EditorView | null,
