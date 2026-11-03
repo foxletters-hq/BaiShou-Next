@@ -25,6 +25,10 @@ import { buildInsertSessionInput } from '../utils/session-input.util'
 import { resolveMobileActiveVaultId } from '../utils/mobile-session-vault.util'
 import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.util'
 import {
+  acquireAgentStreamKeepAlive,
+  releaseAgentStreamKeepAlive
+} from '../services/mobile-agent-keep-alive.service'
+import {
   STREAM_ZERO_OUTPUT_NETWORK_RETRIES,
   type AgentStreamOverrides,
   type AgentStreamRefs
@@ -267,6 +271,7 @@ export function useAgentStreamChat({
       isStreamingRef.current = true
       setLoading(true)
       setIsStreaming(true)
+      acquireAgentStreamKeepAlive(sessionId)
       setStreamError(null)
       useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
       resetStreamingBuffers()
@@ -313,6 +318,7 @@ export function useAgentStreamChat({
         })
       } finally {
         releaseAgentStreamSession(sessionId, claim.generation)
+        releaseAgentStreamKeepAlive(sessionId)
         const steered = drainAfterSteerAbortRef.current.delete(sessionId)
         userStoppedStreamRef.current = false
         if (
@@ -373,6 +379,7 @@ export function useAgentStreamChat({
 
       setLoading(true)
       setIsStreaming(true)
+      acquireAgentStreamKeepAlive(sessionId)
       setStreamError(null)
       useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
       resetStreamingBuffers()
@@ -413,6 +420,7 @@ export function useAgentStreamChat({
         await finishStream(sessionId, { waitForLatestUsage: false })
       } finally {
         releaseAgentStreamSession(sessionId, claim.generation)
+        releaseAgentStreamKeepAlive(sessionId)
       }
 
       const steered = drainAfterSteerAbortRef.current.delete(sessionId)
