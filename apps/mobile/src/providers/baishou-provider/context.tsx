@@ -16,6 +16,7 @@ const BaishouContext = createContext<BaishouContextValue>({
   notifyVersionMigrationComplete: () => {},
   archiveRestoreEpoch: 0,
   vaultSwitching: false,
+  switchingVaultName: null,
   storageIndexing: false,
   ecosystemResyncEpoch: 0,
   retryStorageSetup: async () => Platform.OS !== 'android',

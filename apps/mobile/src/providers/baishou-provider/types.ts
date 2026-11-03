@@ -59,6 +59,8 @@ export interface BaishouContextValue {
   notifyVersionMigrationComplete: () => void
   archiveRestoreEpoch: number
   vaultSwitching: boolean
+  /** 正在切换到的目标小窝名；仅小窝切换流程设置，用于全屏遮罩 */
+  switchingVaultName: string | null
   storageIndexing: boolean
   ecosystemResyncEpoch: number
   retryStorageSetup: (options?: { forceDeferResync?: boolean }) => Promise<boolean>

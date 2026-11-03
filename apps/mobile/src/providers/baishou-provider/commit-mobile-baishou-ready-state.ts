@@ -140,6 +140,7 @@ export async function commitMobileBaishouReadyState(
       notifyVersionMigrationComplete: () => refs.notifyVersionMigrationCompleteRef.current(),
       archiveRestoreEpoch: 0,
       vaultSwitching: false,
+      switchingVaultName: null,
       storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
       ecosystemResyncEpoch: 0,
       retryStorageSetup: (options) => refs.retryStorageSetupRef.current(options),
