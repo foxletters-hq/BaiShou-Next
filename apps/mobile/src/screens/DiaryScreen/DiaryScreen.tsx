@@ -19,6 +19,8 @@ import { useIncrementalSync } from '../../providers/IncrementalSyncProvider'
 import { DIARY_FILTER_STORAGE_KEYS } from './diary-filter-state.util'
 import { isDiaryEditorRouteActive } from './diary-editor-route.util'
 import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
+import { useAttachmentImageLoader } from '../../hooks/useAttachmentImageLoader'
+import { resolveDiaryAttachmentUrlForWebView } from '../../services/diary-cm-attachment-url.service'
 import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
 import { formatDiaryDateStr, mapDiaryListEntries } from './diary-list-display.util'
 import { useDiaryPendingStatus } from './useDiaryPendingStatus'
@@ -327,6 +329,21 @@ export const DiaryScreen: React.FC = () => {
   }, [loadEntries, refreshTodayEntry])
 
   const displayEntries = useMemo(() => mapDiaryListEntries(entries), [entries])
+  const { loadImageUri } = useAttachmentImageLoader(services?.fileSystem)
+  const handleLoadEntryImageUri = useCallback(
+    async (date: Date, src: string): Promise<string | null> => {
+      if (!src.startsWith('attachment/')) return src
+      if (!services?.pathService || !services?.fileSystem) return null
+      return resolveDiaryAttachmentUrlForWebView(
+        services.pathService,
+        services.fileSystem,
+        date,
+        src,
+        (absPath) => loadImageUri(absPath, 'thumbnail')
+      )
+    },
+    [loadImageUri, services?.fileSystem, services?.pathService]
+  )
 
   const ensureStorageThen = useCallback(
     async (action: () => void | Promise<void>) => {
@@ -438,6 +455,7 @@ export const DiaryScreen: React.FC = () => {
             onViewAll={() => setSelectedMonth(null)}
             showStoragePermission={needsFullFileAccess}
             onRequestStoragePermission={handleRequestStoragePermission}
+            onLoadEntryImageUri={handleLoadEntryImageUri}
           />
 
           <DiaryPendingStatusBar

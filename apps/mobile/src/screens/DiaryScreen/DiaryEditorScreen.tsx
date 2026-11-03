@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { View, StyleSheet, Keyboard, Animated } from 'react-native'
+import { Keyboard, Animated } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
@@ -35,6 +35,7 @@ import {
 } from '../../services/storage-permission.service'
 import { createDiaryEditorLifecycleHandlers } from './diary-editor-lifecycle.helpers'
 import { useDiaryEditorAttachments, useDiaryEditorExitGuard } from './useDiaryEditorAttachments'
+import { DiaryEditorSkeleton } from './components/DiaryEditorSkeleton'
 import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
@@ -374,65 +375,13 @@ export const DiaryEditorScreen: React.FC = () => {
     dismissEditorKeyboard
   })
 
+  const isEditorReady = !loading && !!editorWebViewSource
+
   return (
     <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgSurface }}>
       <FullFileAccessGate granted={storageGranted} onRequest={() => void requestStorage()}>
-        {loading ? (
-          <View style={styles.skeletonRoot} accessibilityLabel="Loading">
-            <View style={styles.skeletonAppBar}>
-              <View style={[styles.skeletonCircle, { backgroundColor: colors.bgSurfaceHighest }]} />
-              <View
-                style={[
-                  styles.skeletonPill,
-                  styles.skeletonTitle,
-                  { backgroundColor: colors.bgSurfaceHighest }
-                ]}
-              />
-              <View
-                style={[
-                  styles.skeletonPill,
-                  styles.skeletonAction,
-                  { backgroundColor: colors.bgSurfaceHighest }
-                ]}
-              />
-            </View>
-            <View style={styles.skeletonMeta}>
-              <View style={[styles.skeletonPill, { backgroundColor: colors.bgSurfaceHighest }]} />
-              <View style={[styles.skeletonPill, { backgroundColor: colors.bgSurfaceHighest }]} />
-            </View>
-            <View style={styles.skeletonBody}>
-              <View
-                style={[
-                  styles.skeletonLine,
-                  { width: '30%', backgroundColor: colors.bgSurfaceHighest }
-                ]}
-              />
-              <View
-                style={[
-                  styles.skeletonLine,
-                  { width: '70%', backgroundColor: colors.bgSurfaceHighest }
-                ]}
-              />
-              <View
-                style={[
-                  styles.skeletonLine,
-                  { width: '92%', backgroundColor: colors.bgSurfaceHighest }
-                ]}
-              />
-              <View
-                style={[
-                  styles.skeletonLine,
-                  { width: '78%', backgroundColor: colors.bgSurfaceHighest }
-                ]}
-              />
-              <View
-                style={[
-                  styles.skeletonLine,
-                  { width: '54%', backgroundColor: colors.bgSurfaceHighest }
-                ]}
-              />
-            </View>
-          </View>
+        {!isEditorReady ? (
+          <DiaryEditorSkeleton />
         ) : (
           <Animated.View style={{ flex: 1, opacity: leaveOpacity }}>
             <DiaryEditor
@@ -468,33 +417,3 @@ export const DiaryEditorScreen: React.FC = () => {
     </ScreenSafeArea>
   )
 }
-
-const styles = StyleSheet.create({
-  skeletonRoot: { flex: 1, paddingTop: sharedTokens.spacing.sm },
-  skeletonAppBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: sharedTokens.spacing.mdTight,
-    paddingBottom: sharedTokens.spacing.mdTight,
-    gap: sharedTokens.spacing.mdTight
-  },
-  skeletonMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: sharedTokens.spacing.smPlus,
-    paddingHorizontal: sharedTokens.spacing.md,
-    paddingBottom: sharedTokens.spacing.mdSnug
-  },
-  skeletonBody: {
-    flex: 1,
-    paddingHorizontal: sharedTokens.spacing.mdPlus,
-    paddingTop: sharedTokens.spacing.md,
-    gap: sharedTokens.spacing.mdSnug
-  },
-  skeletonCircle: { width: 36, height: 36, borderRadius: sharedTokens.radius.lg },
-  skeletonPill: { height: 28, width: 88, borderRadius: sharedTokens.radius.md },
-  skeletonTitle: { flex: 1, maxWidth: 160 },
-  skeletonAction: { width: 72 },
-  skeletonLine: { height: 14, borderRadius: sharedTokens.radius.sm }
-})

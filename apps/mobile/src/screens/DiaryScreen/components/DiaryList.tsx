@@ -71,6 +71,7 @@ export interface DiaryListProps {
   listRef?: RefObject<FlatList<DiaryListEntry> | null>
   onListScroll?: (offsetY: number) => void
   scrollEnabled?: boolean
+  onLoadEntryImageUri?: (date: Date, src: string) => Promise<string | null>
 }
 
 type DiaryPaginationBarProps = {
@@ -143,16 +144,23 @@ type DiaryListRowProps = {
   noContentLabel: string
   onGoToEditor: (id: number) => void
   onDeleteEntry: (id: number) => void
+  onLoadEntryImageUri?: (date: Date, src: string) => Promise<string | null>
 }
 
 const DiaryListRow = memo(function DiaryListRow({
   item,
   noContentLabel,
   onGoToEditor,
-  onDeleteEntry
+  onDeleteEntry,
+  onLoadEntryImageUri
 }: DiaryListRowProps) {
   const handleOpen = useCallback(() => onGoToEditor(item.id), [item.id, onGoToEditor])
   const handleDelete = useCallback(() => onDeleteEntry(item.id), [item.id, onDeleteEntry])
+  const handleLoadImageUri = useCallback(
+    (src: string) =>
+      onLoadEntryImageUri ? onLoadEntryImageUri(item.date, src) : Promise.resolve(null),
+    [item.date, onLoadEntryImageUri]
+  )
 
   return (
     <View style={styles.cardCell}>
@@ -166,6 +174,7 @@ const DiaryListRow = memo(function DiaryListRow({
         mood={item.mood}
         isFavorite={item.isFavorite}
         matchSimilarity={item.matchSimilarity}
+        loadImageUri={onLoadEntryImageUri ? handleLoadImageUri : undefined}
         onClick={handleOpen}
         onEdit={handleOpen}
         onDelete={handleDelete}
@@ -197,7 +206,8 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
   onRequestStoragePermission,
   listRef,
   onListScroll,
-  scrollEnabled = true
+  scrollEnabled = true,
+  onLoadEntryImageUri
 }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -238,9 +248,10 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
         noContentLabel={noContentLabel}
         onGoToEditor={onGoToEditor}
         onDeleteEntry={onDeleteEntry}
+        onLoadEntryImageUri={onLoadEntryImageUri}
       />
     ),
-    [noContentLabel, onDeleteEntry, onGoToEditor]
+    [noContentLabel, onDeleteEntry, onGoToEditor, onLoadEntryImageUri]
   )
 
   const keyExtractor = useCallback((item: DiaryListEntry) => String(item.id), [])
@@ -485,16 +496,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: sharedTokens.spacing.sm
   },
-  columnWrapper: {
-    gap: sharedTokens.spacing.mdTight
-  },
-  cardCell: {
-    flex: 1,
-    marginBottom: sharedTokens.spacing.mdTight
-  },
-  paginationBar: {
-    gap: sharedTokens.spacing.smPlus
-  },
+  columnWrapper: { gap: sharedTokens.spacing.mdTight },
+  cardCell: { flex: 1, marginBottom: sharedTokens.spacing.mdTight },
+  paginationBar: { gap: sharedTokens.spacing.smPlus },
   paginationBarTop: {
     paddingTop: sharedTokens.spacing.xs,
     paddingBottom: sharedTokens.spacing.mdTight,
@@ -512,13 +516,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: sharedTokens.spacing.sm
   },
-  paginationInfo: {
-    flex: 1,
-    fontSize: mobileTypography.secondary.fontSize
-  },
-  paginationNavScroll: {
-    alignSelf: 'stretch'
-  },
+  paginationInfo: { flex: 1, fontSize: mobileTypography.secondary.fontSize },
+  paginationNavScroll: { alignSelf: 'stretch' },
   paginationNavContent: {
     flexGrow: 1,
     justifyContent: 'center',
