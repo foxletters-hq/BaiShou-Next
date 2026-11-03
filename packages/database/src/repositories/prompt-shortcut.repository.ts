@@ -1,5 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
+import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
+import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 import {
   SHORTCUT_TRACE_CHAIN,
   traceCall,
@@ -29,26 +31,32 @@ export const DEFAULT_SHORTCUTS: PromptShortcut[] = [
 export class PromptShortcutRepository {
   constructor(private readonly db: any) {}
 
+  private run<T>(fn: () => Promise<T>): Promise<T> {
+    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn))
+  }
+
   /**
    * 获取快捷指令列表
    */
   private async readStoredShortcuts(): Promise<PromptShortcut[]> {
-    const result = await this.db
-      .select({ value: systemSettingsTable.value })
-      .from(systemSettingsTable)
-      .where(eq(systemSettingsTable.key, KEY))
-      .limit(1)
+    return this.run(async () => {
+      const result = await this.db
+        .select({ value: systemSettingsTable.value })
+        .from(systemSettingsTable)
+        .where(eq(systemSettingsTable.key, KEY))
+        .limit(1)
 
-    if (result.length === 0) {
-      return []
-    }
+      if (result.length === 0) {
+        return []
+      }
 
-    try {
-      return JSON.parse(result[0].value) as PromptShortcut[]
-    } catch (e) {
-      console.error(`[PromptShortcutRepository] Failed to parse: ${e}`)
-      return []
-    }
+      try {
+        return JSON.parse(result[0].value) as PromptShortcut[]
+      } catch (e) {
+        console.error(`[PromptShortcutRepository] Failed to parse: ${e}`)
+        return []
+      }
+    })
   }
 
   async getStoredShortcuts(): Promise<PromptShortcut[]> {
@@ -73,22 +81,24 @@ export class PromptShortcutRepository {
       SHORTCUT_TRACE_CHAIN,
       'PromptShortcutRepository.save',
       async () => {
-        const jsonStr = JSON.stringify(normalized)
+        return this.run(async () => {
+          const jsonStr = JSON.stringify(normalized)
 
-        await this.db
-          .insert(systemSettingsTable)
-          .values({
-            key: KEY,
-            value: jsonStr,
-            updatedAt: new Date()
-          })
-          .onConflictDoUpdate({
-            target: systemSettingsTable.key,
-            set: {
+          await this.db
+            .insert(systemSettingsTable)
+            .values({
+              key: KEY,
               value: jsonStr,
               updatedAt: new Date()
-            }
-          })
+            })
+            .onConflictDoUpdate({
+              target: systemSettingsTable.key,
+              set: {
+                value: jsonStr,
+                updatedAt: new Date()
+              }
+            })
+        })
       },
       { payload: normalized }
     )
