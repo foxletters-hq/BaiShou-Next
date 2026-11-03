@@ -11,6 +11,7 @@ describe('mobile summary identity injection', () => {
     expect(src).toContain('buildSummaryIdentitySystemPrompt')
     expect(src).toContain('formatUserCardFromProfile')
     expect(src).toContain('getUserProfileFromSettings')
+    expect(src).toContain('normalizeSummaryAssistantId')
     expect(src).toContain('userName: profile.nickname')
     expect(src).toContain('userCard: formatUserCardFromProfile(profile)')
     expect(src).toContain('companionName')

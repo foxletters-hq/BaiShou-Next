@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { getDefaultLatteAssistantSystemPrompt } from '../../constants/latte-assistant-prompt.defaults'
 import {
   assembleSummaryGenerationPrompt,
   buildSummaryIdentitySystemPrompt,
   normalizeSummaryGenerationMode,
+  pickPreferredSummaryAssistant,
+  resolveSummaryCompanionName,
   resolveSummaryGenerationRuntime
 } from '../summary-generation.util'
 
@@ -134,30 +137,132 @@ describe('resolveSummaryGenerationRuntime', () => {
     expect(runtime.modelId).toBeUndefined()
     expect(runtime.fellBackToPrompt).toBe(false)
   })
+
+  it('normalizes legacy default assistant id to latte and combines customSystemPrompt + renamed persona', () => {
+    const runtime = resolveSummaryGenerationRuntime(
+      {
+        generationMode: 'assistant',
+        generationAssistantId: 'default'
+      },
+      {
+        id: 'latte',
+        name: '酒狐',
+        systemPrompt: getDefaultLatteAssistantSystemPrompt('zh'),
+        customSystemPrompt: '你是一只喜欢酿酒的狐狸精。'
+      }
+    )
+    expect(runtime.mode).toBe('assistant')
+    expect(runtime.fellBackToPrompt).toBe(false)
+    expect(runtime.systemPrompt).toContain('你是 酒狐。')
+    expect(runtime.systemPrompt).toContain('你是一只喜欢酿酒的狐狸精。')
+    expect(runtime.systemPrompt).not.toContain('你是 Latte（拉提）')
+  })
+})
+
+describe('pickPreferredSummaryAssistant & resolveSummaryCompanionName', () => {
+  it('prefers user-created companion (e.g. 酒狐) over unmodified system Latte with isDefault=true', () => {
+    const assistants = [
+      {
+        id: 'latte',
+        name: 'Latte',
+        isDefault: true,
+        isPinned: false,
+        sortOrder: 0,
+        assistantKind: 'companion'
+      },
+      {
+        id: 'ast-jiuhu',
+        name: '酒狐',
+        isDefault: false,
+        isPinned: false,
+        sortOrder: 1,
+        assistantKind: 'companion'
+      }
+    ]
+    expect(pickPreferredSummaryAssistant(assistants)?.id).toBe('ast-jiuhu')
+    expect(resolveSummaryCompanionName(assistants, null)).toBe('酒狐')
+  })
+
+  it('prefers renamed system Latte (e.g. 酒狐) when user renamed the default partner in place', () => {
+    const assistants = [
+      {
+        id: 'latte',
+        name: '酒狐',
+        isDefault: true,
+        assistantKind: 'companion'
+      }
+    ]
+    expect(pickPreferredSummaryAssistant(assistants)?.name).toBe('酒狐')
+    expect(resolveSummaryCompanionName(assistants, null)).toBe('酒狐')
+  })
+
+  it('includes custom companion name alongside Latte if unmodified Latte is explicitly selected while custom companions exist', () => {
+    const latte = {
+      id: 'latte',
+      name: 'Latte',
+      isDefault: true,
+      assistantKind: 'companion'
+    }
+    const jiuhu = {
+      id: 'ast-jiuhu',
+      name: '酒狐',
+      isDefault: false,
+      assistantKind: 'companion'
+    }
+    expect(resolveSummaryCompanionName([latte, jiuhu], latte)).toBe('酒狐 / Latte')
+  })
+
+  it('falls back to Latte when only unmodified system Latte exists', () => {
+    const assistants = [
+      {
+        id: 'latte',
+        name: 'Latte',
+        isDefault: true,
+        assistantKind: 'companion'
+      }
+    ]
+    expect(pickPreferredSummaryAssistant(assistants)?.id).toBe('latte')
+    expect(resolveSummaryCompanionName(assistants, null)).toBe('Latte')
+  })
 })
 
 describe('buildSummaryIdentitySystemPrompt', () => {
-  it('states user and companion roles explicitly and blocks default-name confusion', () => {
+  it('states user role explicitly and blocks default-name confusion in neutral prompt mode without companion', () => {
     const prompt = buildSummaryIdentitySystemPrompt({
       userName: '小满',
-      companionName: 'Latte',
       userCard: '[User Identity Card]\n- 职业: 设计师',
       locale: 'zh'
     })
     expect(prompt).toContain('日记作者 / 用户：小满')
-    expect(prompt).toContain('AI 伙伴：Latte')
-    expect(prompt).toContain('「我」指用户本人')
-    expect(prompt).toContain('不要给 AI 伙伴套用应用/系统默认名')
+    expect(prompt).not.toContain('- AI 伙伴：')
+    expect(prompt).toContain('素材中的第一人称「我」指用户本人。')
+    expect(prompt).toContain('不要套用应用名或系统默认名')
+    expect(prompt).toContain(
+      '素材中出现的所有人物称呼与角色名字（包括用户提及的伙伴或助手）必须严格按原文保留'
+    )
+    expect(prompt).not.toContain('Latte')
     expect(prompt).not.toContain('白守')
     expect(prompt).toContain('职业: 设计师')
   })
 
-  it('falls back to localized placeholders and supports English', () => {
+  it('includes companion only when explicitly provided in assistant mode', () => {
+    const prompt = buildSummaryIdentitySystemPrompt({
+      userName: '小满',
+      companionName: '酒狐',
+      locale: 'zh'
+    })
+    expect(prompt).toContain('日记作者 / 用户：小满')
+    expect(prompt).toContain('AI 伙伴：酒狐')
+    expect(prompt).not.toContain('Latte')
+  })
+
+  it('falls back to localized user placeholder and supports English', () => {
     const prompt = buildSummaryIdentitySystemPrompt({ locale: 'en' })
     expect(prompt).toContain('Diary author / user: the user (no nickname set)')
-    expect(prompt).toContain('AI companion: the AI companion (unnamed)')
+    expect(prompt).not.toContain('AI companion:')
     expect(prompt).toContain('first-person “I” refers to the user')
-    expect(prompt).toContain('Do not give the AI companion the application/default system name')
+    expect(prompt).toContain('Do not use the application name or default system name')
+    expect(prompt).not.toContain('Latte')
     expect(prompt).not.toContain('BaiShou')
   })
 })

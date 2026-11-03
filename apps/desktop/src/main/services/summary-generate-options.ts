@@ -10,6 +10,7 @@ import {
   buildSummaryIdentitySystemPrompt,
   formatUserCardFromProfile,
   getUserProfileFromSettings,
+  normalizeSummaryAssistantId,
   resolveSummaryConfigFromSettings,
   resolveSummaryGenerationRuntime,
   resolveSummaryTemplatesForGeneration,
@@ -54,7 +55,7 @@ export async function resolveDesktopSummaryGenerateOptions(
   const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
 
   let assistant: SummaryAssistantSnapshot | null = null
-  const assistantId = summaryConfigForGen.generationAssistantId?.trim()
+  const assistantId = normalizeSummaryAssistantId(summaryConfigForGen.generationAssistantId)
   if (summaryConfigForGen.generationMode === 'assistant' && assistantId) {
     try {
       const { assistantManager } = getAgentManagers()
@@ -69,17 +70,8 @@ export async function resolveDesktopSummaryGenerateOptions(
     logger.warn('[SummaryQueue] Assistant generation mode unavailable; falling back to prompt mode')
   }
 
-  let companionName = assistant?.name?.trim()
-  if (!companionName) {
-    try {
-      const { assistantManager } = getAgentManagers()
-      const list = await assistantManager.findAll()
-      const primary = list.find((item) => item.isDefault) ?? list[0]
-      companionName = primary?.name?.trim()
-    } catch (e) {
-      logger.warn('[SummaryQueue] Failed to resolve companion name:', e as Error)
-    }
-  }
+  // 仅在复用伙伴模式且成功加载伙伴时注入伙伴名称；提示词模式属于中立记忆总结，不硬编码/硬塞任何伙伴
+  const companionName = runtime.mode === 'assistant' ? assistant?.name?.trim() : undefined
 
   let identitySystemPrompt: string | undefined
   try {

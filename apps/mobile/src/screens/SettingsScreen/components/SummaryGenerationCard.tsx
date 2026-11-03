@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image, Modal, ScrollView } from 'react-na
 import { useTranslation } from 'react-i18next'
 import {
   clampSharedMemoryLookbackMonths,
+  pickPreferredSummaryAssistant,
   SHARED_MEMORY_LOOKBACK_MIN,
   SHARED_MEMORY_LOOKBACK_SLIDER_BASE,
   type SummaryGenerationMode,
@@ -94,7 +95,7 @@ export function SummaryGenerationCard(props: {
               const nextId =
                 generationAssistantId && assistants.some((a) => a.id === generationAssistantId)
                   ? generationAssistantId
-                  : assistants[0]!.id
+                  : (pickPreferredSummaryAssistant(assistants)?.id ?? assistants[0]!.id)
               persistAutoSettings({ generationMode: 'assistant', generationAssistantId: nextId })
               return
             }

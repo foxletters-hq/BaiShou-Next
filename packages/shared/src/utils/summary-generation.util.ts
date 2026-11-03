@@ -8,15 +8,26 @@ import type {
   SummaryGenerationMode
 } from '../types/settings.types'
 import type { SummaryPromptLocale } from '../types/summary-prompt.types'
+import {
+  DEFAULT_LATTE_ASSISTANT_ID,
+  isFactoryLatteAssistantName,
+  SYSTEM_LATTE_ASSISTANT_ID
+} from '../constants/latte-default-assistant.constants'
 import { getDefaultCustomGenerationSystemPrompt } from '../constants/summary-generation-system-prompt.defaults'
+import { buildEffectiveAssistantSystemPrompt } from './assistant-effective-prompt.util'
 import { resolveSummaryPromptLocale } from './summary-template.util'
 
 export interface SummaryAssistantSnapshot {
   id: string
   name?: string
   systemPrompt?: string | null
+  customSystemPrompt?: string | null
   providerId?: string | null
   modelId?: string | null
+  isDefault?: boolean | null
+  isPinned?: boolean | null
+  sortOrder?: number | null
+  assistantKind?: string | null
 }
 
 export interface ResolvedSummaryGeneration {
@@ -87,32 +98,32 @@ const SUMMARY_IDENTITY_FALLBACK: Record<
 
 const SUMMARY_IDENTITY_LINES: Record<SummaryPromptLocale, string[]> = {
   zh: [
-    '素材中的第一人称「我」指用户本人，不是 AI 伙伴。',
-    '禁止把用户与 AI 伙伴的身份、情绪、行为对调。',
-    '不要给 AI 伙伴套用应用/系统默认名；应用名不是人物名。',
-    '素材里的其他人物按原文称呼保留；身份不确定时使用上面的称呼，不要臆测。',
-    '若共同回忆或旧总结与本角色对照冲突，以本角色对照为准，并在本期输出中纠正称呼，不要沿用旧错误。'
+    '素材中的第一人称「我」指用户本人。',
+    '禁止把用户与素材中其他人物或角色的身份、情绪、行为对调。',
+    '不要套用应用名或系统默认名；应用名不是人物名。',
+    '素材中出现的所有人物称呼与角色名字（包括用户提及的伙伴或助手）必须严格按原文保留，不得擅自改写或替换。',
+    '若共同回忆或旧总结把用户与其他人对调，或把应用名当成了人物名，请以本期素材为准并在本期输出中纠正，不要沿用旧错误。'
   ],
   'zh-TW': [
-    '素材中的第一人稱「我」指使用者本人，不是 AI 夥伴。',
-    '禁止把使用者與 AI 夥伴的身份、情緒、行為對調。',
-    '不要給 AI 夥伴套用應用程式/系統預設名；應用程式名不是人物名。',
-    '素材裡的其他人物按原文稱呼保留；身份不確定時使用上面的稱呼，不要臆測。',
-    '若共同回憶或舊總結與本角色對照衝突，以本角色對照為準，並在本期輸出中糾正稱呼，不要沿用舊錯誤。'
+    '素材中的第一人稱「我」指使用者本人。',
+    '禁止把使用者與素材中其他人物或角色的身份、情緒、行為對調。',
+    '不要套用應用程式名或系統預設名；應用程式名不是人物名。',
+    '素材中出現的所有人物稱呼與角色名字（包括使用者提及的夥伴或助手）必須嚴格按原文保留，不得擅自改寫或替換。',
+    '若共同回憶或舊總結把使用者與其他人對調，或把應用程式名當成了人物名，請以本期素材為準並在本期輸出中糾正，不要沿用舊錯誤。'
   ],
   en: [
-    'In the source material, first-person “I” refers to the user, never the AI companion.',
-    'Never swap the user’s and the AI companion’s identities, feelings, or actions.',
-    'Do not give the AI companion the application/default system name; the application name is not a character name.',
-    'Keep other people’s names as written. If a role is unclear, use the names above; do not guess.',
-    'If shared memory or an older summary conflicts with these roles, follow this role mapping and correct the names in this period’s output—do not carry the old mistake forward.'
+    'In the source material, first-person “I” refers to the user.',
+    'Never swap the user’s and other characters’ identities, feelings, or actions.',
+    'Do not use the application name or default system name as a character name; the application name is not a person.',
+    'All names and character titles appearing in the source material (including any companion or assistant mentioned by the user) must be strictly preserved as written—never rewrite or substitute them.',
+    'If shared memory or an older summary swapped the user with someone else or treated the application name as a person, follow this period’s source material to correct it in this period’s output—do not carry the old mistake forward.'
   ],
   ja: [
-    '素材の一人称「私」はユーザー本人であり、AI パートナーではありません。',
-    'ユーザーと AI パートナーの身元・感情・行動を入れ替えないでください。',
-    'AI パートナーにアプリ/システムの既定名を付けないでください。アプリ名は人物名ではありません。',
-    '他の人物は素材の呼称をそのまま使う。役割が不明なときは上記の呼称を使い、推測しない。',
-    '共有の思い出や過去のまとめがこの役割と食い違う場合は、この役割を優先し、今期の出力で呼称を訂正してください。過去の誤りを引き継がないでください。'
+    '素材の一人称「私」はユーザー本人です。',
+    'ユーザーと素材内の他の人物・キャラクターの身元・感情・行動を入れ替えないでください。',
+    'アプリ名やシステムの既定名をキャラクター名として使わないでください。アプリ名は人物名ではありません。',
+    '素材内に登場するすべての人物の呼称やキャラクター名（ユーザーが言及したパートナーやアシスタントを含む）は原文のまま厳格に維持し、書き換えや置き換えをしないでください。',
+    '共有の思い出や過去のまとめでユーザーと他者が入れ替わっていたり、アプリ名が人物名として扱われていた場合は、今期の素材を優先して今期の出力で訂正し、過去の誤りを引き継がないでください。'
   ]
 }
 
@@ -123,20 +134,121 @@ const SUMMARY_IDENTITY_LABELS: Record<SummaryPromptLocale, { user: string; compa
   ja: { user: '日記の書き手 / ユーザー', companion: 'AI パートナー' }
 }
 
+function isUnmodifiedFactoryLatteAssistant(assistant: SummaryAssistantSnapshot): boolean {
+  const id = String(assistant.id ?? '').trim()
+  if (id !== SYSTEM_LATTE_ASSISTANT_ID && id !== DEFAULT_LATTE_ASSISTANT_ID) {
+    return false
+  }
+  return isFactoryLatteAssistantName(assistant.name)
+}
+
+function compareSummaryAssistantPriority(
+  a: SummaryAssistantSnapshot,
+  b: SummaryAssistantSnapshot
+): number {
+  const aCompanion = (a.assistantKind ?? 'companion') === 'companion' ? 1 : 0
+  const bCompanion = (b.assistantKind ?? 'companion') === 'companion' ? 1 : 0
+  if (aCompanion !== bCompanion) return bCompanion - aCompanion
+
+  const aPinned = a.isPinned ? 1 : 0
+  const bPinned = b.isPinned ? 1 : 0
+  if (aPinned !== bPinned) return bPinned - aPinned
+
+  const aDefault = a.isDefault ? 1 : 0
+  const bDefault = b.isDefault ? 1 : 0
+  if (aDefault !== bDefault) return bDefault - aDefault
+
+  const aSort = typeof a.sortOrder === 'number' ? a.sortOrder : Number.MAX_SAFE_INTEGER
+  const bSort = typeof b.sortOrder === 'number' ? b.sortOrder : Number.MAX_SAFE_INTEGER
+  return aSort - bSort
+}
+
+/**
+ * 从伙伴列表中挑选更适合作为总结代表的伙伴：
+ * 若存在用户自建或已改名的伙伴（如「酒狐」），优先于未改名的系统出厂 Latte，
+ * 避免因系统 Latte 默认自带 isDefault=true 而遮蔽用户的真实专属伙伴。
+ */
+export function pickPreferredSummaryAssistant<T extends SummaryAssistantSnapshot>(
+  assistants: readonly T[] | null | undefined
+): T | undefined {
+  if (!assistants || assistants.length === 0) return undefined
+  const named = assistants.filter((item) => Boolean(item.name?.trim()))
+  if (named.length === 0) return assistants[0]
+
+  const customCandidates = named
+    .filter((item) => !isUnmodifiedFactoryLatteAssistant(item))
+    .sort(compareSummaryAssistantPriority)
+  if (customCandidates.length > 0) {
+    return customCandidates[0]
+  }
+
+  const factoryCandidates = [...named].sort(compareSummaryAssistantPriority)
+  return factoryCandidates[0]
+}
+
+/**
+ * 解析总结身份对照块中的 AI 伙伴名称：
+ * - 若显式选中了某个伙伴且非未改名的出厂 Latte，直接使用该伙伴名；
+ * - 若未显式选中（自定义提示词模式），当仓内存在用户自建/已改名伙伴（如「酒狐」）时，
+ *   优先采用用户自定义伙伴名（排除未改名的系统出厂 Latte，避免把「酒狐」强行纠正成「Latte」）；
+ * - 若显式选中了出厂 Latte 但仓内同时存在用户自定义伙伴，则并列列出，防止日记里提到自定义伙伴时被改名。
+ */
+export function resolveSummaryCompanionName(
+  assistants: readonly SummaryAssistantSnapshot[] | null | undefined,
+  selectedAssistant?: SummaryAssistantSnapshot | null
+): string | undefined {
+  const list = assistants ?? []
+  const customCompanions = list
+    .filter(
+      (item) =>
+        Boolean(item.name?.trim()) &&
+        !isUnmodifiedFactoryLatteAssistant(item) &&
+        (item.assistantKind ?? 'companion') === 'companion'
+    )
+    .sort(compareSummaryAssistantPriority)
+  const fallbackCustom =
+    customCompanions.length > 0
+      ? customCompanions
+      : list
+          .filter((item) => Boolean(item.name?.trim()) && !isUnmodifiedFactoryLatteAssistant(item))
+          .sort(compareSummaryAssistantPriority)
+
+  const customNames = Array.from(
+    new Set(fallbackCustom.map((item) => item.name!.trim()).filter(Boolean))
+  )
+
+  const selectedName = selectedAssistant?.name?.trim()
+  if (selectedAssistant && selectedName) {
+    if (!isUnmodifiedFactoryLatteAssistant(selectedAssistant)) {
+      return selectedName
+    }
+    if (customNames.length > 0) {
+      return Array.from(new Set([...customNames, selectedName])).join(' / ')
+    }
+    return selectedName
+  }
+
+  if (customNames.length > 0) {
+    return customNames.join(' / ')
+  }
+
+  const preferred = pickPreferredSummaryAssistant(list)
+  return preferred?.name?.trim() || undefined
+}
+
 /** 生成总结时的角色对照块：明确用户与伙伴身份，避免「我」与默认名串位 */
 export function buildSummaryIdentitySystemPrompt(input: SummaryIdentityContextInput): string {
   const locale = resolveSummaryPromptLocale(input.locale)
   const fallback = SUMMARY_IDENTITY_FALLBACK[locale]
   const labels = SUMMARY_IDENTITY_LABELS[locale]
   const userName = input.userName?.trim() || fallback.user
-  const companionName = input.companionName?.trim() || fallback.companion
+  const companionName = input.companionName?.trim()
   const colon = locale === 'en' ? ': ' : '：'
-  const lines = [
-    fallback.heading,
-    `- ${labels.user}${colon}${userName}`,
-    `- ${labels.companion}${colon}${companionName}`,
-    ...SUMMARY_IDENTITY_LINES[locale]
-  ]
+  const lines = [fallback.heading, `- ${labels.user}${colon}${userName}`]
+  if (companionName) {
+    lines.push(`- ${labels.companion}${colon}${companionName}`)
+  }
+  lines.push(...SUMMARY_IDENTITY_LINES[locale])
   const userCard = input.userCard?.trim()
   if (userCard) {
     lines.push('', `${fallback.userCard}${colon}`, userCard)
@@ -157,6 +269,15 @@ function promptModeRuntime(
     sharedMemoryLookbackMonths,
     fellBackToPrompt
   }
+}
+
+/** 归一化总结生成关联的伙伴 ID：将历史 default 映射为官方系统伙伴 latte */
+export function normalizeSummaryAssistantId(id: string | null | undefined): string {
+  const trimmed = id?.trim() ?? ''
+  if (trimmed === DEFAULT_LATTE_ASSISTANT_ID) {
+    return SYSTEM_LATTE_ASSISTANT_ID
+  }
+  return trimmed
 }
 
 export function resolveSummaryGenerationRuntime(
@@ -181,7 +302,11 @@ export function resolveSummaryGenerationRuntime(
   }
 
   const assistantId = config?.generationAssistantId?.trim()
-  if (!assistantId || !assistant || String(assistant.id) !== assistantId) {
+  if (
+    !assistantId ||
+    !assistant ||
+    normalizeSummaryAssistantId(String(assistant.id)) !== normalizeSummaryAssistantId(assistantId)
+  ) {
     return promptModeRuntime(
       config,
       injectSharedMemoryBeforeGenerate,
@@ -190,8 +315,12 @@ export function resolveSummaryGenerationRuntime(
     )
   }
 
-  // 伙伴模式：只复用伙伴 systemPrompt；模型一律由调用方解析全局总结模型
-  const systemPrompt = assistant.systemPrompt?.trim()
+  // 伙伴模式：复用伙伴生效人设（含 customSystemPrompt 与改名后的人设自称修正）；模型一律由调用方解析全局总结模型
+  const systemPrompt = buildEffectiveAssistantSystemPrompt(
+    assistant.systemPrompt,
+    assistant.customSystemPrompt,
+    assistant.name
+  ).trim()
   return {
     mode: 'assistant',
     systemPrompt: systemPrompt || undefined,
