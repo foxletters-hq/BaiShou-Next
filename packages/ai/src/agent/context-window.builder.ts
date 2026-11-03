@@ -164,12 +164,30 @@ export class ContextWindowBuilder {
       )
     }
 
-    if (snapshot && startIndex > 0) {
-      return [effectiveMessages[0]!, ...effectiveMessages.slice(startIndex)]
-    }
+    const finalMessages =
+      snapshot && startIndex > 0
+        ? [effectiveMessages[0]!, ...effectiveMessages.slice(startIndex)]
+        : effectiveMessages.slice(startIndex)
 
-    return effectiveMessages.slice(startIndex)
+    return trimLeadingOrphanToolMessages(finalMessages, Boolean(snapshot))
   }
+}
+
+/** 若切片首个常规消息为孤立 tool，安全跳过以保证消息序列起点合法 */
+function trimLeadingOrphanToolMessages(
+  messages: MessageWithParts[],
+  hasSnapshotSummary: boolean
+): MessageWithParts[] {
+  if (messages.length === 0) return []
+  const startIdx = hasSnapshotSummary ? 1 : 0
+  let sliceStart = startIdx
+  while (sliceStart < messages.length && messages[sliceStart]!.role === 'tool') {
+    sliceStart++
+  }
+  if (sliceStart === startIdx) return messages
+  return hasSnapshotSummary
+    ? [messages[0]!, ...messages.slice(sliceStart)]
+    : messages.slice(sliceStart)
 }
 
 /** 若 requiredMessageId 会被 recentCount 截掉，则向前扩展 startIndex 以保留该轮 */

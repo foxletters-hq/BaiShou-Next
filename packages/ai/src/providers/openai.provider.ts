@@ -27,6 +27,7 @@ import {
   shouldUseOpenAiResponsesLanguageModel
 } from './reasoning'
 import { applyOpenAiThinkingBodyInject } from './reasoning/openai-thinking-inject'
+import { sanitizeOpenAiChatMessages } from '../agent/message-sequence-sanitizer'
 
 const DEEPSEEK_THINK_OPEN = '<' + 'redacted_thinking>'
 const DEEPSEEK_THINK_CLOSE = '<' + '/redacted_thinking>'
@@ -145,6 +146,14 @@ function createOpenAICompatFetchInterceptor(
         if (isMiniMaxRequest(options, body.model) && body.reasoning_split === undefined) {
           body.reasoning_split = true
           mutated = true
+        }
+
+        if (body.messages && Array.isArray(body.messages)) {
+          const sanitizedResult = sanitizeOpenAiChatMessages(body.messages)
+          if (sanitizedResult.mutated) {
+            body.messages = sanitizedResult.messages
+            mutated = true
+          }
         }
 
         if (isDeepSeek && body.messages && Array.isArray(body.messages)) {

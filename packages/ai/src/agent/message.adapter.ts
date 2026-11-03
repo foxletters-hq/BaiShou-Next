@@ -11,6 +11,7 @@ import {
   appendImagePartToContentParts,
   finalizeUserContentParts
 } from './attachment-content.builder'
+import { sanitizeModelMessages } from './message-sequence-sanitizer'
 
 export interface MessageWithParts extends AgentMessage {
   parts: AgentPart[]
@@ -187,6 +188,6 @@ export class MessageAdapter {
       }
     }
 
-    return vercelMessages
+    return sanitizeModelMessages(vercelMessages)
   }
 }
