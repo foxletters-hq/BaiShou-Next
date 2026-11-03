@@ -1057,5 +1057,21 @@ class ExpoBaishouServerModule : Module() {
                 )
             )
         }
+
+        Function("startAgentKeepAlive") { sessionId: String?, title: String?, content: String? ->
+            val context = appContext.reactContext ?: return@Function false
+            AgentKeepAliveService.start(context, sessionId, title, content)
+            true
+        }
+
+        Function("stopAgentKeepAlive") { sessionId: String? ->
+            val context = appContext.reactContext ?: return@Function false
+            AgentKeepAliveService.stop(context, sessionId)
+            true
+        }
+
+        Function("isAgentKeepAliveActive") {
+            AgentKeepAliveService.isActive()
+        }
     }
 }

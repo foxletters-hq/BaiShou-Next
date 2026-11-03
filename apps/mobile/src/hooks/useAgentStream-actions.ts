@@ -9,6 +9,7 @@ import {
 } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
 import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
+import { releaseAgentStreamKeepAlive } from '../services/mobile-agent-keep-alive.service'
 
 import { useBaishou } from '../providers/BaishouProvider'
 import type { AgentStreamRefs } from './useAgentStream-types'
@@ -157,6 +158,7 @@ export function useAgentStreamActions({
     keepPartialOutputAfterUserStop()
     if (sessionId) {
       abortAgentStreamSession(sessionId)
+      releaseAgentStreamKeepAlive(sessionId)
     }
     toast.showSuccess(t('agent.stream_cancelled', '取消成功'))
 

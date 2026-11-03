@@ -149,4 +149,7 @@ export declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> 
   externalCopyFileAsync(fromPath: string, toPath: string): Promise<void>
   pickDirectoryAsync(): Promise<PickDirectoryResult>
   mirrorProductionLegacyToExternal(): MirrorProductionLegacyResult
+  startAgentKeepAlive?(sessionId?: string, title?: string, content?: string): boolean
+  stopAgentKeepAlive?(sessionId?: string): boolean
+  isAgentKeepAliveActive?(): boolean
 }

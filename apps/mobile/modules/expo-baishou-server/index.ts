@@ -115,3 +115,33 @@ export function pushMcpHttpStreamChunk(requestId: string, chunk: string): boolea
 export function endMcpHttpStream(requestId: string): boolean {
   return requireNative().endMcpHttpStream(requestId)
 }
+
+export function startAgentKeepAlive(sessionId?: string, title?: string, content?: string): boolean {
+  const mod = getNative()
+  if (!mod || typeof mod.startAgentKeepAlive !== 'function') return false
+  try {
+    return Boolean(mod.startAgentKeepAlive(sessionId, title, content))
+  } catch {
+    return false
+  }
+}
+
+export function stopAgentKeepAlive(sessionId?: string): boolean {
+  const mod = getNative()
+  if (!mod || typeof mod.stopAgentKeepAlive !== 'function') return false
+  try {
+    return Boolean(mod.stopAgentKeepAlive(sessionId))
+  } catch {
+    return false
+  }
+}
+
+export function isAgentKeepAliveActive(): boolean {
+  const mod = getNative()
+  if (!mod || typeof mod.isAgentKeepAliveActive !== 'function') return false
+  try {
+    return Boolean(mod.isAgentKeepAliveActive())
+  } catch {
+    return false
+  }
+}
