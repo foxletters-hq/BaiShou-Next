@@ -105,9 +105,13 @@ function findApksigner() {
 
 function verifyReleaseApkNotDebugSigned(apkPath) {
   const apksigner = findApksigner()
-  const result = spawnSync(apksigner, ['verify', '-v', '--print-certs', apkPath], {
-    encoding: 'utf8'
-  })
+  const result = spawnSync(
+    apksigner,
+    ['verify', '-v', '--min-sdk-version', '21', '--print-certs', apkPath],
+    {
+      encoding: 'utf8'
+    }
+  )
   const output = `${result.stdout || ''}\n${result.stderr || ''}`
   if (result.status !== 0) {
     console.error('❌ 无法校验 APK 签名（apksigner）:\n', output)
@@ -119,7 +123,9 @@ function verifyReleaseApkNotDebugSigned(apkPath) {
     process.exit(1)
   }
   if (output.includes('Verified using v1 scheme (JAR signing): false')) {
-    console.error('❌ Release APK 缺少 V1 (JAR) 签名，国内部分定制系统（如 vivo 等）会判定缺乏开发者证书无法安装。')
+    console.error(
+      '❌ Release APK 缺少 V1 (JAR) 签名，国内部分定制系统（如 vivo 等）会判定缺乏开发者证书无法安装。'
+    )
     console.error('   请检查 withAndroidReleaseSigning 中是否启用了 v1SigningEnabled true。')
     process.exit(1)
   }
@@ -191,7 +197,7 @@ if (skipDiaryEditorBuild) {
 }
 
 console.log('\n🔧 Expo prebuild（注入 release 签名配置）…')
-run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], mobileRoot, {
+run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install', '--clean'], mobileRoot, {
   BAISHOU_RELEASE_BUILD: '1'
 })
 
@@ -211,7 +217,12 @@ applyAndroidPlainSplashPatch(androidDir)
 
 /** 真机 Release 不需要模拟器 ABI；显式传入避免仅依赖 gradle.properties */
 const RELEASE_ABIS = 'arm64-v8a'
-const gradleArgs = [':app:assembleRelease', `-PreactNativeArchitectures=${RELEASE_ABIS}`]
+const maxWorkers = process.env.GRADLE_MAX_WORKERS || '4'
+const gradleArgs = [
+  ':app:assembleRelease',
+  `-PreactNativeArchitectures=${RELEASE_ABIS}`,
+  `--max-workers=${maxWorkers}`
+]
 if (forceFullClean) {
   gradleArgs.push('--no-build-cache')
   console.log(`\n🔨 assembleRelease（强制全量，无构建缓存，ABI=${RELEASE_ABIS}）…`)

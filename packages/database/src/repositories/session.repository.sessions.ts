@@ -1,4 +1,4 @@
-import { eq, desc, or, sql, and, inArray } from 'drizzle-orm'
+import { eq, desc, or, sql, and, inArray, isNull } from 'drizzle-orm'
 import type { InferSelectModel } from 'drizzle-orm'
 import {
   DEFAULT_LATTE_ASSISTANT_ID,
@@ -146,11 +146,18 @@ export class SessionCrudOps {
     offset: number = 0,
     assistantId?: string,
     searchQuery?: string,
-    vaultId?: string | null
+    vaultId?: string | string[] | null
   ): Promise<AgentSessionRow[]> {
-    const normalizedVaultId = vaultId?.trim() ? resolveInsertVaultId(vaultId.trim()) : undefined
+    const rawIds = Array.isArray(vaultId) ? vaultId : vaultId ? [vaultId] : []
+    const normalizedVaultIds = Array.from(
+      new Set(
+        rawIds
+          .map((id) => (typeof id === 'string' && id.trim() ? resolveInsertVaultId(id.trim()) : ''))
+          .filter(Boolean)
+      )
+    )
     // 公开列表缺 vaultId → fail-closed（等价 1=0），禁止静默扫全表
-    if (!normalizedVaultId) {
+    if (normalizedVaultIds.length === 0) {
       console.warn('[SessionRepo] findAllSessions refused: vaultId is required (fail-closed)')
       return []
     }
@@ -160,7 +167,7 @@ export class SessionCrudOps {
       offset,
       assistantId,
       searchQuery,
-      vaultId: normalizedVaultId
+      vaultIds: normalizedVaultIds
     })
   }
 
@@ -179,7 +186,7 @@ export class SessionCrudOps {
       offset,
       assistantId,
       searchQuery,
-      vaultId: null
+      vaultIds: null
     })
   }
 
@@ -188,15 +195,15 @@ export class SessionCrudOps {
     offset: number
     assistantId?: string
     searchQuery?: string
-    vaultId: string | null
+    vaultIds: string[] | null
   }): Promise<AgentSessionRow[]> {
-    const { limit, offset, assistantId, searchQuery, vaultId } = params
+    const { limit, offset, assistantId, searchQuery, vaultIds } = params
     let matchedSessionIds: string[] = []
 
     if (searchQuery && searchQuery.trim()) {
       matchedSessionIds = await this.findSessionIdsMatchingMessageContent(
         searchQuery,
-        vaultId,
+        vaultIds,
         assistantId
       )
     }
@@ -206,8 +213,12 @@ export class SessionCrudOps {
     // 组合过滤条件
     const conditions: any[] = []
 
-    if (vaultId) {
-      conditions.push(eq(agentSessionsTable.vaultId, vaultId))
+    if (vaultIds && vaultIds.length > 0) {
+      if (vaultIds.length === 1) {
+        conditions.push(eq(agentSessionsTable.vaultId, vaultIds[0]!))
+      } else {
+        conditions.push(inArray(agentSessionsTable.vaultId, vaultIds))
+      }
     }
 
     const normalizedAssistantId = assistantId?.trim()
@@ -217,10 +228,14 @@ export class SessionCrudOps {
         normalizedAssistantId === DEFAULT_LATTE_ASSISTANT_ID
       ) {
         conditions.push(
-          inArray(agentSessionsTable.assistantId, [
-            SYSTEM_LATTE_ASSISTANT_ID,
-            DEFAULT_LATTE_ASSISTANT_ID
-          ])
+          or(
+            inArray(agentSessionsTable.assistantId, [
+              SYSTEM_LATTE_ASSISTANT_ID,
+              DEFAULT_LATTE_ASSISTANT_ID
+            ]),
+            isNull(agentSessionsTable.assistantId),
+            eq(agentSessionsTable.assistantId, '')
+          )
         )
       } else {
         conditions.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))
@@ -260,7 +275,7 @@ export class SessionCrudOps {
       (await finalQuery) as InferSelectModel<typeof agentSessionsTable>[]
     ).map((row) => withMountedNotebookIds(row))
 
-    if (vaultId !== null && results.length > 0 && (limit > 0 || results.length <= 200)) {
+    if (vaultIds !== null && results.length > 0 && (limit > 0 || results.length <= 200)) {
       await this.enrichSessionsWithSnippets(results, searchQuery)
     }
 
@@ -435,7 +450,7 @@ export class SessionCrudOps {
    */
   private async findSessionIdsMatchingMessageContent(
     searchQuery: string,
-    vaultId: string | null,
+    vaultIds: string[] | null,
     assistantId?: string
   ): Promise<string[]> {
     const cleaned = searchQuery.replace(/"/g, ' ').trim()
@@ -447,6 +462,20 @@ export class SessionCrudOps {
       normalizedAssistantId === DEFAULT_LATTE_ASSISTANT_ID
     const tasks: Promise<void>[] = []
 
+    const vaultSqlCondition =
+      vaultIds && vaultIds.length > 0
+        ? sql`AND s.vault_id IN (${sql.join(
+            vaultIds.map((v) => sql`${v}`),
+            sql`, `
+          )})`
+        : sql``
+
+    const assistantSqlCondition = isLatteAssistant
+      ? sql`AND (s.assistant_id IN (${SYSTEM_LATTE_ASSISTANT_ID}, ${DEFAULT_LATTE_ASSISTANT_ID}) OR s.assistant_id IS NULL OR s.assistant_id = '')`
+      : normalizedAssistantId
+        ? sql`AND s.assistant_id = ${normalizedAssistantId}`
+        : sql``
+
     if (cleaned) {
       tasks.push(
         (async () => {
@@ -456,14 +485,8 @@ export class SessionCrudOps {
               FROM agent_messages_fts f
               INNER JOIN agent_sessions s ON s.id = f.session_id
               WHERE agent_messages_fts MATCH ${`"${cleaned}"`}
-                ${vaultId ? sql`AND s.vault_id = ${vaultId}` : sql``}
-                ${
-                  isLatteAssistant
-                    ? sql`AND s.assistant_id IN (${SYSTEM_LATTE_ASSISTANT_ID}, ${DEFAULT_LATTE_ASSISTANT_ID})`
-                    : normalizedAssistantId
-                      ? sql`AND s.assistant_id = ${normalizedAssistantId}`
-                      : sql``
-                }
+                ${vaultSqlCondition}
+                ${assistantSqlCondition}
             `)
             for (const row of ftsRows) {
               const id = (row as { sessionId?: string }).sessionId
@@ -490,14 +513,25 @@ export class SessionCrudOps {
               sql`json_extract(${partsTbl.data}, '$.isReasoning') = 'false'`
             )
           ]
-          if (vaultId) scope.push(eq(agentSessionsTable.vaultId, vaultId))
+          if (vaultIds && vaultIds.length > 0) {
+            if (vaultIds.length === 1) {
+              const vaultId = vaultIds[0]!
+              scope.push(eq(agentSessionsTable.vaultId, vaultId))
+            } else {
+              scope.push(inArray(agentSessionsTable.vaultId, vaultIds))
+            }
+          }
           if (normalizedAssistantId) {
             if (isLatteAssistant) {
               scope.push(
-                inArray(agentSessionsTable.assistantId, [
-                  SYSTEM_LATTE_ASSISTANT_ID,
-                  DEFAULT_LATTE_ASSISTANT_ID
-                ])
+                or(
+                  inArray(agentSessionsTable.assistantId, [
+                    SYSTEM_LATTE_ASSISTANT_ID,
+                    DEFAULT_LATTE_ASSISTANT_ID
+                  ]),
+                  isNull(agentSessionsTable.assistantId),
+                  eq(agentSessionsTable.assistantId, '')
+                )
               )
             } else {
               scope.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))

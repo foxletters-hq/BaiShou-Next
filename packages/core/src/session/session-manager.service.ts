@@ -91,7 +91,7 @@ export class SessionManagerService {
     offset: number = 0,
     assistantId?: string,
     searchQuery?: string,
-    vaultId?: string
+    vaultId?: string | string[]
   ) {
     return this.findAllSessions(limit, offset, assistantId, searchQuery, vaultId)
   }
@@ -115,7 +115,7 @@ export class SessionManagerService {
     offset: number = 0,
     assistantId?: string,
     searchQuery?: string,
-    vaultId?: string
+    vaultId?: string | string[]
   ) {
     return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery, vaultId)
   }

@@ -18,10 +18,10 @@ import { compressionSnapshotsTable } from '../schema/compression-snapshots'
 function resolveSessionAssistantId(session: {
   assistantId?: string | null
   assistant_id?: string | null
-}): string | null {
+}): string {
   const raw = String(session.assistantId ?? session.assistant_id ?? '').trim()
-  if (!raw) return null
-  return raw === DEFAULT_LATTE_ASSISTANT_ID ? SYSTEM_LATTE_ASSISTANT_ID : raw
+  if (!raw || raw === DEFAULT_LATTE_ASSISTANT_ID) return SYSTEM_LATTE_ASSISTANT_ID
+  return raw
 }
 
 function resolveSessionVaultId(session: {
@@ -33,7 +33,7 @@ function resolveSessionVaultId(session: {
   const raw = String(
     session.vaultId ?? session.vault_id ?? session.vaultName ?? session.vault_name ?? ''
   )
-  if (!raw) return deriveLegacyVaultId('default')
+  if (!raw || raw === 'default') return deriveLegacyVaultId('Personal')
   return isVaultId(raw) ? raw : deriveLegacyVaultId(raw)
 }
 

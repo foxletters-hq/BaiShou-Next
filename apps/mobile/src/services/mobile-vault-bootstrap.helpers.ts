@@ -13,7 +13,7 @@ import {
   type SettingsManagerService,
   type SummarySyncService
 } from '@baishou/core-mobile'
-import { logger } from '@baishou/shared'
+import { logger, deriveLegacyVaultId } from '@baishou/shared'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
 import { scheduleVaultEcosystemResync } from './mobile-vault-resync.service'
@@ -200,6 +200,20 @@ export async function runVaultBootstrap(
   mobileDataBootstrapper.registerDeps(bootstrapDeps)
   deps.diaryStack.shadowIndexSyncService.setSyncEnabled(true)
 
+  try {
+    const { autoHealMobileDerivativeVaults } = await import('./mobile-vault-auto-heal.service')
+    const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+    const storageRoot = await deps.pathService.getRootDirectory()
+    await autoHealMobileDerivativeVaults({
+      fileSystem: deps.fileSystem,
+      storageRoot,
+      vaultService: deps.vaultService,
+      sqlExecutor: agentDbRuntimeRef.current?.sqlExecutor
+    })
+  } catch (healErr) {
+    logger.warn('[VaultRuntime] autoHealMobileDerivativeVaults failed:', healErr as Error)
+  }
+
   if (options?.skipFullResync) {
     await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
     return
@@ -245,7 +259,7 @@ export async function runVaultBootstrap(
             await ensureDefaultLatteAssistant(
               deps.bootstrapDeps.assistantManager,
               locale,
-              activeVault?.id
+              activeVault?.id?.trim() || (activeVault?.name ? deriveLegacyVaultId(activeVault.name) : undefined)
             )
           }
         } catch (e) {
@@ -268,7 +282,7 @@ export async function runVaultBootstrap(
                 )
                 await runMobileDerivedIndexHydration({
                   drizzleDb: runtime.drizzleDb,
-                  vaultId: activeVault.id,
+                  vaultId: activeVault.id?.trim() || deriveLegacyVaultId(activeVault.name || 'Personal'),
                   vaultName: activeVault.name,
                   vaults: deps.vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name })),
                   embeddingProvider: emb.embeddingProvider,

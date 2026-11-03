@@ -69,7 +69,7 @@ export async function confirmMobileRagClearKinds(input: {
         await import('../../../MemoryCenterScreen/memory-center-data.util')
       const activeVault = readActiveVaultSafely(services.vaultService)
       const vaultName = activeVault?.name || 'Personal'
-      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+      const vaultId = activeVault?.id?.trim() || deriveLegacyVaultId(vaultName)
       await mobileClearLifeGraph({
         vaultId,
         vaultName,
