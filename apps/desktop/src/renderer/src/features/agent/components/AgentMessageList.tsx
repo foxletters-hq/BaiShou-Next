@@ -356,6 +356,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   const streamUi = resolveCompanionStreamUi({
     isStreaming: stream.isStreaming,
     isBridgeActive: stream.isBridgeActive,
+    persistedMessageId: stream.persistedMessageId,
     isCompressing: stream.isCompressing,
     error: stream.error,
     lastMessage,

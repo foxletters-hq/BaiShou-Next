@@ -386,5 +386,57 @@ describe('useChatMessages', () => {
 
       expect(fetchSpy).not.toHaveBeenCalled()
     })
+
+    it('should poll until expectedMessageId appears when agent-stream-finished fires', async () => {
+      let callCount = 0
+      const fetchSpy = vi.fn().mockImplementation(() => {
+        callCount++
+        if (callCount === 1) {
+          // 第一次：新消息尚未落库，只有历史消息
+          return Promise.resolve([
+            { id: 'u1', role: 'user', content: '第一轮问题', orderIndex: 0 },
+            { id: 'a1', role: 'assistant', content: '第一轮回答', orderIndex: 1 },
+            { id: 'u2', role: 'user', content: '第二轮问题', orderIndex: 2 }
+          ])
+        }
+        // 第二次：新助手消息落库
+        return Promise.resolve([
+          { id: 'u1', role: 'user', content: '第一轮问题', orderIndex: 0 },
+          { id: 'a1', role: 'assistant', content: '第一轮回答', orderIndex: 1 },
+          { id: 'u2', role: 'user', content: '第二轮问题', orderIndex: 2 },
+          { id: 'a2', role: 'assistant', content: '第二轮回答完成', orderIndex: 3 }
+        ])
+      })
+      mockRenderer.invoke.mockImplementation(fetchSpy)
+
+      const { result } = renderHook(() =>
+        useChatMessages({
+          sessionId: 's1',
+          isStreaming: false,
+          streamingText: '',
+          streamingReasoning: ''
+        })
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      fetchSpy.mockClear()
+      callCount = 0
+
+      await act(async () => {
+        window.dispatchEvent(
+          new CustomEvent('baishou:agent-stream-finished', {
+            detail: { sessionId: 's1', messageId: 'a2' }
+          })
+        )
+        // 等待轮询重试
+        await new Promise((r) => setTimeout(r, 250))
+      })
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2)
+      expect(result.current.messages.some((m) => m.id === 'a2')).toBe(true)
+    })
   })
 })

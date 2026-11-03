@@ -53,6 +53,8 @@ export interface UseAgentStreamResult {
   error: string | null
   /** 流已结束、DB 消息尚未刷新时，继续展示 StreamingBubble 避免闪断或重复气泡 */
   isBridgeActive: boolean
+  /** 刚落库的助手消息 ID，用于无缝过渡桥接，直到 DB 列表加载出该消息 */
+  persistedMessageId: string | null
   saveUserMessage: (
     sessionId: string,
     text: string,
@@ -457,6 +459,7 @@ export function useAgentStream(
         pendingEmojis: [],
         error: null,
         isBridgeActive: false,
+        persistedMessageId: null,
         pendingAgentGate: null,
         isAgentGateReplying: false
       }
@@ -467,6 +470,7 @@ export function useAgentStream(
     timeline: activeState.timeline,
     isStreaming: activeState.isStreaming,
     isBridgeActive: activeState.isBridgeActive,
+    persistedMessageId: activeState.persistedMessageId ?? null,
     isCompressing: activeState.isCompressing,
     compressionPhase: activeState.compressionPhase,
     compressionText: activeState.compressionText,

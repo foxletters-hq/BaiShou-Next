@@ -27,6 +27,8 @@ export interface SessionStreamState {
   error: string | null
   activeToolStartTime?: number
   isBridgeActive: boolean
+  /** 刚落库的助手消息 ID，用于无缝过渡桥接，直到 DB 列表加载出该消息 */
+  persistedMessageId: string | null
   pendingAgentGate: AgentGateRequest | null
   isAgentGateReplying: boolean
 }
@@ -221,6 +223,7 @@ export function clearCompressionStreamState(state: SessionStreamState): void {
 
 export function clearStreamBridgeState(state: SessionStreamState): void {
   state.isBridgeActive = false
+  state.persistedMessageId = null
   state.text = ''
   state.reasoning = ''
   state.timeline = []
@@ -279,6 +282,7 @@ export function getOrCreateSessionState(sessionId: string): SessionStreamState {
       pendingEmojis: [],
       error: null,
       isBridgeActive: false,
+      persistedMessageId: null,
       pendingAgentGate: null,
       isAgentGateReplying: false
     }
@@ -355,6 +359,7 @@ function registerGlobalStreamIpcListeners(): () => void {
         if (!state.isStreaming) {
           state.isStreaming = true
           state.isBridgeActive = false
+          state.persistedMessageId = null
           needsHydrate = true
         }
         appendTimelineText(state.timeline, delta)
@@ -387,6 +392,7 @@ function registerGlobalStreamIpcListeners(): () => void {
         if (!state.isStreaming) {
           state.isStreaming = true
           state.isBridgeActive = false
+          state.persistedMessageId = null
           needsHydrate = true
         }
         appendTimelineReasoning(state.timeline, delta)
@@ -436,6 +442,7 @@ function registerGlobalStreamIpcListeners(): () => void {
           if (!state.isStreaming) {
             state.isStreaming = true
             state.isBridgeActive = false
+            state.persistedMessageId = null
           }
           state.pendingEmojis.push({ emojiId })
         })
@@ -447,6 +454,7 @@ function registerGlobalStreamIpcListeners(): () => void {
       if (!state.isStreaming) {
         state.isStreaming = true
         state.isBridgeActive = false
+        state.persistedMessageId = null
         needsHydrate = true
       }
       const start = Date.now()
@@ -478,6 +486,7 @@ function registerGlobalStreamIpcListeners(): () => void {
       if (!state.isStreaming) {
         state.isStreaming = true
         state.isBridgeActive = false
+        state.persistedMessageId = null
         needsHydrate = true
       }
       const start = state.activeToolStartTime || Date.now()
@@ -505,6 +514,7 @@ function registerGlobalStreamIpcListeners(): () => void {
         fullText.trim() || fullReasoning.trim() || state.timeline.length > 0
       )
       state.isBridgeActive = hasContent
+      state.persistedMessageId = typeof payload?.messageId === 'string' ? payload.messageId : null
       if (!userStopped && payload?.error) {
         state.error = payload.error
       } else {
