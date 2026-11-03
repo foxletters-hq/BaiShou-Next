@@ -29,6 +29,9 @@ const RELEASE_SIGNING_LINES = [
   '                } else if (storeFilePath != null) {',
   '                    storeFile rootProject.file(storeFilePath)',
   '                }',
+  '',
+  '                v1SigningEnabled true',
+  '                v2SigningEnabled true',
   '            }',
   '        }'
 ]
