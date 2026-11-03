@@ -105,7 +105,7 @@ function findApksigner() {
 
 function verifyReleaseApkNotDebugSigned(apkPath) {
   const apksigner = findApksigner()
-  const result = spawnSync(apksigner, ['verify', '--print-certs', apkPath], {
+  const result = spawnSync(apksigner, ['verify', '-v', '--print-certs', apkPath], {
     encoding: 'utf8'
   })
   const output = `${result.stdout || ''}\n${result.stderr || ''}`
@@ -118,7 +118,12 @@ function verifyReleaseApkNotDebugSigned(apkPath) {
     console.error('   常见原因：expo prebuild 清除了 android/key.properties 且未恢复。')
     process.exit(1)
   }
-  console.log('✅ APK 签名校验通过（非 Debug 证书）')
+  if (output.includes('Verified using v1 scheme (JAR signing): false')) {
+    console.error('❌ Release APK 缺少 V1 (JAR) 签名，国内部分定制系统（如 vivo 等）会判定缺乏开发者证书无法安装。')
+    console.error('   请检查 withAndroidReleaseSigning 中是否启用了 v1SigningEnabled true。')
+    process.exit(1)
+  }
+  console.log('✅ APK 签名校验通过（V1 + V2 完整签名，非 Debug 证书）')
 }
 
 const diaryEditorBundle = path.join(mobileRoot, 'assets/diary-editor/diary-editor.bundle')
