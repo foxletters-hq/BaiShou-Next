@@ -48,7 +48,7 @@
   border-radius: var(--radius-control);
   background: var(--bg-surface-low);
   border: 1px solid var(--border-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-family-mono);
   font-size: var(--settings-font-meta-size);
   line-height: 1.5;
   word-break: break-all;

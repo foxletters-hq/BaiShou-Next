@@ -272,7 +272,13 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     [t, toast]
   )
 
+  const dismissComposerKeyboard = useCallback(() => {
+    inputRef.current?.blur?.()
+    Keyboard.dismiss()
+  }, [])
+
   const handleUploadAttachment = useCallback(async () => {
+    dismissComposerKeyboard()
     const iconColor = colors.textSecondary
     const choice = await dialog.choose(
       undefined,
@@ -313,7 +319,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     } catch (err) {
       console.warn('Attachment picker error:', err)
     }
-  }, [applyPickResult, colors.textSecondary, dialog, t])
+  }, [applyPickResult, colors.textSecondary, dialog, dismissComposerKeyboard, t])
 
   useImperativeHandle(ref, () => ({
     insertText: (newText: string) => {
@@ -395,7 +401,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     contentHeightRef.current = INPUT_MIN_HEIGHT
     setInputScrollEnabled(false)
     animateInputHeight(INPUT_MIN_HEIGHT, true)
-    Keyboard.dismiss()
+    dismissComposerKeyboard()
 
     setIsSending(true)
     try {
@@ -423,6 +429,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     attachments,
     clearDraft,
     composerBlocked,
+    dismissComposerKeyboard,
     isLoading,
     isSending,
     localizedShortcuts,
@@ -433,9 +440,25 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     text
   ])
 
-  const handleShortcutPress = () => {
+  const handleShortcutPress = useCallback(() => {
+    dismissComposerKeyboard()
     onManageShortcuts?.()
-  }
+  }, [dismissComposerKeyboard, onManageShortcuts])
+
+  const handleRecallPress = useCallback(() => {
+    dismissComposerKeyboard()
+    onRecall?.()
+  }, [dismissComposerKeyboard, onRecall])
+
+  const handleOpenNotebookMountPress = useCallback(() => {
+    dismissComposerKeyboard()
+    onOpenNotebookMount?.()
+  }, [dismissComposerKeyboard, onOpenNotebookMount])
+
+  const handleOpenToolsPress = useCallback(() => {
+    dismissComposerKeyboard()
+    onOpenTools?.()
+  }, [dismissComposerKeyboard, onOpenTools])
 
   const handleChangeText = useCallback(
     (nextText: string) => {
@@ -487,9 +510,9 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     handleShortcutPress,
     handleChangeText,
     handleKeyPress,
-    onRecall,
-    onOpenNotebookMount,
-    onOpenTools,
+    onRecall: onRecall ? handleRecallPress : undefined,
+    onOpenNotebookMount: onOpenNotebookMount ? handleOpenNotebookMountPress : undefined,
+    onOpenTools: onOpenTools ? handleOpenToolsPress : undefined,
     searchMode,
     onToggleSearchMode,
     ttsMode,

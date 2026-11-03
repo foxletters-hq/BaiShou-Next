@@ -245,9 +245,9 @@
   line-height: 1.4;
 }
 
-/* monospace 字体（路径显示等） */
+/* monospace 字体（路径显示等，遇 CJK 回退至思源黑体） */
 .settings-monospace {
-  font-family: 'Fira Code', 'Consolas', monospace;
+  font-family: var(--font-family-mono);
   font-size: var(--settings-font-row-size);
   word-break: break-all;
 }
