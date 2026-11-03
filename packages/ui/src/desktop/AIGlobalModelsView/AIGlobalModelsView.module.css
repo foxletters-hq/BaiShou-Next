@@ -185,9 +185,8 @@
 
 .selectedModelName {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
+  line-height: 1.4;
   font-size: var(--settings-font-row-size);
   font-weight: 500;
   color: var(--text-primary);

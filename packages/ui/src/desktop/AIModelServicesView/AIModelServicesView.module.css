@@ -383,13 +383,14 @@
 .modelNameText {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
   max-width: 100%;
   font-size: var(--ui-fs-md);
   color: var(--text-primary);
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  line-height: 1.4;
 }
 
 .modelNameChecked {

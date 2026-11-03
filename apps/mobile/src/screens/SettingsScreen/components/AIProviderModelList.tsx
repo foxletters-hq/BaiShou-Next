@@ -88,7 +88,7 @@ export function AIProviderModelList(props: {
                       styles.modelRowText,
                       { color: on ? colors.primary : colors.textPrimary }
                     ]}
-                    numberOfLines={1}
+                    numberOfLines={3}
                   >
                     {modelId}
                   </Text>

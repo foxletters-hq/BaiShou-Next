@@ -186,9 +186,8 @@
   flex: 1;
   font-size: var(--ui-fs-md);
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  line-height: 1.4;
 }
 
 .modelItem.selected .modelIdText {

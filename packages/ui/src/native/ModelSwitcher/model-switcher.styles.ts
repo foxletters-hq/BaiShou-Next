@@ -103,7 +103,8 @@ export const styles = StyleSheet.create({
     fontWeight: '500'
   },
   modelRow: {
-    height: 34,
+    minHeight: 34,
+    paddingVertical: sharedTokens.spacing.xs,
     paddingLeft: sharedTokens.spacing.md,
     paddingRight: sharedTokens.spacing.sm,
     borderRadius: sharedTokens.radius.xsPlus,
@@ -120,6 +121,7 @@ export const styles = StyleSheet.create({
   },
   modelName: {
     fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 18,
     flexShrink: 1
   },
   footer: {
