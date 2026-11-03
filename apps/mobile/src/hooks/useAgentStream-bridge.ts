@@ -7,6 +7,7 @@ import {
   type Dispatch,
   type SetStateAction
 } from 'react'
+import { AppState } from 'react-native'
 import { useAgentStore } from '@baishou/store'
 import { isAnyAgentMarkdownRevealing, stopAllAgentMarkdownRevealing } from '@baishou/ui/native'
 
@@ -261,6 +262,23 @@ export function useAgentStreamBridge({
       streamBridgeReleaseTimerRef.current = null
     }
     setIsStreamBridgeActive(false)
+
+    // 若应用处于后台，不执行渐显过渡和延迟等待，直接同步结束
+    if (AppState.currentState !== 'active') {
+      stopAllAgentMarkdownRevealing()
+      if (streamPresentationLingerTimerRef.current) {
+        clearTimeout(streamPresentationLingerTimerRef.current)
+        streamPresentationLingerTimerRef.current = null
+      }
+      if (streamBufferHoldTimerRef.current) {
+        clearTimeout(streamBufferHoldTimerRef.current)
+        streamBufferHoldTimerRef.current = null
+      }
+      setStreamPresentationLinger(false)
+      resetStreamingBuffers()
+      return
+    }
+
     setStreamPresentationLinger(true)
     if (streamPresentationLingerTimerRef.current) {
       clearTimeout(streamPresentationLingerTimerRef.current)
@@ -270,6 +288,13 @@ export function useAgentStreamBridge({
       streamBufferHoldTimerRef.current = null
     }
     const finishLingerWhenRevealDone = () => {
+      if (AppState.currentState !== 'active') {
+        stopAllAgentMarkdownRevealing()
+        streamPresentationLingerTimerRef.current = null
+        setStreamPresentationLinger(false)
+        resetStreamingBuffers()
+        return
+      }
       if (isAnyAgentMarkdownRevealing()) {
         streamPresentationLingerTimerRef.current = setTimeout(finishLingerWhenRevealDone, 60)
         return
@@ -296,8 +321,12 @@ export function useAgentStreamBridge({
     if (streamBridgeReleaseTimerRef.current) {
       clearTimeout(streamBridgeReleaseTimerRef.current)
     }
-    if (userStoppedStreamRef.current) {
+    if (userStoppedStreamRef.current || AppState.currentState !== 'active') {
       streamBridgeReleaseTimerRef.current = null
+      if (AppState.currentState !== 'active') {
+        releaseStreamBridge()
+        return
+      }
       setIsStreamBridgeActive(false)
       setStreamPresentationLinger(false)
       if (streamBufferHoldTimerRef.current) {
@@ -321,6 +350,18 @@ export function useAgentStreamBridge({
     releaseStreamBridge,
     resetStreamingBuffers
   ])
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') {
+        stopAllAgentMarkdownRevealing()
+        if (isStreamBridgeActiveRef.current || streamPresentationLingerRef.current) {
+          releaseStreamBridge()
+        }
+      }
+    })
+    return () => sub.remove()
+  }, [releaseStreamBridge, isStreamBridgeActiveRef, streamPresentationLingerRef])
 
   const handleToolCallStart = useCallback(
     (toolName: string, args?: unknown, toolCallId?: string) => {

@@ -1,7 +1,9 @@
 import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
+import { AppState } from 'react-native'
 import { useAgentGateInboxStore, useAgentStore } from '@baishou/store'
 import { truncateSessionAfterOrderIndex, truncateOptionsWithDiskFlush } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
+import { stopAllAgentMarkdownRevealing } from '@baishou/ui/native'
 
 import { useBaishou } from '../providers/BaishouProvider'
 import { runMobileAgentDbWrite } from '../services/mobile-agent-db-write.util'
@@ -183,6 +185,11 @@ export function useAgentStreamFinish({
       const runFinalize = async () => {
         streamFinalizeLockRef.current = sessionId
 
+        const isAppActive = AppState.currentState === 'active'
+        if (!isAppActive) {
+          stopAllAgentMarkdownRevealing()
+        }
+
         setLoading(false)
         streamAbortRef.current = null
 
@@ -202,8 +209,8 @@ export function useAgentStreamFinish({
 
           let reloaded = await reloadMessagesFromDb(sessionId, {
             preserveWindow: true,
-            retryCount: options?.waitForLatestUsage ? 2 : 1,
-            waitForLatestUsage: options?.waitForLatestUsage ?? false,
+            retryCount: isAppActive && options?.waitForLatestUsage ? 2 : 1,
+            waitForLatestUsage: isAppActive && (options?.waitForLatestUsage ?? false),
             commitToUi: true
           })
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import { Keyboard, ScrollView } from 'react-native'
 import { type PromptShortcut } from '@baishou/shared'
 import { type InputBarRef } from '@baishou/ui/native'
@@ -38,6 +38,8 @@ export function useAgentScreenInteractions(deps: {
   streamError: string | null
   isStreaming: boolean
   toast: Toast
+  messages?: Array<{ id: string; role: string; content?: string }>
+  ttsMode?: 'manual' | 'always'
 }) {
   const { t } = useTranslation()
   const {
@@ -57,7 +59,9 @@ export function useAgentScreenInteractions(deps: {
     handleSelectSession,
     streamError,
     isStreaming,
-    toast
+    toast,
+    messages,
+    ttsMode
   } = deps
 
   const {
@@ -71,6 +75,36 @@ export function useAgentScreenInteractions(deps: {
   const { ttsPlayingMsgId, handleTtsReadAloud } = useTTS()
   const { branchSession } = useBranchSession()
   useStreamError(streamError, isStreaming)
+
+  const awaitingAutoTtsRef = useRef(false)
+
+  useEffect(() => {
+    if (isStreaming && currentSessionId) {
+      awaitingAutoTtsRef.current = true
+    }
+  }, [isStreaming, currentSessionId])
+
+  useEffect(() => {
+    if (!currentSessionId || streamError) {
+      awaitingAutoTtsRef.current = false
+    }
+  }, [currentSessionId, streamError])
+
+  useEffect(() => {
+    if (
+      awaitingAutoTtsRef.current &&
+      !isStreaming &&
+      ttsMode === 'always' &&
+      messages &&
+      messages.length > 0
+    ) {
+      const lastMsg = messages[messages.length - 1]
+      if (lastMsg?.role === 'assistant' && lastMsg.content?.trim()) {
+        awaitingAutoTtsRef.current = false
+        void handleTtsReadAloud(lastMsg.content, lastMsg.id)
+      }
+    }
+  }, [messages, isStreaming, ttsMode, handleTtsReadAloud, currentSessionId])
 
   useEffect(() => {
     if (showShortcutSheet) {
@@ -98,7 +132,13 @@ export function useAgentScreenInteractions(deps: {
       resetKeyboardInset()
       Keyboard.dismiss()
       beginFollowIfAtBottom(flatListRef)
-      return handleSend(text, attachments, sendSearchMode, meta)
+      const ok = await handleSend(text, attachments, sendSearchMode, meta)
+      if (ok) {
+        requestAnimationFrame(() => {
+          beginFollowIfAtBottom(flatListRef)
+        })
+      }
+      return ok
     },
     [resetKeyboardInset, beginFollowIfAtBottom, handleSend, flatListRef]
   )
