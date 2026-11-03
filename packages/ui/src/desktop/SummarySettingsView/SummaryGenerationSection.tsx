@@ -7,7 +7,7 @@ import { SegmentedControl } from '../shared/SegmentedControl'
 import { Button } from '../Button/Button'
 import { Modal } from '../Modal/Modal'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
-import { SUMMARY_PROMPT_LOCALE_OPTIONS } from '@baishou/shared'
+import { pickPreferredSummaryAssistant, SUMMARY_PROMPT_LOCALE_OPTIONS } from '@baishou/shared'
 import type { SummarySettingsAssistantOption } from './summary-settings.types'
 import type { SummarySettingsViewModel } from './useSummarySettingsView'
 
@@ -72,7 +72,7 @@ export function SummaryGenerationSection({ vm }: { vm: SummarySettingsViewModel 
                 config.generationAssistantId &&
                 assistants.some((a) => a.id === config.generationAssistantId)
                   ? config.generationAssistantId
-                  : assistants[0]!.id
+                  : (pickPreferredSummaryAssistant(assistants)?.id ?? assistants[0]!.id)
               vm.emitSettings({
                 generationMode: 'assistant',
                 generationAssistantId: nextId
