@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { autoHealMobileDerivativeVaults } from '../mobile-vault-auto-heal.service'
 import type { IFileSystem, FileStat } from '@baishou/core-mobile'
-import { deriveLegacyVaultId } from '@baishou/shared'
 
 class MockMemoryFileSystem implements IFileSystem {
   private files = new Map<string, string>()
@@ -195,13 +194,13 @@ describe('mobile-vault-auto-heal.service', () => {
     expect(await fs.exists('/root/Personal/Sessions/sess_abc.json')).toBe(true)
     const contentAbc = JSON.parse(await fs.readFile('/root/Personal/Sessions/sess_abc.json'))
     expect(contentAbc.vaultName).toBe('Personal')
-    expect(contentAbc.vaultId).toBe(deriveLegacyVaultId('Personal'))
+    expect(contentAbc.vaultId).toBe('vlt_pers')
     expect(contentAbc.assistantId).toBe('latte')
 
     expect(await fs.exists('/root/Personal/Sessions/sess_xyz.json')).toBe(true)
     const contentXyz = JSON.parse(await fs.readFile('/root/Personal/Sessions/sess_xyz.json'))
     expect(contentXyz.vaultName).toBe('Personal')
-    expect(contentXyz.vaultId).toBe(deriveLegacyVaultId('Personal'))
+    expect(contentXyz.vaultId).toBe('vlt_pers')
     expect(contentXyz.assistantId).toBe('latte')
 
     // 验证日记已合并
@@ -221,7 +220,34 @@ describe('mobile-vault-auto-heal.service', () => {
     expect(sqlExecutor).toHaveBeenCalled()
   })
 
-  it('in-place sanitizes nested session JSON in Personal/Sessions even when no derivative vaults exist', async () => {
+  it('does not rewrite unrelated Personal sessions when no derivative vault is present', async () => {
+    const fs = new MockMemoryFileSystem()
+    await fs.mkdir('/root/Personal/Sessions')
+    await fs.writeFile(
+      '/root/Personal/Sessions/sess_nested.json',
+      JSON.stringify({
+        session: {
+          id: 'sess_nested',
+          title: '嵌套老会话',
+          vaultName: 'Personal',
+          assistantId: 'latte'
+        },
+        messages: []
+      })
+    )
+
+    const result = await autoHealMobileDerivativeVaults({
+      fileSystem: fs,
+      storageRoot: '/root'
+    })
+
+    expect(result.healed).toBe(false)
+    const untouched = JSON.parse(await fs.readFile('/root/Personal/Sessions/sess_nested.json'))
+    expect(untouched.session.vaultName).toBe('Personal')
+    expect(untouched.session.assistantId).toBe('latte')
+  })
+
+  it('cleans sessions that reference a derivative vault even after its directory was removed', async () => {
     const fs = new MockMemoryFileSystem()
     await fs.mkdir('/root/Personal/Sessions')
     await fs.writeFile(
@@ -236,6 +262,13 @@ describe('mobile-vault-auto-heal.service', () => {
         messages: []
       })
     )
+    await fs.writeFile(
+      '/root/vault_registry.json',
+      JSON.stringify([
+        { id: 'vlt_pers', name: 'Personal', path: '/root/Personal' },
+        { id: 'vlt_p8273', name: 'Personal8273', path: '/root/Personal8273' }
+      ])
+    )
 
     const result = await autoHealMobileDerivativeVaults({
       fileSystem: fs,
@@ -245,10 +278,46 @@ describe('mobile-vault-auto-heal.service', () => {
     expect(result.healed).toBe(false)
     const sanitized = JSON.parse(await fs.readFile('/root/Personal/Sessions/sess_nested.json'))
     expect(sanitized.session.vaultName).toBe('Personal')
-    expect(sanitized.session.vaultId).toBe(deriveLegacyVaultId('Personal'))
     expect(sanitized.session.assistantId).toBe('latte')
-    expect(sanitized.vaultName).toBe('Personal')
-    expect(sanitized.assistantId).toBe('latte')
+
+    const registry = JSON.parse(await fs.readFile('/root/vault_registry.json'))
+    expect(registry.map((item: { name: string }) => item.name)).toEqual(['Personal'])
+  })
+
+  it('does not remove the derivative vault the user is currently using', async () => {
+    const fs = new MockMemoryFileSystem()
+    await fs.mkdir('/root/Personal/Sessions')
+    await fs.mkdir('/root/Personal82/Sessions')
+    await fs.writeFile(
+      '/root/Personal82/Sessions/sess_active.json',
+      JSON.stringify({
+        id: 'sess_active',
+        vaultName: 'Personal82',
+        assistantId: 'default'
+      })
+    )
+
+    const initRegistry = vi.fn().mockResolvedValue(undefined)
+    const vaultService = {
+      getActiveVault: () => ({
+        id: 'vlt_p82',
+        name: 'Personal82',
+        path: '/root/Personal82',
+        createdAt: new Date(),
+        lastAccessedAt: new Date()
+      }),
+      initRegistry
+    }
+
+    const result = await autoHealMobileDerivativeVaults({
+      fileSystem: fs,
+      storageRoot: '/root',
+      vaultService: vaultService as never
+    })
+
+    expect(result.healed).toBe(false)
+    expect(await fs.exists('/root/Personal82/Sessions/sess_active.json')).toBe(true)
+    expect(await fs.exists('/root/Personal/Sessions/sess_active.json')).toBe(false)
+    expect(initRegistry).not.toHaveBeenCalled()
   })
 })
-

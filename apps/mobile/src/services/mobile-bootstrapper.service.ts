@@ -214,6 +214,10 @@ export class MobileDataBootstrapper {
 
     logger.info('[MobileBootstrapper] Starting ecosystem resync…')
 
+    const activeVaultName = deps.getActiveVaultName
+      ? await deps.getActiveVaultName().catch(() => undefined)
+      : undefined
+
     try {
       const { autoHealMobileDerivativeVaults } = await import('./mobile-vault-auto-heal.service')
       const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
@@ -225,16 +229,13 @@ export class MobileDataBootstrapper {
         await autoHealMobileDerivativeVaults({
           fileSystem,
           storageRoot,
+          activeVaultName: activeVaultName ?? null,
           sqlExecutor: runtime.sqlExecutor
         })
       }
     } catch (healError) {
       logger.warn('[MobileBootstrapper] autoHealMobileDerivativeVaults failed:', healError as Error)
     }
-
-    const activeVaultName = deps.getActiveVaultName
-      ? await deps.getActiveVaultName().catch(() => undefined)
-      : undefined
 
     const activeVaultId = deps.getActiveVaultId
       ? await deps.getActiveVaultId().catch(() => null)

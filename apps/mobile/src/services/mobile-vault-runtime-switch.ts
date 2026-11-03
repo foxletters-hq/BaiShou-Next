@@ -118,6 +118,7 @@ export async function switchVaultRuntime(
       },
       {
         deferResync: true,
+        skipAutoHeal: true,
         resyncReason: `vault-switch:${vaultName}`,
         onResyncComplete: deps.callbacks?.onResyncComplete
       }
