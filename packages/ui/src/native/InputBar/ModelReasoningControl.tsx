@@ -318,7 +318,7 @@ export function ModelReasoningControl({
                                     fontWeight: isSelected ? '600' : '400'
                                   }
                                 ]}
-                                numberOfLines={1}
+                                numberOfLines={3}
                               >
                                 {modelId}
                               </Text>
@@ -460,7 +460,8 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   modelRow: {
-    height: 32,
+    minHeight: 32,
+    paddingVertical: sharedTokens.spacing.xs,
     paddingLeft: sharedTokens.spacing.md,
     paddingRight: sharedTokens.spacing.sm,
     borderRadius: sharedTokens.radius.xsPlus,
@@ -477,6 +478,7 @@ const styles = StyleSheet.create({
   },
   modelName: {
     fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 18,
     flexShrink: 1
   },
   emptyWrap: {

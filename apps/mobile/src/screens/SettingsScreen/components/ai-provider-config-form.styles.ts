@@ -92,7 +92,8 @@ export const aiProviderConfigFormStyles = StyleSheet.create({
   },
   modelRowText: {
     flexShrink: 1,
-    fontSize: mobileTypography.secondary.fontSize
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 18
   },
   loadMoreModelsBtn: {
     marginTop: sharedTokens.spacing.smPlus,

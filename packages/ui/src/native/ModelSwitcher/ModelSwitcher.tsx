@@ -287,7 +287,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                                   fontWeight: isSelected ? '600' : '400'
                                 }
                               ]}
-                              numberOfLines={1}
+                              numberOfLines={3}
                             >
                               {modelId}
                             </Text>

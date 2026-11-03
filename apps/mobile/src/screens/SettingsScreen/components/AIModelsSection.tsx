@@ -342,7 +342,7 @@ export const AIModelsSection: React.FC = () => {
                     styles.selectorValue,
                     { color: isSet ? colors.textPrimary : colors.textTertiary }
                   ]}
-                  numberOfLines={2}
+                  numberOfLines={3}
                 >
                   {isSet
                     ? effortLabel

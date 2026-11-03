@@ -129,9 +129,7 @@
 .rowLabel {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
   line-height: 1.45;
   padding-bottom: 1px;
 }
