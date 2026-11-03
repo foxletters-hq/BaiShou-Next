@@ -46,7 +46,8 @@ export function registerDiaryAttachmentIPC() {
               if (att.filePath) {
                 // 从文件路径复制
                 const ext = path.extname(att.filePath) || path.extname(fileName)
-                const baseName = path.parse(fileName).name
+                const rawBaseName = path.parse(fileName).name || 'image'
+                const baseName = rawBaseName.replace(/[\s()[\]|\\]+/g, '_') || 'image'
                 const newFileName = `${baseName}_${Date.now()}${ext}`
                 filePath = path.join(attachDir, newFileName)
 

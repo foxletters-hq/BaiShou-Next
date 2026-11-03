@@ -84,4 +84,18 @@ describe('prepareDiaryCardPreviewMarkdown', () => {
     const raw = '##### 12:30\n\n正文 **加粗**'
     expect(prepareDiaryCardPreviewMarkdown(raw)).toBe('##### 12:30\n\n正文 **加粗**')
   })
+
+  it('strips trailing incomplete markdown image or link syntax caused by 500-char truncation', () => {
+    const truncatedMidAlt =
+      '##### 12:30\n\n![100001_1762168001.jpg](attachment/100001_1762168001.jpg)\n\n![100002_176'
+    expect(prepareDiaryCardPreviewMarkdown(truncatedMidAlt)).toBe(
+      '##### 12:30\n\n![100001_1762168001.jpg](attachment/100001_1762168001.jpg)'
+    )
+
+    const truncatedMidSrc =
+      '##### 12:30\n\n![100001_1762168001.jpg](attachment/100001_1762168001.jpg)\n\n![100002.jpg](attachment/100002'
+    expect(prepareDiaryCardPreviewMarkdown(truncatedMidSrc)).toBe(
+      '##### 12:30\n\n![100001_1762168001.jpg](attachment/100001_1762168001.jpg)'
+    )
+  })
 })

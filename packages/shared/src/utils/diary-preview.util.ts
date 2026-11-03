@@ -61,14 +61,23 @@ export function convertFtsHighlightTagsToMarkdownBold(text: string): string {
   return text.replace(/<\/?(b|mark)>/gi, '**')
 }
 
-function normalizePreviewMarkdownNoise(text: string): string {
+function stripTrailingIncompleteMarkdownMedia(text: string): string {
   return text
-    .replace(/\u200B/g, '')
-    .split('\n')
-    .map((line) => line.replace(/[ \t]+/g, ' ').trimEnd())
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+    .replace(/\n*!\[[^\]\n]*(?:\]\([^)\n]*)?$/, '')
+    .replace(/\n*\[[^\]\n]*\]\([^)\n]*$/, '')
+    .replace(/\n*!$/, '')
+}
+
+function normalizePreviewMarkdownNoise(text: string): string {
+  return stripTrailingIncompleteMarkdownMedia(
+    text
+      .replace(/\u200B/g, '')
+      .split('\n')
+      .map((line) => line.replace(/[ \t]+/g, ' ').trimEnd())
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  ).trim()
 }
 
 /** 日记卡片 Markdown 预览：保留语法，剥离独立标签行；搜索高亮转为 **粗体** */
