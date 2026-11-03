@@ -1,5 +1,9 @@
 import { applyDeepSeekPeakCost } from './deepseek-peak-pricing'
 import {
+  applyModelContextWindowRuntimeOverlay,
+  extractModelContextWindowsFromModelsDev
+} from './model-context-window.util'
+import {
   applyVisionModelsRuntimeOverlay,
   extractVisionModelIdsFromModelsDev
 } from './vision-models.runtime'
@@ -45,6 +49,11 @@ export class ModelPricingService {
         applyVisionModelsRuntimeOverlay(extractVisionModelIdsFromModelsDev(data))
       } catch {
         // 视觉覆盖失败不影响计费
+      }
+      try {
+        applyModelContextWindowRuntimeOverlay(extractModelContextWindowsFromModelsDev(data))
+      } catch {
+        // 上下文覆盖失败不影响计费
       }
 
       this.prices.clear()

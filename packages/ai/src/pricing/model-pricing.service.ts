@@ -6,8 +6,10 @@
 
 import {
   applyDeepSeekPeakCost,
+  applyModelContextWindowRuntimeOverlay,
   applyReasoningCatalogFromModelsDevApi,
   applyVisionModelsRuntimeOverlay,
+  extractModelContextWindowsFromModelsDev,
   extractVisionModelIdsFromModelsDev,
   logger
 } from '@baishou/shared'
@@ -196,6 +198,14 @@ export class ModelPricingService {
           logger.warn(
             '[ModelPricingService] Failed to apply vision overlay from models.dev:',
             visionError as Error
+          )
+        }
+        try {
+          applyModelContextWindowRuntimeOverlay(extractModelContextWindowsFromModelsDev(data))
+        } catch (contextError) {
+          logger.warn(
+            '[ModelPricingService] Failed to apply context window overlay from models.dev:',
+            contextError as Error
           )
         }
         this.prices.clear()

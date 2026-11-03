@@ -151,6 +151,30 @@ describe('resolveSessionContextUsage', () => {
     })
   })
 
+  it('correctly resolves contextWindow for grok-4.7 as 500k', () => {
+    const view = resolveSessionContextUsage({
+      modelId: 'grok-4.7',
+      messages: [
+        {
+          role: 'assistant',
+          inputTokens: 110_077,
+          outputTokens: 13_546,
+          cacheReadInputTokens: 394_624,
+          cacheWriteInputTokens: 0
+        }
+      ],
+      totals: {
+        totalInputTokens: 110_077,
+        totalOutputTokens: 13_546,
+        totalCacheReadInputTokens: 394_624,
+        totalCacheWriteInputTokens: 0,
+        estimatedCost: 0
+      }
+    })
+    expect(view.contextWindow).toBe(500_000)
+    expect(formatContextTokenCount(view.contextWindow)).toBe('500K')
+  })
+
   it('formats zero and invalid costs as $0.000000', () => {
     expect(formatEstimatedCostUsd(0)).toBe('$0.000000')
     expect(formatEstimatedCostUsd(Number.NaN)).toBe('$0.000000')

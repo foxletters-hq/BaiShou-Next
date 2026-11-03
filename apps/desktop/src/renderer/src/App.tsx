@@ -14,7 +14,10 @@ import { GlobalInputContextMenu } from '@baishou/ui/desktop/ContextMenu'
 import { RestoreBlockingOverlay } from '@baishou/ui/desktop/RestoreBlockingOverlay'
 import { useTranslation } from 'react-i18next'
 import { useRagRuntimeBridge } from './features/settings/hooks/useRagRuntimeBridge'
-import { applyVisionModelsRuntimeOverlay } from '@baishou/shared'
+import {
+  applyModelContextWindowRuntimeOverlay,
+  applyVisionModelsRuntimeOverlay
+} from '@baishou/shared'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
 import { ensureDesktopAgentGateInboxBridge } from './features/agent/agent-gate-inbox-bridge'
 import { ensureDesktopAgentGateNotificationBridge } from './features/agent/agent-gate-notification-bridge'
@@ -313,6 +316,15 @@ export function App() {
       })
       .catch(() => {
         // 离线时沿用打包快照 + 正则
+      })
+    void invoke('context-window:get-overlay')
+      .then((windows: unknown) => {
+        if (windows && typeof windows === 'object' && !Array.isArray(windows)) {
+          applyModelContextWindowRuntimeOverlay(windows as Record<string, number>)
+        }
+      })
+      .catch(() => {
+        // 离线时沿用静态正则表
       })
   }, [])
 
