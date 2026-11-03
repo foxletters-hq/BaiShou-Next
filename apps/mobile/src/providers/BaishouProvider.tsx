@@ -63,6 +63,7 @@ export function BaishouProvider({ children }: BaishouProviderProps) {
     notifyVersionMigrationComplete: () => notifyVersionMigrationCompleteRef.current(),
     archiveRestoreEpoch: 0,
     vaultSwitching: false,
+    switchingVaultName: null,
     storageIndexing: mobileDataBootstrapper.getStatus() === 'running',
     ecosystemResyncEpoch: 0,
     retryStorageSetup: (options) => retryStorageSetupRef.current(options),

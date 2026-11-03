@@ -13,7 +13,12 @@ import i18n from 'i18next'
 import { readOnboardingUiLanguage } from '@/src/lib/onboarding-language.util'
 import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale'
 
-import { useNativeTheme, DialogProvider, ToastProvider } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  DialogProvider,
+  ToastProvider,
+  RestoreBlockingOverlay
+} from '@baishou/ui/native'
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
 import { NetworkProvider, NetworkOfflineBanner } from '@/src/providers/NetworkProvider'
@@ -34,6 +39,7 @@ import {
   ensureMobileAgentGateNotifications,
   setMobileAgentGateNotificationNavigateHandler
 } from '@/src/services/mobile-agent-gate-notifications'
+import { preloadDiaryEditorWebViewSource } from '@/src/hooks/useDiaryEditorWebViewSource'
 import { router } from 'expo-router'
 
 export const unstable_settings = {
@@ -54,10 +60,14 @@ function AppContent() {
     [colors.bgApp]
   )
   const { t } = useTranslation()
-  const { dbReady, services } = useBaishou()
+  const { dbReady, services, switchingVaultName } = useBaishou()
   useDiaryEmbedFailureToast()
   useLegacyUpgradeRagToast()
   useDevLanTransferDeepLinkReplayGuard()
+
+  useEffect(() => {
+    void preloadDiaryEditorWebViewSource()
+  }, [])
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -138,6 +148,17 @@ function AppContent() {
         <Stack.Screen name="storage" />
         <Stack.Screen name="incremental-sync" />
       </Stack>
+      <RestoreBlockingOverlay
+        visible={Boolean(switchingVaultName)}
+        message={t('workspace.switching_overlay', '正在切换小窝…')}
+        hint={
+          switchingVaultName
+            ? t('workspace.switching_overlay_hint', '正在加载「{{name}}」的数据，请勿操作', {
+                name: switchingVaultName
+              })
+            : undefined
+        }
+      />
       <StatusBar style="auto" />
     </ThemeProvider>
   )
