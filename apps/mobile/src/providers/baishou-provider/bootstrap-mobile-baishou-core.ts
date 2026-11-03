@@ -324,7 +324,8 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
     const missingSummaryDetector = new MissingSummaryDetector(
       diaryRepoAdapter as any,
-      summaryRepo as any
+      summaryRepo as any,
+      summaryFileService
     )
     const summaryGenerator = new SummaryGeneratorService(
       diaryRepoAdapter as any,

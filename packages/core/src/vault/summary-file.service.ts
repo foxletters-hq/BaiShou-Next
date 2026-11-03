@@ -8,6 +8,16 @@ import {
   resolveSummaryFileInTypeDir,
   summaryTypeSupportsYearSubdir
 } from '../summary/summary-files.util'
+import {
+  readVaultExternalPaths,
+  resolveSummariesBaseDirectory
+} from './vault-external-paths.service'
+
+/** 目录去重键：Windows 盘符路径大小写不敏感，其余保持原样 */
+function normalizeDirKey(dir: string): string {
+  const resolved = path.resolve(dir).replace(/\\/g, '/').replace(/\/+$/, '')
+  return /^[A-Za-z]:\//.test(resolved) ? resolved.toLowerCase() : resolved
+}
 
 export class SummaryFileService {
   constructor(
@@ -247,8 +257,58 @@ export class SummaryFileService {
   }
 
   /**
-   * 列出指定工作区 Archives/ 下的总结（跨仓冷启动水合用）。
-   * 仅扫仓内 Archives，不含活跃仓外部总结目录映射。
+   * 某个工作区总结文件的完整搜索目录。
+   * 除仓内 Archives/Summaries 外，还包含该仓设备本地的外部总结目录；
+   * 活跃仓额外复用 readSummary/listAllSummaries 的搜索顺序，保证盘库口径一致。
+   */
+  private async collectSummarySearchDirectoriesForVault(
+    vaultName: string,
+    vaultDir: string
+  ): Promise<string[]> {
+    const dirs = new Map<string, string>()
+    const add = (dir: string | null | undefined): void => {
+      const trimmed = dir?.trim()
+      if (!trimmed) return
+      dirs.set(normalizeDirKey(trimmed), trimmed)
+    }
+
+    let isActiveVault = false
+    try {
+      const activeDir = await this.pathProvider.getActiveVaultPath()
+      isActiveVault = !!activeDir && normalizeDirKey(activeDir) === normalizeDirKey(vaultDir)
+    } catch {
+      // 活跃仓探测失败时仍按普通仓扫描
+    }
+
+    if (isActiveVault) {
+      try {
+        for (const dir of await this.collectSummarySearchDirectories()) add(dir)
+      } catch {
+        // 外部/旧版目录不可读时继续扫仓内目录
+      }
+    }
+
+    // 非活跃仓也需读取各自的 external_paths.json，避免跨仓冷启动漏掉外部总结
+    try {
+      const systemDir = await this.pathProvider.getVaultSystemDirectory(vaultName)
+      const external = await readVaultExternalPaths(this.fileSystem, systemDir)
+      if (external.summariesDirectory?.trim()) {
+        add(resolveSummariesBaseDirectory(vaultDir, external))
+      }
+    } catch {
+      // 外部路径配置缺失或不可读时忽略
+    }
+
+    add(path.join(vaultDir, 'Archives'))
+    // 兼容少数仍用 Summaries/ 的布局
+    add(path.join(vaultDir, 'Summaries'))
+
+    return [...dirs.values()]
+  }
+
+  /**
+   * 列出指定工作区内的总结（跨仓冷启动水合用）。
+   * 包含仓内 Archives/Summaries 与设备本地配置的外部总结目录。
    */
   async listSummariesForVault(
     vaultName: string
@@ -264,9 +324,10 @@ export class SummaryFileService {
       endDate: Date
       fullPath: string
     }[] = []
-    await this.scanSummaryDir(path.join(vaultDir, 'Archives'), results)
-    // 兼容少数仍用 Summaries/ 的布局
-    await this.scanSummaryDir(path.join(vaultDir, 'Summaries'), results)
+    const searchDirs = await this.collectSummarySearchDirectoriesForVault(name, vaultDir)
+    for (const baseDir of searchDirs) {
+      await this.scanSummaryDir(baseDir, results)
+    }
     return results.map((r) => ({ ...r, vaultName: name }))
   }
 
