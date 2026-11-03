@@ -58,9 +58,7 @@ export function extractModelContextWindowsFromModelsDev(data: unknown): Record<s
 export function applyModelContextWindowRuntimeOverlay(
   windows: Record<string, number> | Map<string, number>
 ): void {
-  runtimeModelContextWindows = new Map(
-    windows instanceof Map ? windows : Object.entries(windows)
-  )
+  runtimeModelContextWindows = new Map(windows instanceof Map ? windows : Object.entries(windows))
 }
 
 export function getModelContextWindowRuntimeOverlay(): Record<string, number> {
