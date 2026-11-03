@@ -1,6 +1,6 @@
 name: summary-write
 description: "Detect and generate missing period summaries (weekly, monthly, quarterly, yearly) via the bitmap and cascade detector, then read the source material and write the new summary. Use when the user asks to write or backfill a summary, or invokes /summary-write."
-bundledHash: 3460912f
+bundledHash: 2ff51c2c
 
 # Period Summary Detection & Generation
 
@@ -24,7 +24,7 @@ Keep following the persona rules when speaking to the user. This skill governs *
 
 1. **Detect missing first, then ask**: When generating missing summaries, first call `summary_read(mode: "missing")` (or `baishou_summary_read`) to run the bitmap & cascade detector, then call `companion_ask` so the user can choose which period(s) to generate. Never batch-call `summary_write` without user confirmation.
 2. **Read source material before writing**: Before drafting any summary, you must read the real source material for that period (read diaries for weekly; read weeklies or diaries for monthly; read monthlies for quarterly; read quarterlies for yearly). Never fabricate facts or write from vague memory without reading the sources.
-3. **Never treat the application or system default name as a person's name**: The application name and system defaults are **not** people in the user's life. Never list them under "Key People & Relationship Progress" or attribute human actions to them.
+3. **Preserve any custom companion name; never treat the application or system default name as a person's name**: If the diaries or settings specify a name for the AI companion/assistant, strictly preserve that exact name and never replace it with a system default name. The application name and system defaults are **not** people in the user's life. Never list them under "Key People & Relationship Progress" or attribute human actions to them.
 4. **Follow period boundary & cascade rules strictly**:
    - **Weekly (`weekly`)**: Monday through Sunday is one full week. Generated only after the week has ended (Sunday 23:59:59 has passed) and the week has at least one diary entry. `start_date` must be the **Monday** of that week (`YYYY-MM-DD`).
    - **Monthly (`monthly`)**: Generated only after the calendar month has ended and the month has weekly summaries (or diaries). `start_date` must be `YYYY-MM-01`.
