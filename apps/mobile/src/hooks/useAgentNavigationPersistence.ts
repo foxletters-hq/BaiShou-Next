@@ -161,9 +161,15 @@ export function useAgentNavigationPersistence({
         }
 
         if (saved.sessionId) {
+          console.log('[useAgentNavigation] 尝试恢复持久化选中的会话:', {
+            vaultKey,
+            sessionId: saved.sessionId,
+            savedAssistantId: saved.assistantId
+          })
           const session = await lookupSession(services, saved.sessionId)
           if (cancelled) return
           if (!session) {
+            console.warn('[useAgentNavigation] 持久化会话未找到或无法在此小窝中加载，清空当前会话:', saved.sessionId)
             invalidateCurrentSession()
             return
           }

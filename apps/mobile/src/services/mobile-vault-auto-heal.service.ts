@@ -135,6 +135,8 @@ export async function autoHealMobileDerivativeVaults(
     const allEntries = await fileSystem.readdir(storageRoot).catch(() => [])
     const entriesSet = new Set(allEntries)
 
+    logger.info('[AutoHeal] 启动自愈检查', { storageRoot, diskEntryCount: allEntries.length })
+
     // 识别形如 NameXX... 的衍生工作区（如 Personal82, Personal8273）
     const derivativeVaults: Array<{ baseName: string; derivativeName: string }> = []
     for (const entry of allEntries) {
@@ -260,19 +262,37 @@ export async function autoHealMobileDerivativeVaults(
     if (await fileSystem.exists(personalSessionsDir)) {
       const personalVaultId = deriveLegacyVaultId('Personal')
       const files = await fileSystem.readdir(personalSessionsDir).catch(() => [])
+      let updatedCount = 0
+      const sessionFileSummaries: Array<{ file: string; title?: string }> = []
+
       for (const file of files) {
         if (!file.endsWith('.json')) continue
         const filePath = path.join(personalSessionsDir, path.basename(file))
         try {
           const raw = await fileSystem.readFile(filePath, 'utf8')
           const sanitized = sanitizeSessionJsonContent(raw, 'Personal', personalVaultId)
+          let title: string | undefined
+          try {
+            const p = JSON.parse(sanitized)
+            title = p?.session?.title || p?.title
+          } catch {
+            // ignore
+          }
+          sessionFileSummaries.push({ file: path.basename(file), title })
           if (sanitized !== raw) {
             await fileSystem.writeFile(filePath, sanitized, 'utf8')
+            updatedCount++
           }
         } catch {
           // ignore
         }
       }
+
+      logger.info('[AutoHeal] Personal/Sessions 就地深度清洗完成', {
+        totalFiles: sessionFileSummaries.length,
+        updatedFiles: updatedCount,
+        sessions: sessionFileSummaries.slice(0, 20)
+      })
     }
 
     // 6. SQLite 数据库统一对齐（将所有会话归属和默认助手强制扶正）
@@ -288,8 +308,9 @@ export async function autoHealMobileDerivativeVaults(
           sqlExecutor,
           `UPDATE agent_sessions SET assistant_id = 'latte' WHERE assistant_id = 'default' OR assistant_id IS NULL OR assistant_id = ''`
         )
-      } catch {
-        // 忽略轻量对齐失败
+        logger.info('[AutoHeal] SQLite 数据库会话归属与助手对齐成功', { targetVaultId })
+      } catch (sqlErr) {
+        logger.warn('[AutoHeal] SQLite 数据库对齐出现非致命异常:', sqlErr as Error)
       }
     }
 
@@ -330,6 +351,9 @@ export async function autoHealMobileDerivativeVaults(
           })
 
           await fileSystem.writeFile(registryPath, JSON.stringify(cleaned, null, 2), 'utf8')
+          logger.info('[AutoHeal] vault_registry.json 整理完成', {
+            vaults: cleaned.map((v: any) => ({ name: v.name, id: v.id }))
+          })
         }
       } catch (registryErr) {
         logger.warn('[AutoHeal] 更新 vault_registry.json 失败:', registryErr as Error)

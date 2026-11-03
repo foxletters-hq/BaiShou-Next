@@ -101,6 +101,14 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
           new Set([activeVaultId, derivedId, deriveLegacyVaultId('Personal')].filter(Boolean))
         ) as string[]
         const normalizedQuery = searchQueryRef.current.trim() || undefined
+        console.log('[useAgentSessions] 开始加载会话列表:', {
+          reqId,
+          targetAssistantId,
+          offset,
+          limit: targetLimit,
+          activeVaultId,
+          vaultCandidateIds
+        })
         const sessionList = await services.sessionManager.list(
           targetLimit + 1,
           offset,
@@ -110,6 +118,12 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
         )
 
         if (reqId !== lastLoadRequestId.current) return
+
+        console.log('[useAgentSessions] 会话列表返回:', {
+          reqId,
+          count: sessionList?.length ?? 0,
+          sampleTitles: sessionList?.slice(0, 5).map((s) => s.title)
+        })
 
         if (sessionList && sessionList.length > 0) {
           const hasMore = sessionList.length > targetLimit

@@ -275,6 +275,26 @@ export class SessionCrudOps {
       (await finalQuery) as InferSelectModel<typeof agentSessionsTable>[]
     ).map((row) => withMountedNotebookIds(row))
 
+    if (results.length === 0) {
+      console.warn('[SessionRepo] findAllSessions 查询返回 0 条记录', {
+        assistantId,
+        vaultIds,
+        searchQuery: searchQuery || undefined
+      })
+    } else {
+      console.log('[SessionRepo] findAllSessions 查询成功', {
+        matchedCount: results.length,
+        assistantId,
+        vaultIds,
+        sessionSamples: results.slice(0, 5).map((r) => ({
+          id: r.id,
+          title: r.title,
+          vaultId: r.vaultId,
+          assistantId: r.assistantId
+        }))
+      })
+    }
+
     if (vaultIds !== null && results.length > 0 && (limit > 0 || results.length <= 200)) {
       await this.enrichSessionsWithSnippets(results, searchQuery)
     }
