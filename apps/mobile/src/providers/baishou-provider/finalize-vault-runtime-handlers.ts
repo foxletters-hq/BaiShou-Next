@@ -178,7 +178,7 @@ export async function finalizeVaultRuntimeHandlers(
     }
 
     if (isMounted()) {
-      ctx.setValue((prev) => ({ ...prev, vaultSwitching: true }))
+      ctx.setValue((prev) => ({ ...prev, vaultSwitching: true, switchingVaultName: vaultName }))
     }
 
     try {
@@ -289,7 +289,7 @@ export async function finalizeVaultRuntimeHandlers(
       throw e
     } finally {
       if (isMounted()) {
-        ctx.setValue((prev) => ({ ...prev, vaultSwitching: false }))
+        ctx.setValue((prev) => ({ ...prev, vaultSwitching: false, switchingVaultName: null }))
       }
     }
   }
@@ -324,7 +324,11 @@ export async function finalizeVaultRuntimeHandlers(
 
     if (wasActive) {
       if (isMounted()) {
-        ctx.setValue((prev) => ({ ...prev, vaultSwitching: true }))
+        ctx.setValue((prev) => ({
+          ...prev,
+          vaultSwitching: true,
+          switchingVaultName: result.newName
+        }))
       }
       try {
         // 活跃仓路径已变：清空 stack，强制 switchVaultRuntime 重建（避免同名 early-return）
@@ -442,7 +446,7 @@ export async function finalizeVaultRuntimeHandlers(
         throw e
       } finally {
         if (isMounted()) {
-          ctx.setValue((prev) => ({ ...prev, vaultSwitching: false }))
+          ctx.setValue((prev) => ({ ...prev, vaultSwitching: false, switchingVaultName: null }))
         }
       }
     } else if (isMounted()) {

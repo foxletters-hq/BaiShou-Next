@@ -192,6 +192,8 @@ export async function runVaultBootstrap(
     /** 应用升级等场景强制全量影子 resync，忽略「索引已有记录」快路径 */
     forceShadowResync?: boolean
     skipFullResync?: boolean
+    /** 切换小窝时跳过分裂自愈，避免把用户刚选中的小窝合并或回滚 */
+    skipAutoHeal?: boolean
     resyncReason?: string
     onResyncComplete?: () => void
   }
@@ -200,18 +202,20 @@ export async function runVaultBootstrap(
   mobileDataBootstrapper.registerDeps(bootstrapDeps)
   deps.diaryStack.shadowIndexSyncService.setSyncEnabled(true)
 
-  try {
-    const { autoHealMobileDerivativeVaults } = await import('./mobile-vault-auto-heal.service')
-    const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
-    const storageRoot = await deps.pathService.getRootDirectory()
-    await autoHealMobileDerivativeVaults({
-      fileSystem: deps.fileSystem,
-      storageRoot,
-      vaultService: deps.vaultService,
-      sqlExecutor: agentDbRuntimeRef.current?.sqlExecutor
-    })
-  } catch (healErr) {
-    logger.warn('[VaultRuntime] autoHealMobileDerivativeVaults failed:', healErr as Error)
+  if (!options?.skipAutoHeal) {
+    try {
+      const { autoHealMobileDerivativeVaults } = await import('./mobile-vault-auto-heal.service')
+      const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+      const storageRoot = await deps.pathService.getRootDirectory()
+      await autoHealMobileDerivativeVaults({
+        fileSystem: deps.fileSystem,
+        storageRoot,
+        vaultService: deps.vaultService,
+        sqlExecutor: agentDbRuntimeRef.current?.sqlExecutor
+      })
+    } catch (healErr) {
+      logger.warn('[VaultRuntime] autoHealMobileDerivativeVaults failed:', healErr as Error)
+    }
   }
 
   if (options?.skipFullResync) {
@@ -259,7 +263,8 @@ export async function runVaultBootstrap(
             await ensureDefaultLatteAssistant(
               deps.bootstrapDeps.assistantManager,
               locale,
-              activeVault?.id?.trim() || (activeVault?.name ? deriveLegacyVaultId(activeVault.name) : undefined)
+              activeVault?.id?.trim() ||
+                (activeVault?.name ? deriveLegacyVaultId(activeVault.name) : undefined)
             )
           }
         } catch (e) {
@@ -282,7 +287,8 @@ export async function runVaultBootstrap(
                 )
                 await runMobileDerivedIndexHydration({
                   drizzleDb: runtime.drizzleDb,
-                  vaultId: activeVault.id?.trim() || deriveLegacyVaultId(activeVault.name || 'Personal'),
+                  vaultId:
+                    activeVault.id?.trim() || deriveLegacyVaultId(activeVault.name || 'Personal'),
                   vaultName: activeVault.name,
                   vaults: deps.vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name })),
                   embeddingProvider: emb.embeddingProvider,
