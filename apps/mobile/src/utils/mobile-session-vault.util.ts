@@ -42,8 +42,20 @@ export async function loadMobileSessionInActiveVault<
   const nameDerived = deriveLegacyVaultId(active?.name || 'Personal')
   const stored = String(session.vaultId ?? '').trim()
   if (!stored || stored !== nameDerived || stored === activeVaultId) {
+    console.warn('[loadMobileSessionInActiveVault] 会话不在活跃小窝中被拦截:', {
+      sessionId,
+      storedVaultId: stored,
+      activeVaultId,
+      nameDerived
+    })
     return null
   }
+
+  console.log('[loadMobileSessionInActiveVault] 纠正会话 vault_id 为活跃小窝 ID:', {
+    sessionId,
+    from: stored,
+    to: activeVaultId
+  })
 
   if (services.sessionRepo?.updateSessionVaultId) {
     await services.sessionRepo.updateSessionVaultId(sessionId, activeVaultId)
