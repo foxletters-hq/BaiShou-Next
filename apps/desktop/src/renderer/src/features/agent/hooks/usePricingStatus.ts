@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
+import { applyModelContextWindowRuntimeOverlay } from '@baishou/shared'
 import { toast } from '@baishou/ui'
 
 /**
@@ -14,6 +15,9 @@ export function usePricingStatus(t: TFunction) {
     if (typeof window === 'undefined' || !window.electron) return
     try {
       const status = await window.electron.ipcRenderer.invoke('pricing:get-status')
+      if (status?.contextWindows && typeof status.contextWindows === 'object') {
+        applyModelContextWindowRuntimeOverlay(status.contextWindows)
+      }
       if (status?.lastUpdated) {
         setPricingLastUpdated(new Date(status.lastUpdated))
       }
@@ -49,6 +53,9 @@ export function usePricingStatus(t: TFunction) {
     }
     try {
       const result = await window.electron.ipcRenderer.invoke('pricing:refresh')
+      if (result?.contextWindows && typeof result.contextWindows === 'object') {
+        applyModelContextWindowRuntimeOverlay(result.contextWindows)
+      }
       if (result.success && result.lastUpdated) {
         setPricingLastUpdated(new Date(result.lastUpdated))
         toast.showSuccess(t('agent.chat.pricing_refreshed', '价格表已更新'))

@@ -1,5 +1,9 @@
 import { ipcMain } from 'electron'
-import { getVisionModelsRuntimeOverlay, logger } from '@baishou/shared'
+import {
+  getModelContextWindowRuntimeOverlay,
+  getVisionModelsRuntimeOverlay,
+  logger
+} from '@baishou/shared'
 import { ModelPricingService } from '@baishou/ai'
 import { broadcastReasoningCatalog, registerReasoningCatalogIPC } from './reasoning-catalog.ipc'
 
@@ -30,7 +34,8 @@ export function registerPricingIPC() {
       lastUpdated: pricingService.lastFetchTime?.toISOString() || null,
       hasPrices: pricingService.hasCachedPrices,
       loadFailed: pricingService.lastFetchFailed,
-      visionModelIds: getVisionModelsRuntimeOverlay()
+      visionModelIds: getVisionModelsRuntimeOverlay(),
+      contextWindows: getModelContextWindowRuntimeOverlay()
     }
   })
 
@@ -42,6 +47,19 @@ export function registerPricingIPC() {
       logger.warn('[ModelPricingService] ensureLoaded failed in vision:get-overlay:', err as Error)
     }
     return getVisionModelsRuntimeOverlay()
+  })
+
+  ipcMain.handle('context-window:get-overlay', async () => {
+    const pricingService = ModelPricingService.getInstance()
+    try {
+      await pricingService.ensureLoaded()
+    } catch (err: unknown) {
+      logger.warn(
+        '[ModelPricingService] ensureLoaded failed in context-window:get-overlay:',
+        err as Error
+      )
+    }
+    return getModelContextWindowRuntimeOverlay()
   })
 
   // ==========================================
@@ -56,7 +74,8 @@ export function registerPricingIPC() {
         success: !pricingService.lastFetchFailed,
         lastUpdated: pricingService.lastFetchTime?.toISOString() || null,
         loadFailed: pricingService.lastFetchFailed,
-        hasPrices: pricingService.hasCachedPrices
+        hasPrices: pricingService.hasCachedPrices,
+        contextWindows: getModelContextWindowRuntimeOverlay()
       }
     } catch (e: any) {
       logger.error('Failed to refresh pricing:', e)
