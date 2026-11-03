@@ -3,6 +3,7 @@ import { SessionAggregateSync } from './session.repository.aggregate'
 import { SessionMessageOps } from './session.repository.messages'
 import { SessionCrudOps } from './session.repository.sessions'
 import { withExpoAgentDatabaseLock } from './session.repository.utils'
+import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 
 export type {
   InsertSessionInput,
@@ -22,7 +23,7 @@ export class SessionRepository {
   }
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.db, fn)
+    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn))
   }
 
   upsertSession(...args: Parameters<SessionCrudOps['upsertSession']>) {

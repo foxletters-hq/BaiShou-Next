@@ -10,6 +10,7 @@ import { AppDatabase } from '../types'
 import { agentAssistantsTable } from '../schema/agent-assistants'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
+import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 
 export interface InsertAssistantInput {
   id: string
@@ -55,7 +56,7 @@ export class AssistantRepository {
   ) {}
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.db, fn)
+    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn))
   }
 
   private requireVaultId(override?: string | null): string {

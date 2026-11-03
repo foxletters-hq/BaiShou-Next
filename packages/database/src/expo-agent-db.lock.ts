@@ -40,9 +40,10 @@ export function withExpoAgentDatabaseLock<T>(db: unknown, fn: () => Promise<T>):
     release = resolve
   })
   const previous = expoAgentDbMutex
-  expoAgentDbMutex = previous.then(() => gate)
+  expoAgentDbMutex = previous.catch(() => {}).then(() => gate)
 
   return previous
+    .catch(() => {})
     .then(() => fn())
     .finally(() => {
       release()
@@ -56,9 +57,10 @@ export function withExpoAgentRawSqliteLock<T>(fn: () => Promise<T>): Promise<T> 
     release = resolve
   })
   const previous = expoAgentDbMutex
-  expoAgentDbMutex = previous.then(() => gate)
+  expoAgentDbMutex = previous.catch(() => {}).then(() => gate)
 
   return previous
+    .catch(() => {})
     .then(() => fn())
     .finally(() => {
       release()

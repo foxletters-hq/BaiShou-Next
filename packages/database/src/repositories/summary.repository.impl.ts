@@ -12,6 +12,7 @@ import { summariesTable } from '../schema/summaries'
 import { eq, and, gte, sql } from 'drizzle-orm'
 import { AppDatabase } from '../types'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
+import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 
 type VaultIdResolver = () => string | null | undefined
 
@@ -29,7 +30,7 @@ export class SummaryRepositoryImpl implements SummaryRepository {
   ) {}
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.db, fn)
+    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn))
   }
 
   private requireVaultId(override?: string | null): string {
