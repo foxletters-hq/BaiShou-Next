@@ -112,11 +112,25 @@ export function useAgentAssistants(deps: {
 
   useThrottledFocusRefresh(refreshAssistantsOnFocus, 2000, consumeAssistantsNeedRefresh)
 
-  // 伙伴头像/名称变更后同步 currentAssistant，避免聊天界面仍展示旧数据
+  // 伙伴头像/名称变更或冷启动初态为空时同步 currentAssistant，避免聊天界面或侧边栏卡在骨架屏
   useEffect(() => {
-    if (!currentAssistant?.id) return
+    if (!currentAssistant?.id) {
+      if (assistants.length > 0) {
+        const fallback = assistants.find((a) => a.isDefault) || assistants[0]
+        if (fallback) {
+          setCurrentAssistant(fallback)
+        }
+      }
+      return
+    }
     const updated = assistants.find((a) => a.id === currentAssistant.id)
-    if (!updated) return
+    if (!updated) {
+      const fallback = assistants.find((a) => a.isDefault) || assistants[0] || null
+      if (fallback) {
+        setCurrentAssistant(fallback)
+      }
+      return
+    }
     if (
       updated.avatarPath !== currentAssistant.avatarPath ||
       updated.displayAvatarUri !== currentAssistant.displayAvatarUri ||

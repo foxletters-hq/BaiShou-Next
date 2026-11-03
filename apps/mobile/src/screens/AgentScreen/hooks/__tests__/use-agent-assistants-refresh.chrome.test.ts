@@ -28,4 +28,10 @@ describe('useAgentAssistants refresh chrome', () => {
     expect(catchBlock).not.toContain('setAssistants([])')
     expect(catchBlock).toContain('console.warn')
   })
+
+  it('should auto-heal and select a fallback assistant when currentAssistant is null', () => {
+    expect(src).toContain('if (!currentAssistant?.id)')
+    expect(src).toContain('assistants.find((a) => a.isDefault) || assistants[0]')
+    expect(src).toContain('setCurrentAssistant(fallback)')
+  })
 })
