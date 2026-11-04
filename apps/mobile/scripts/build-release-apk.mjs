@@ -25,7 +25,7 @@ import {
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { applyAndroidPlainSplashPatch } from './plain-splash-patch.mjs'
-import { clearAllMobileCaches } from './clear-cache.mjs'
+import { clearAllMobileCaches, stopGradleDaemon } from './clear-cache.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
@@ -217,7 +217,8 @@ applyAndroidPlainSplashPatch(androidDir)
 
 /** 真机 Release 不需要模拟器 ABI；显式传入避免仅依赖 gradle.properties */
 const RELEASE_ABIS = 'arm64-v8a'
-const maxWorkers = process.env.GRADLE_MAX_WORKERS || '4'
+/** 本地环境默认 2 workers，控制并发峰值堆内存；CI 可通过环境变量或默认覆盖 */
+const maxWorkers = process.env.GRADLE_MAX_WORKERS || (isCi ? '4' : '2')
 const gradleArgs = [
   ':app:assembleRelease',
   `-PreactNativeArchitectures=${RELEASE_ABIS}`,
@@ -225,14 +226,24 @@ const gradleArgs = [
 ]
 if (forceFullClean) {
   gradleArgs.push('--no-build-cache')
-  console.log(`\n🔨 assembleRelease（强制全量，无构建缓存，ABI=${RELEASE_ABIS}）…`)
+  console.log(
+    `\n🔨 assembleRelease（强制全量，无构建缓存，ABI=${RELEASE_ABIS}，workers=${maxWorkers}）…`
+  )
 } else if (isCi) {
   gradleArgs.push('--build-cache', '--parallel')
-  console.log(`\n🔨 assembleRelease（CI：启用 Gradle 构建缓存与并行构建，ABI=${RELEASE_ABIS}）…`)
+  console.log(
+    `\n🔨 assembleRelease（CI：启用 Gradle 构建缓存与并行构建，ABI=${RELEASE_ABIS}，workers=${maxWorkers}）…`
+  )
 } else {
-  console.log(`\n🔨 assembleRelease（ABI=${RELEASE_ABIS}）…`)
+  console.log(`\n🔨 assembleRelease（ABI=${RELEASE_ABIS}，workers=${maxWorkers}）…`)
 }
-run(gradlew, gradleArgs, androidDir)
+
+try {
+  run(gradlew, gradleArgs, androidDir)
+} finally {
+  console.log('\n🧹 打包流程结束，释放 Gradle 和 Kotlin 守护进程常驻内存…')
+  stopGradleDaemon()
+}
 
 const apkSrc = path.join(androidDir, 'app/build/outputs/apk/release/app-release.apk')
 if (!existsSync(apkSrc)) {

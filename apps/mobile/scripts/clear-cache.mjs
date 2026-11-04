@@ -28,17 +28,21 @@ function rm(target) {
 function stopGradleDaemon() {
   const androidDir = path.join(mobileRoot, 'android')
   const gradlew = path.join(androidDir, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')
-  if (!fs.existsSync(gradlew)) return
-  const result = spawnSync(gradlew, ['--stop'], {
-    cwd: androidDir,
-    encoding: 'utf8',
-    timeout: 60_000
-  })
-  if (result.status === 0) {
-    console.log('  ✓ 已停止 Gradle daemon')
+  if (fs.existsSync(gradlew)) {
+    const result = spawnSync(gradlew, ['--stop'], {
+      cwd: androidDir,
+      encoding: 'utf8',
+      timeout: 60_000
+    })
+    if (result.status === 0) {
+      console.log('  ✓ 已停止 Gradle daemon')
+    }
   }
   if (process.platform !== 'win32') {
     spawnSync('pkill', ['-f', '[o]rg.gradle.launcher.daemon.bootstrap.GradleDaemon'], {
+      stdio: 'ignore'
+    })
+    spawnSync('pkill', ['-f', '[o]rg.jetbrains.kotlin.daemon.KotlinCompileDaemon'], {
       stdio: 'ignore'
     })
   }
@@ -111,7 +115,14 @@ function clearAllMobileCaches() {
   console.log('\n完成。\n')
 }
 
-export { hasWorkletsCacheFiles, resetWorkletsCache, rmMetroTmpCaches, rm, clearAllMobileCaches }
+export {
+  hasWorkletsCacheFiles,
+  resetWorkletsCache,
+  rmMetroTmpCaches,
+  rm,
+  stopGradleDaemon,
+  clearAllMobileCaches
+}
 
 const isMain = path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)
 if (isMain) {
