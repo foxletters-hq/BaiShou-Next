@@ -1,6 +1,6 @@
 import 'react-i18next'
 
-type ZhCatalog = typeof import('./zh.i18n.json')
+type ZhCatalog = typeof import('./locales/zh').default
 
 declare module 'react-i18next' {
   interface CustomTypeOptions {

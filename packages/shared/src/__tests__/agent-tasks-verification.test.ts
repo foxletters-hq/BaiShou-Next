@@ -2,13 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { resolve, join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { UI_LOCALE_CATALOGS } from '../i18n/locales/all-locales'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const I18N_DIR = resolve(__dirname, '../i18n')
-const loadI18n = (lang: string) =>
-  JSON.parse(readFileSync(resolve(I18N_DIR, `${lang}.i18n.json`), 'utf-8'))
+const loadI18n = (lang: string) => {
+  const key = lang === 'zh_TW' ? 'zh-TW' : (lang as keyof typeof UI_LOCALE_CATALOGS)
+  return UI_LOCALE_CATALOGS[key] as any
+}
 
 describe('Agent 3: RAG i18n 验证', () => {
   const zh = loadI18n('zh')

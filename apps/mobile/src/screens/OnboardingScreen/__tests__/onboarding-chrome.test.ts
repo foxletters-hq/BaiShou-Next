@@ -3,6 +3,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
+import { readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared'
+
 const dir = dirname(fileURLToPath(import.meta.url))
 const screenSrc = readFileSync(join(dir, '..', 'OnboardingScreen.tsx'), 'utf8')
 const welcomeSrc = readFileSync(join(dir, '..', 'components', 'OnboardingWelcomeSlide.tsx'), 'utf8')
@@ -36,8 +38,8 @@ describe('mobile onboarding chrome', () => {
       'api_guide_title',
       'api_guide_desc'
     ]
-    for (const locale of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
-      const json = readFileSync(join(i18nDir, locale), 'utf8')
+    for (const locale of TEST_LOCALE_CODES) {
+      const json = readLocaleMergedJsonString(i18nDir, locale)
       for (const key of keys) {
         expect(json, `${locale} missing ${key}`).toContain(`"${key}"`)
       }

@@ -2,14 +2,14 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
 import { resolveAppLanguage } from '../utils/main-i18n-language'
-import zh from './zh.i18n.json'
+import zh from './locales/zh'
 
 export const defaultNS = 'translation'
 
 const localeLoaders: Record<string, () => Promise<unknown>> = {
-  en: () => import('./en.i18n.json'),
-  ja: () => import('./ja.i18n.json'),
-  'zh-TW': () => import('./zh_TW.i18n.json')
+  en: () => import('./locales/en'),
+  ja: () => import('./locales/ja'),
+  'zh-TW': () => import('./locales/zh-TW')
 }
 
 const loadedLocales = new Set<string>(['zh'])

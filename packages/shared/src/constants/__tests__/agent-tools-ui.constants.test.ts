@@ -1,9 +1,6 @@
 import type { TFunction } from 'i18next'
 import { describe, expect, it } from 'vitest'
-import en from '../../i18n/en.i18n.json'
-import ja from '../../i18n/ja.i18n.json'
-import zh from '../../i18n/zh.i18n.json'
-import zhTW from '../../i18n/zh_TW.i18n.json'
+import { UI_LOCALE_CATALOGS } from '../../i18n/locales/all-locales'
 import {
   AGENT_TOOL_UI_DEFS,
   WORKSPACE_TOOL_UI_DEFS,
@@ -11,6 +8,11 @@ import {
   resolveAgentToolNameKey
 } from '../agent-tools-ui.constants'
 import { AGENT_BUILTIN_TOOL_IDS } from '../agent-builtin-tool-ids.constants'
+
+const en = UI_LOCALE_CATALOGS.en
+const ja = UI_LOCALE_CATALOGS.ja
+const zh = UI_LOCALE_CATALOGS.zh
+const zhTW = UI_LOCALE_CATALOGS['zh-TW']
 
 describe('agent-tools-ui.constants', () => {
   it('includes diary write and web tools for tool management UI', () => {

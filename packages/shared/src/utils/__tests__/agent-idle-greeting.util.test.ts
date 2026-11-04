@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { UI_LOCALE_CATALOGS } from '../../i18n/locales/all-locales'
 import {
   AGENT_IDLE_GREETING_FALLBACKS,
   AGENT_IDLE_GREETING_KEYS,
@@ -9,17 +7,15 @@ import {
   splitAgentIdleGreetingLines
 } from '../agent-idle-greeting.util'
 
-const i18nDir = join(dirname(fileURLToPath(import.meta.url)), '../../i18n')
-
-function readAgentGreetings(fileName: string): string[] {
-  const json = JSON.parse(readFileSync(join(i18nDir, fileName), 'utf8')) as {
-    agent: Record<string, string>
-  }
+function getAgentGreetings(
+  catalog: (typeof UI_LOCALE_CATALOGS)[keyof typeof UI_LOCALE_CATALOGS]
+): string[] {
+  const agent = (catalog as unknown as { agent: Record<string, string> }).agent
   return AGENT_IDLE_GREETING_KEYS.map((key) => {
     const shortKey = key.replace(/^agent\./, '')
-    const value = json.agent[shortKey]
+    const value = agent[shortKey]
     if (typeof value !== 'string') {
-      throw new Error(`missing ${key} in ${fileName}`)
+      throw new Error(`missing ${key} in catalog`)
     }
     return value.replaceAll('{{name}}', '你')
   })
@@ -70,8 +66,8 @@ describe('splitAgentIdleGreetingLines', () => {
   })
 
   it('should split every localized idle greeting into at least two lines', () => {
-    for (const fileName of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
-      for (const greeting of readAgentGreetings(fileName)) {
+    for (const catalog of Object.values(UI_LOCALE_CATALOGS)) {
+      for (const greeting of getAgentGreetings(catalog)) {
         expect(splitAgentIdleGreetingLines(greeting).length).toBeGreaterThanOrEqual(2)
       }
     }
