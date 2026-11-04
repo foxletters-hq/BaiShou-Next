@@ -43,6 +43,13 @@ export const systemApi = {
   // Window Controls
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),
+    onMaximizedChanged: (callback: (maximized: boolean) => void) => {
+      const handler = (_event: unknown, maximized: boolean) => callback(maximized)
+      ipcRenderer.on('window:maximized-changed', handler)
+      // 初始状态也走通知通道，避免异步查询覆盖较新的窗口事件。
+      ipcRenderer.send('window:getMaximized')
+      return () => ipcRenderer.off('window:maximized-changed', handler)
+    },
     toggleMaximize: () => ipcRenderer.send('window:toggleMaximize'),
     close: () => ipcRenderer.send('window:close')
   },

@@ -155,6 +155,15 @@ function createWindow(needsOnboarding: boolean): void {
     }
   })
 
+  const window = mainWindow
+  const notifyMaximized = () => {
+    if (!window.webContents.isDestroyed()) {
+      window.webContents.send('window:maximized-changed', window.isMaximized())
+    }
+  }
+  window.on('maximize', notifyMaximized)
+  window.on('unmaximize', notifyMaximized)
+
   if (isWin) {
     try {
       mainWindow.setBackgroundMaterial('acrylic')
@@ -464,6 +473,10 @@ app.whenReady().then(async () => {
   ipcMain.on('ping', () => logger.info('pong'))
 
   // Window control IPC handlers
+  ipcMain.on('window:getMaximized', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    event.sender.send('window:maximized-changed', win?.isMaximized() ?? false)
+  })
   ipcMain.on('window:minimize', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     win?.minimize()

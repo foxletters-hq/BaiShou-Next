@@ -9,7 +9,7 @@ import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
-import { ChevronDown, FolderSync, Minus, Square, X } from 'lucide-react'
+import { ChevronDown, Copy, FolderSync, Minus, Square, X } from 'lucide-react'
 import {
   AgentGatePendingBadgeButton,
   AgentGatePendingDrawer
@@ -21,6 +21,11 @@ export const TitleBar: React.FC = () => {
   const location = useLocation()
   const isOnboarding = location.pathname.startsWith('/welcome')
   const showTopBarVaultSwitcher = useSettingsStore((s) => s.showTopBarVaultSwitcher)
+
+  const [isMaximized, setIsMaximized] = useState(false)
+  useEffect(() => {
+    return (window as any).api?.window?.onMaximizedChanged?.(setIsMaximized)
+  }, [])
 
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
@@ -271,9 +276,9 @@ export const TitleBar: React.FC = () => {
           <button
             className={styles.winBtn}
             onClick={() => (window as any).api?.window?.toggleMaximize()}
-            title={t('titlebar.maximize', '最大化')}
+            title={isMaximized ? t('common.restore', '还原') : t('titlebar.maximize', '最大化')}
           >
-            <Square />
+            {isMaximized ? <Copy /> : <Square />}
           </button>
           <button
             className={`${styles.winBtn} ${styles.winCloseBtn}`}
