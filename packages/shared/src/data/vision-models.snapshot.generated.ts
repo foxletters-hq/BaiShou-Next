@@ -4,7 +4,7 @@
  * Source: https://models.dev/api.json + scripts/provider-modelsdev.manifest.json
  */
 export const VISION_MODELS_SNAPSHOT = {
-  syncedAt: '2026-11-03T15:07:25.002Z',
+  syncedAt: '2026-11-04T12:30:54.632Z',
   source: 'https://models.dev/api.json',
   byProvider: {
     openai: [
@@ -753,6 +753,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'spacexai/grok-imagine-video',
       'stepfun/step-3.7-flash',
       'stepfun/step-5-preview',
+      'tencent/hy4',
       'thinkingmachines/inkling',
       'thinkingmachines/inkling-small',
       'topaz/wonder-3.5',
@@ -1323,6 +1324,7 @@ export const VISION_MODELS_SNAPSHOT = {
     'step-5-preview-free',
     'stepfun/step-3.7-flash',
     'stepfun/step-5-preview',
+    'tencent/hy4',
     'thinkingmachines/inkling',
     'thinkingmachines/inkling-small',
     'thinkingmachines/inkling-small:free',
