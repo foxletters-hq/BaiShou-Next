@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AIProviderConfig } from '../../types/settings.types'
 import { ProviderType } from '../../types/ai-provider.types'
-import { filterProvidersForModelSwitcher } from '../ai-provider-filter.util'
+import { filterProvidersForModelSwitcher, parseCustomModelNames } from '../ai-provider-filter.util'
 
 function provider(
   partial: Partial<AIProviderConfig> & Pick<AIProviderConfig, 'id'>
@@ -108,5 +108,34 @@ describe('filterProvidersForModelSwitcher', () => {
     const result = filterProvidersForModelSwitcher([legacy], 'dialogue')
     expect(result).toHaveLength(1)
     expect(result[0]?.enabledModels).toEqual(['gpt-4'])
+  })
+})
+
+describe('parseCustomModelNames', () => {
+  it('returns empty array when input is empty or null', () => {
+    expect(parseCustomModelNames('')).toEqual([])
+    expect(parseCustomModelNames(null)).toEqual([])
+    expect(parseCustomModelNames(undefined)).toEqual([])
+    expect(parseCustomModelNames('   \n  \t ')).toEqual([])
+  })
+
+  it('splits single model and trims whitespace', () => {
+    expect(parseCustomModelNames('  @cf/meta/llama-3-8b-instruct  ')).toEqual([
+      '@cf/meta/llama-3-8b-instruct'
+    ])
+  })
+
+  it('splits by comma, newline, chinese comma and removes duplicates', () => {
+    const input = `
+      @cf/meta/llama-3-8b-instruct, @cf/qwen/qwen1.5-7b-chat
+      qwen2.5-7b-instruct，deepseek-v3
+      @cf/meta/llama-3-8b-instruct
+    `
+    expect(parseCustomModelNames(input)).toEqual([
+      '@cf/meta/llama-3-8b-instruct',
+      '@cf/qwen/qwen1.5-7b-chat',
+      'qwen2.5-7b-instruct',
+      'deepseek-v3'
+    ])
   })
 })
