@@ -1,7 +1,11 @@
 import React from 'react'
 import type { TFunction } from 'i18next'
 import { renderProviderIcon, renderProviderTypeIcon } from './ai-model-services.icons'
-import { isChatModelForConnectionTest, resolveProviderBaseUrl } from '@baishou/shared'
+import {
+  isChatModelForConnectionTest,
+  parseCustomModelNames,
+  resolveProviderBaseUrl
+} from '@baishou/shared'
 import type { AIProviderConfig, AIModelServicesViewProps } from './ai-model-services.types'
 
 export interface UseAIModelProviderActionsParams {
@@ -33,9 +37,9 @@ export interface UseAIModelProviderActionsParams {
   testModelId: string
   setIsAddModalOpen: (v: boolean) => void
   setIsTypeDropdownOpen: (v: boolean) => void
-  addModalData: { name: string; type: string; baseUrl: string }
+  addModalData: { name: string; type: string; baseUrl: string; modelsText?: string }
   setAddModalData: React.Dispatch<
-    React.SetStateAction<{ name: string; type: string; baseUrl: string }>
+    React.SetStateAction<{ name: string; type: string; baseUrl: string; modelsText?: string }>
   >
   firstProviderId: string | undefined
   localProvidersList: Array<{ id: string; name: string; iconUrl?: string; isSystem?: boolean }>
@@ -224,11 +228,16 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
         localFormData.apiKey,
         effectiveBaseUrl()
       )
+      // 保留用户此前已手动配置并启用的模型，避免被远程端点全量覆盖冲掉
+      const prevModels = activeConfig.models || []
       const oldEnabled = new Set(activeConfig.enabledModels || [])
-      const newEnabled = RemoteModels.filter((rm) => oldEnabled.has(rm))
+      const remoteSet = new Set(RemoteModels)
+      const retainedCustomModels = prevModels.filter((m) => oldEnabled.has(m) && !remoteSet.has(m))
+      const mergedModels = [...RemoteModels, ...retainedCustomModels]
+      const newEnabled = mergedModels.filter((rm) => oldEnabled.has(rm))
 
       await persistProviderUpdate(selectedProviderId, {
-        models: RemoteModels,
+        models: mergedModels,
         enabledModels: newEnabled
       })
       toast.showSuccess(t('ai_config.fetch_models_success', '成功获取并保存模型列表'))
@@ -258,7 +267,7 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
   }
 
   const handleAddCustomProvider = () => {
-    setAddModalData({ name: '', type: 'openai', baseUrl: '' })
+    setAddModalData({ name: '', type: 'openai', baseUrl: '', modelsText: '' })
     setIsTypeDropdownOpen(false)
     setIsAddModalOpen(true)
   }
@@ -266,16 +275,86 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
   const submitAddCustomProvider = () => {
     if (!addModalData.name.trim()) return
     const pid = 'custom_' + Date.now()
+    const parsedModels = parseCustomModelNames(addModalData.modelsText)
     onUpdateProvider(pid, {
       name: addModalData.name.trim(),
       type: addModalData.type,
       apiBaseUrl: addModalData.baseUrl.trim(),
       isSystem: false,
       enabled: true,
-      apiKey: ''
+      apiKey: '',
+      ...(parsedModels.length > 0
+        ? {
+            models: parsedModels,
+            enabledModels: parsedModels,
+            defaultDialogueModel: parsedModels[0]
+          }
+        : {})
     })
     setIsAddModalOpen(false)
     setSelectedProviderId(pid)
+  }
+
+  const handlePromptAddModel = async () => {
+    const rawInput = await dialog.prompt(
+      t('agent.provider.add_model_prompt', '请输入模型名称 / ID (多个模型可用逗号分隔)：'),
+      '',
+      t('agent.provider.add_model_title', '手动添加模型')
+    )
+    if (!rawInput || typeof rawInput !== 'string') return
+    const newModels = parseCustomModelNames(rawInput)
+    if (!newModels.length) return
+
+    const currentModels = activeConfig.models || []
+    const currentEnabled = new Set(activeConfig.enabledModels || [])
+
+    const modelsToAdd = newModels.filter((m) => !currentModels.includes(m))
+    if (!modelsToAdd.length) {
+      toast.showWarning(t('agent.provider.add_model_exists', '所输入的模型已全部存在于列表中'))
+      return
+    }
+
+    const nextModels = [...currentModels, ...modelsToAdd]
+    for (const m of modelsToAdd) {
+      currentEnabled.add(m)
+    }
+    const nextEnabled = Array.from(currentEnabled)
+
+    const updates: Partial<AIProviderConfig> = {
+      models: nextModels,
+      enabledModels: nextEnabled
+    }
+    if (!activeConfig.defaultDialogueModel && nextEnabled.length > 0) {
+      updates.defaultDialogueModel = nextEnabled[0]
+    }
+
+    await persistProviderUpdate(selectedProviderId, updates)
+    toast.showSuccess(t('agent.provider.add_model_success', '已添加并启用模型'))
+  }
+
+  const handleDeleteModel = async (modelId: string) => {
+    const confirmed = await dialog.confirm(
+      t('agent.provider.delete_model_confirm', '确定要删除模型「{{model}}」吗？', {
+        model: modelId
+      }),
+      t('agent.provider.delete_model_title', '删除模型')
+    )
+    if (!confirmed) return
+
+    const currentModels = activeConfig.models || []
+    const nextModels = currentModels.filter((m) => m !== modelId)
+    const nextEnabled = (activeConfig.enabledModels || []).filter((m) => m !== modelId)
+
+    const updates: Partial<AIProviderConfig> = {
+      models: nextModels,
+      enabledModels: nextEnabled
+    }
+    if (activeConfig.defaultDialogueModel === modelId) {
+      updates.defaultDialogueModel = nextEnabled[0] || ''
+    }
+
+    await persistProviderUpdate(selectedProviderId, updates)
+    toast.showSuccess(t('agent.provider.delete_model_success', '模型已删除'))
   }
 
   const handleToggleEnable = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,6 +393,8 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
     handleTestConnection,
     confirmTestConnection,
     handleFetchModels,
+    handlePromptAddModel,
+    handleDeleteModel,
     handleDeleteProvider,
     handleAddCustomProvider,
     submitAddCustomProvider,

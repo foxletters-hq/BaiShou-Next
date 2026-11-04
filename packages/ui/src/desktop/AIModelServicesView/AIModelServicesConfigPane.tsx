@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Eye, EyeOff, Key, Link, List, Search, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, Key, Link, List, Plus, Search, Trash2 } from 'lucide-react'
 import { isDeepSeekOfficialProvider } from '@baishou/shared'
 import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
@@ -33,6 +33,8 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
     isTesting,
     handleFetchModels,
     isFetchingModels,
+    handlePromptAddModel,
+    handleDeleteModel,
     delayedEnabledModels,
     handleModelToggle,
     handleSaveCurrentProviderConfig
@@ -175,14 +177,25 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                     .replace('$total', String(activeConfig.models?.length || 0))}
                 </span>
               </div>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleFetchModels}
-                isLoading={isFetchingModels}
-              >
-                {t('settings.fetch_models', '获取模型')}
-              </Button>
+              <div className={styles.modelListHeaderActions}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handlePromptAddModel}
+                  className={styles.headerActionButton}
+                >
+                  <Plus size={14} />
+                  {t('agent.provider.add_model', '添加模型')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleFetchModels}
+                  isLoading={isFetchingModels}
+                >
+                  {t('settings.fetch_models', '获取模型')}
+                </Button>
+              </div>
             </div>
 
             {activeConfig.models && activeConfig.models.length > 0 ? (
@@ -224,11 +237,22 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                                 />
                               </span>
                             </div>
-                            <Switch
-                              size="sm"
-                              checked={isChecked}
-                              onChange={(e) => handleModelToggle(mdl, e.target.checked)}
-                            />
+                            <div className={styles.modelLineItemRight}>
+                              <button
+                                type="button"
+                                className={styles.deleteModelButton}
+                                onClick={() => handleDeleteModel(mdl)}
+                                title={t('agent.provider.delete_model_tooltip', '删除模型')}
+                                aria-label={t('agent.provider.delete_model_tooltip', '删除模型')}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                              <Switch
+                                size="sm"
+                                checked={isChecked}
+                                onChange={(e) => handleModelToggle(mdl, e.target.checked)}
+                              />
+                            </div>
                           </div>
                         )
                       })
@@ -245,6 +269,10 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
               <div className={styles.emptyModelsCard}>
                 <List size={24} className={styles.emptyModelsIcon} />
                 <span>{t('settings.no_models_hint', '暂无模型，点击右上角按钮获取')}</span>
+                <Button variant="outlined" size="small" onClick={handlePromptAddModel}>
+                  <Plus size={14} />
+                  {t('agent.provider.add_model', '添加模型')}
+                </Button>
               </div>
             )}
           </div>
