@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared'
+import { readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared/testing'
 
 const dir = dirname(fileURLToPath(import.meta.url))
 const screenSrc = readFileSync(join(dir, '..', 'OnboardingScreen.tsx'), 'utf8')

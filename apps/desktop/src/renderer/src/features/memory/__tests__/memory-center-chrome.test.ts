@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { readLocaleCatalog, readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared'
+import {
+  readLocaleCatalog,
+  readLocaleMergedJsonString,
+  TEST_LOCALE_CODES
+} from '@baishou/shared/testing'
 import {
   ALL_SIDEBAR_NAV_IDS,
   DEFAULT_VISIBLE_NAV_IDS
