@@ -426,7 +426,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color var(--duration-swift), background var(--duration-swift);
+  transition:
+    color var(--duration-swift),
+    background var(--duration-swift);
 }
 
 .deleteModelButton:hover {
