@@ -1,5 +1,4 @@
 import { ipcMain } from 'electron'
-import i18n from 'i18next'
 import {
   ContextAtMessageService,
   ContextCompressorService,
@@ -24,6 +23,7 @@ import { AgentChatService } from './AgentChatService'
 import { settingsManager } from './settings.ipc'
 import { groupPartsByMessageId, mapAgentMessageForRenderer } from './map-agent-message-for-renderer'
 import { resolveActiveVaultId } from './vault.ipc'
+import { assertSessionInActiveVault } from './agent-session.ipc'
 
 export function registerMessageIPC() {
   // ==========================================
@@ -80,16 +80,8 @@ export function registerMessageIPC() {
     'agent:get-context-at-message',
     async (_, sessionId: string, messageId: string, searchMode?: boolean) => {
       const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
-      const session = await realSessionRepo.getSessionById(sessionId)
-      const activeVaultId = resolveActiveVaultId()
-      if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
-        throw new Error(
-          i18n.t(
-            'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
-            '无权访问其他小窝的会话'
-          )
-        )
-      }
+      const rawSession = await realSessionRepo.getSessionById(sessionId)
+      const session = await assertSessionInActiveVault(rawSession, resolveActiveVaultId())
 
       const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
       const storedSearchMode = await settingsManager.get<boolean>('search_mode_enabled')
@@ -192,15 +184,7 @@ export function registerMessageIPC() {
     const { realSessionRepo, realSnapshotRepo, sessionManager, attachmentManager } =
       getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
-    const activeVaultId = resolveActiveVaultId()
-    if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
-      throw new Error(
-        i18n.t(
-          'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
-          '无权访问其他小窝的会话'
-        )
-      )
-    }
+    await assertSessionInActiveVault(session, resolveActiveVaultId())
     const ids = await realSessionRepo.listMessageIdsFromMessageAndFollowing(sessionId, messageId)
     const parts = ids.length > 0 ? await realSessionRepo.getPartsByMessageIds(ids) : []
     await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId)

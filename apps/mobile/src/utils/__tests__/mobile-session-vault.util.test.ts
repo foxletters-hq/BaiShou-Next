@@ -60,6 +60,48 @@ describe('loadMobileSessionInActiveVault', () => {
     expect(services.sessionManager.notifySessionMutated).toHaveBeenCalledWith('sess_1')
   })
 
+  it('should self-heal a legacy Personal session in a Personal-derivative vault (e.g. Personal45)', async () => {
+    const services = servicesWith(
+      { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' },
+      { vaultId: deriveLegacyVaultId('Personal') }
+    )
+    const session = await loadMobileSessionInActiveVault(services, '1793803995935')
+    expect(session?.vaultId).toBe('vlt_52f1ae2cda9f36e5')
+    expect(services.sessionRepo.updateSessionVaultId).toHaveBeenCalledWith(
+      '1793803995935',
+      'vlt_52f1ae2cda9f36e5'
+    )
+    expect(services.sessionManager.notifySessionMutated).toHaveBeenCalledWith('1793803995935')
+  })
+
+  it('should self-heal a session with empty or missing vaultId', async () => {
+    const services = servicesWith({ id: 'vlt_live', name: 'Personal' }, { vaultId: null })
+    const session = await loadMobileSessionInActiveVault(services, 'sess_legacy')
+    expect(session?.vaultId).toBe('vlt_live')
+    expect(services.sessionRepo.updateSessionVaultId).toHaveBeenCalledWith(
+      'sess_legacy',
+      'vlt_live'
+    )
+  })
+
+  it('should deny a session that belongs to another registered vault when multi-vault is present', async () => {
+    const services = {
+      ...servicesWith(
+        { id: 'vlt_live', name: 'Work' },
+        { vaultId: deriveLegacyVaultId('Personal') }
+      ),
+      vaultService: {
+        getActiveVault: () => ({ id: 'vlt_live', name: 'Work' }),
+        getAllVaults: () => [
+          { id: 'vlt_live', name: 'Work' },
+          { id: 'vlt_personal', name: 'Personal' }
+        ]
+      }
+    }
+    await expect(loadMobileSessionInActiveVault(services, 'sess_1')).resolves.toBeNull()
+    expect(services.sessionRepo.updateSessionVaultId).not.toHaveBeenCalled()
+  })
+
   it('should deny a session that belongs to another vault', async () => {
     const services = servicesWith({ id: 'vlt_live', name: 'Personal' }, { vaultId: 'vlt_other' })
     await expect(loadMobileSessionInActiveVault(services, 'sess_1')).resolves.toBeNull()

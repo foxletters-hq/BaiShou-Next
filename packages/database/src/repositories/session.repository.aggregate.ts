@@ -30,18 +30,19 @@ function resolveSessionVaultId(session: {
   vault_id?: string | null
   vault_name?: string | null
 }): string {
-  const vaultName = String(session.vaultName ?? session.vault_name ?? '').trim()
   const rawId = String(session.vaultId ?? session.vault_id ?? '').trim()
+  const vaultName = String(session.vaultName ?? session.vault_name ?? '').trim()
 
-  // 若属于 Personal 或历史衍生名（Personal82, Personal8273 等）或未填/default，统一收敛至标准 Personal ID
+  // 1. 若已有合法 vault_id（稳定随机 ID 或派生 ID），优先信任其 ID，避免被降级覆盖
+  if (rawId && isVaultId(rawId)) {
+    return rawId
+  }
+
+  // 2. 若属于 Personal 或历史衍生名（Personal82, Personal8273 等）或未填/default，统一收敛至标准 Personal ID
   if (!vaultName || vaultName === 'default' || /^Personal(\d+)?$/i.test(vaultName)) {
     return deriveLegacyVaultId('Personal')
   }
 
-  // 若明确是非 Personal 工作区且有合法 vault_id，信任其 ID
-  if (rawId && isVaultId(rawId)) {
-    return rawId
-  }
   return deriveLegacyVaultId(vaultName)
 }
 

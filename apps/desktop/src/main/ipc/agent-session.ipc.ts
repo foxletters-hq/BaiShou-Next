@@ -6,22 +6,53 @@ import { settingsManager } from './settings.ipc'
 import {
   GlobalModelsConfig,
   buildBranchSessionTitle,
+  deriveLegacyVaultId,
   extractMessagePlainTextSnippet,
   logger,
   resolveDialogueModelSelection,
   sessionBelongsToActiveVaultId
 } from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
-import { vaultService, resolveActiveVaultId } from './vault.ipc'
+import { vaultService, resolveActiveVault, resolveActiveVaultId } from './vault.ipc'
 
-function assertSessionInActiveVault<T extends { vaultId?: string | null }>(
-  session: T | null | undefined,
-  activeVaultId: string
-): asserts session is T {
+export async function assertSessionInActiveVault<
+  T extends { vaultId?: string | null; id?: string }
+>(session: T | null | undefined, activeVaultId: string): Promise<T> {
   if (!session) {
     throw new Error(i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L157', '原会话不存在'))
   }
-  if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+  if (sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+    return session
+  }
+
+  const activeVault = resolveActiveVault()
+  const activeName = activeVault.name || 'Personal'
+  const nameDerived = deriveLegacyVaultId(activeName)
+  const defaultPersonalDerived = deriveLegacyVaultId('Personal')
+  const stored = String(session.vaultId ?? '').trim()
+
+  const allVaults = vaultService.getAllVaults()
+  const otherVaults = allVaults.filter((v) => {
+    const vid = String(v.id ?? '').trim()
+    const vname = String(v.name ?? '').trim()
+    return vid !== activeVaultId && vname !== activeName
+  })
+
+  // 1. 如果明确属于系统中另一个有效小窝（按真实 ID 或名称或旧派生 ID 匹配），拒绝越权访问
+  const belongsToOtherVault =
+    otherVaults.length > 0 &&
+    Boolean(stored) &&
+    otherVaults.some((other) => {
+      const otherId = String(other.id ?? '').trim()
+      const otherName = String(other.name ?? '').trim()
+      if (otherId && stored === otherId) return true
+      if (otherName && (stored === otherName || stored === deriveLegacyVaultId(otherName))) {
+        return true
+      }
+      return false
+    })
+
+  if (belongsToOtherVault) {
     throw new Error(
       i18n.t(
         'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
@@ -29,6 +60,37 @@ function assertSessionInActiveVault<T extends { vaultId?: string | null }>(
       )
     )
   }
+
+  // 2. 检查是否满足当前小窝的合法历史/衍生自愈放行条件：
+  const isPersonalDerivative = /^Personal(\d+)?$/i.test(activeName)
+  const isDefaultPersonalCandidate =
+    stored === defaultPersonalDerived &&
+    (isPersonalDerivative || !otherVaults.some((v) => v.name?.trim() === 'Personal'))
+
+  const isAdmissibleCandidate =
+    !stored ||
+    stored === 'default' ||
+    stored === nameDerived ||
+    stored === activeName ||
+    isDefaultPersonalCandidate
+
+  if (!isAdmissibleCandidate) {
+    throw new Error(
+      i18n.t(
+        'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
+        '无权访问其他小窝的会话'
+      )
+    )
+  }
+
+  if (session.id) {
+    logger.info(
+      `[IPC] assertSessionInActiveVault: 自愈会话 ${session.id} 的 vault_id 从 ${stored || '(empty)'} 到 ${activeVaultId}`
+    )
+    const { realSessionRepo } = getAgentManagers()
+    await realSessionRepo.updateSessionVaultId(session.id, activeVaultId)
+  }
+  return { ...session, vaultId: activeVaultId }
 }
 
 export function registerSessionIPC() {
@@ -45,16 +107,22 @@ export function registerSessionIPC() {
       searchQuery?: string
     ) => {
       const { sessionManager } = getAgentManagers()
-      const activeVaultId = resolveActiveVaultId()
+      const activeVault = resolveActiveVault()
+      const activeVaultId = activeVault.id
+      const nameDerived = deriveLegacyVaultId(activeVault.name || 'Personal')
+      const defaultPersonalDerived = deriveLegacyVaultId('Personal')
+      const vaultCandidateIds = Array.from(
+        new Set([activeVaultId, nameDerived, defaultPersonalDerived].filter(Boolean))
+      )
       logger.info(
-        `[IPC] agent:get-sessions - vaultId=${activeVaultId}, astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
+        `[IPC] agent:get-sessions - vaultIds=${vaultCandidateIds.join(',')}, astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
       )
       const results = await sessionManager.findAllSessions(
         limit,
         offset,
         assistantId,
         searchQuery,
-        activeVaultId
+        vaultCandidateIds
       )
       logger.info(`[IPC] agent:get-sessions - found ${results.length} sessions`)
       return results
@@ -66,13 +134,14 @@ export function registerSessionIPC() {
     const session = await realSessionRepo.getSessionById(sessionId)
     const activeVaultId = resolveActiveVaultId()
     if (!session) return null
-    if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+    try {
+      return await assertSessionInActiveVault(session, activeVaultId)
+    } catch {
       logger.warn(
         `[IPC] agent:get-session denied cross-vault: session=${sessionId} vault=${session.vaultId} active=${activeVaultId}`
       )
       return null
     }
-    return session
   })
 
   ipcMain.handle(
@@ -133,9 +202,11 @@ export function registerSessionIPC() {
     const allowed: string[] = []
     for (const id of ids) {
       const session = await realSessionRepo.getSessionById(id)
-      if (session && sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+      if (!session) continue
+      try {
+        await assertSessionInActiveVault(session, activeVaultId)
         allowed.push(id)
-      } else {
+      } catch {
         logger.warn(`[IPC] agent:delete-sessions skipped cross-vault or missing: ${id}`)
       }
     }
@@ -147,14 +218,14 @@ export function registerSessionIPC() {
   ipcMain.handle('agent:pin-session', async (_, id: string, isPinned: boolean) => {
     const { sessionManager, realSessionRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(id)
-    assertSessionInActiveVault(session, resolveActiveVaultId())
+    await assertSessionInActiveVault(session, resolveActiveVaultId())
     await sessionManager.togglePin(id, isPinned)
   })
 
   ipcMain.handle('agent:get-mounted-notebooks', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
-    assertSessionInActiveVault(session, resolveActiveVaultId())
+    await assertSessionInActiveVault(session, resolveActiveVaultId())
     const { readSessionMountedNotebookIds } = await import('../services/session-mounted-notebooks')
     return readSessionMountedNotebookIds(sessionId)
   })
@@ -164,7 +235,7 @@ export function registerSessionIPC() {
     async (_, sessionId: string, notebookIds: string[]) => {
       const { realSessionRepo } = getAgentManagers()
       const session = await realSessionRepo.getSessionById(sessionId)
-      assertSessionInActiveVault(session, resolveActiveVaultId())
+      await assertSessionInActiveVault(session, resolveActiveVaultId())
       const { writeSessionMountedNotebookIds } =
         await import('../services/session-mounted-notebooks')
       return writeSessionMountedNotebookIds(sessionId, notebookIds)
@@ -174,7 +245,7 @@ export function registerSessionIPC() {
   ipcMain.handle('agent:update-session-title', async (_, sessionId: string, title: string) => {
     const { sessionManager, realSessionRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
-    assertSessionInActiveVault(session, resolveActiveVaultId())
+    await assertSessionInActiveVault(session, resolveActiveVaultId())
     await sessionManager.updateTitle(sessionId, title)
     return true
   })
@@ -184,7 +255,7 @@ export function registerSessionIPC() {
     async (_, sessionId: string, providerId: string, modelId: string) => {
       const { sessionManager, realSessionRepo } = getAgentManagers()
       const session = await realSessionRepo.getSessionById(sessionId)
-      assertSessionInActiveVault(session, resolveActiveVaultId())
+      await assertSessionInActiveVault(session, resolveActiveVaultId())
       await sessionManager.updateSessionDialogueModel(sessionId, providerId, modelId)
       return true
     }
@@ -193,7 +264,7 @@ export function registerSessionIPC() {
   ipcMain.handle('agent:export-session', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
-    assertSessionInActiveVault(session, resolveActiveVaultId())
+    await assertSessionInActiveVault(session, resolveActiveVaultId())
     const messages = await realSessionRepo.getMessagesBySession(sessionId, 999)
 
     // 格式化为 Markdown
@@ -263,7 +334,7 @@ export function registerSessionIPC() {
 
       // 1. 获取原会话信息
       const originalSession = await realSessionRepo.getSessionById(sessionId)
-      assertSessionInActiveVault(originalSession, resolveActiveVaultId())
+      await assertSessionInActiveVault(originalSession, resolveActiveVaultId())
 
       // 2. 获取原会话的所有消息
       const allMessages = await realSessionRepo.getMessagesBySession(sessionId, 9999)
