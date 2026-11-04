@@ -7,5 +7,6 @@
 export const LINT_TARGETS = {
   desktop: 'apps/desktop',
   mobile: 'apps/mobile',
-  ui: 'packages/ui'
+  ui: 'packages/ui',
+  shared: 'packages/shared'
 }

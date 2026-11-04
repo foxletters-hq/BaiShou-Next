@@ -10,6 +10,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "lint": "node ../../scripts/run-eslint-with-budget.mjs shared",
     "typecheck": "tsc --noEmit",
     "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
   },
