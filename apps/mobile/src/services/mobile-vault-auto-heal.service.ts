@@ -368,8 +368,9 @@ export async function autoHealMobileDerivativeVaults(
               const destStat = await fileSystem.stat(destPath).catch(() => null)
               const canReplaceEmpty = destStat ? destStat.size === 0 : false
               const destMeta = destRaw ? parseSessionMeta(destRaw) : {}
-              const isDestDerivative =
-                Boolean(destMeta.vaultName && DERIVATIVE_DIR_PATTERN.test(destMeta.vaultName))
+              const isDestDerivative = Boolean(
+                destMeta.vaultName && DERIVATIVE_DIR_PATTERN.test(destMeta.vaultName)
+              )
               if (destRaw !== contentToWrite && !canReplaceEmpty && !isDestDerivative) {
                 // 同名会话内容不同：保留源文件，避免静默丢弃历史消息
                 mergeFailed = true
@@ -499,7 +500,9 @@ export async function autoHealMobileDerivativeVaults(
             (meta.vaultId !== undefined && derivativeIds.has(meta.vaultId)) ||
             (baseName === 'Personal' &&
               ((meta.vaultName !== undefined && DERIVATIVE_DIR_PATTERN.test(meta.vaultName)) ||
-                (meta.vaultId !== undefined && meta.vaultId !== targetVaultId && isVaultId(meta.vaultId))))
+                (meta.vaultId !== undefined &&
+                  meta.vaultId !== targetVaultId &&
+                  isVaultId(meta.vaultId))))
           if (!referencesDerivative) continue
 
           const sanitized = sanitizeSessionJsonContent(raw, baseName, targetVaultId)

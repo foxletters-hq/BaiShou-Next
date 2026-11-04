@@ -355,13 +355,11 @@ describe('mobile-vault-auto-heal.service', () => {
     // 干净的 registry，只有 Personal
     await fs.writeFile(
       '/root/vault_registry.json',
-      JSON.stringify([
-        { id: 'vlt_pers', name: 'Personal', path: '/root/Personal' }
-      ])
+      JSON.stringify([{ id: 'vlt_pers', name: 'Personal', path: '/root/Personal' }])
     )
 
     const sqlExecutor = vi.fn().mockResolvedValue({ rows: [] })
-    const result = await autoHealMobileDerivativeVaults({
+    await autoHealMobileDerivativeVaults({
       fileSystem: fs,
       storageRoot: '/root',
       sqlExecutor
