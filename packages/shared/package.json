@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./cache": "./src/cache/index.ts",
+    "./testing": "./src/i18n/locales/testing.ts",
     "./assets/*": "./assets/*",
     "./package.json": "./package.json"
   },
