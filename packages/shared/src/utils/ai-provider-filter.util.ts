@@ -57,3 +57,16 @@ export function filterProvidersForModelSwitcher(
     })
     .filter((p) => (p.enabledModels?.length ?? 0) > 0)
 }
+
+/**
+ * 解析用户手动输入的模型名称字符串（支持逗号、换行分隔，自动去除首尾空白与重复项）
+ */
+export function parseCustomModelNames(input?: string | null): string[] {
+  if (!input) return []
+  const list = input
+    .split(/[\n,，]+/)
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0)
+  return Array.from(new Set(list))
+}
+
