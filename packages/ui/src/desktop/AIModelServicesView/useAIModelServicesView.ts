@@ -118,7 +118,8 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
   const [addModalData, setAddModalData] = useState({
     name: '',
     type: 'openai',
-    baseUrl: ''
+    baseUrl: '',
+    modelsText: ''
   })
 
   const [isTestModalOpen, setIsTestModalOpen] = useState(false)

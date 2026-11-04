@@ -102,7 +102,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                   </span>
                   <Input
                     type="text"
-                    placeholder={t('agent.provider.add_name_hint', '例如: My OpenAI Proxy')}
+                    placeholder={t('agent.provider.add_name_hint', '请输入供应商名称')}
                     value={addModalData.name}
                     onChange={(e) => setAddModalData({ ...addModalData, name: e.target.value })}
                   />
@@ -117,6 +117,25 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                       setAddModalData({
                         ...addModalData,
                         baseUrl: e.target.value
+                      })
+                    }
+                  />
+                </div>
+                <div className={styles.materialField}>
+                  <span className={styles.materialLabel}>
+                    {t('agent.provider.add_models_label', '模型名称 (可选)')}
+                  </span>
+                  <Input
+                    type="text"
+                    placeholder={t(
+                      'agent.provider.add_models_hint',
+                      '请输入模型名称 (多个模型用逗号或换行分隔)'
+                    )}
+                    value={addModalData.modelsText || ''}
+                    onChange={(e) =>
+                      setAddModalData({
+                        ...addModalData,
+                        modelsText: e.target.value
                       })
                     }
                   />

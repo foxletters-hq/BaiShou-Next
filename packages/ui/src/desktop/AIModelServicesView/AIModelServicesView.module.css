@@ -300,6 +300,18 @@
   align-items: center;
 }
 
+.modelListHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.headerActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
 .modelListTitleBox {
   display: flex;
   align-items: center;
@@ -396,6 +408,30 @@
 .modelNameChecked {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+.modelLineItemRight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.deleteModelButton {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--duration-swift), background var(--duration-swift);
+}
+
+.deleteModelButton:hover {
+  color: var(--color-error);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .emptyModelsCard {
