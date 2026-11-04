@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared'
 
 const dir = dirname(fileURLToPath(import.meta.url))
 const settingsDir = join(dir, '..')
@@ -48,8 +49,8 @@ describe('desktop latte settings chrome', () => {
       'latte_docs_link',
       'latte_character_settings_title'
     ]
-    for (const locale of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
-      const json = readFileSync(join(i18nDir, locale), 'utf8')
+    for (const locale of TEST_LOCALE_CODES) {
+      const json = readLocaleMergedJsonString(i18nDir, locale)
       for (const key of keys) {
         expect(json, `${locale} missing ${key}`).toContain(`"${key}"`)
       }

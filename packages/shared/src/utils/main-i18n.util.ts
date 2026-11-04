@@ -1,9 +1,6 @@
 import { createInstance, type i18n as I18nInstance } from 'i18next'
 
-import en from '../i18n/en.i18n.json'
-import ja from '../i18n/ja.i18n.json'
-import zh from '../i18n/zh.i18n.json'
-import zh_TW from '../i18n/zh_TW.i18n.json'
+import { UI_LOCALE_CATALOGS } from '../i18n/locales/all-locales'
 import { resolveAppLanguage } from './main-i18n-language'
 
 export { resolveAppLanguage }
@@ -17,10 +14,10 @@ function ensureMainI18n(): I18nInstance {
   const instance = createInstance()
   instance.init({
     resources: {
-      en: { translation: en },
-      ja: { translation: ja },
-      zh: { translation: zh },
-      'zh-TW': { translation: zh_TW }
+      en: { translation: UI_LOCALE_CATALOGS.en },
+      ja: { translation: UI_LOCALE_CATALOGS.ja },
+      zh: { translation: UI_LOCALE_CATALOGS.zh },
+      'zh-TW': { translation: UI_LOCALE_CATALOGS['zh-TW'] }
     },
     lng: 'zh',
     fallbackLng: 'en',

@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared'
 
 import {
   src,
@@ -216,8 +216,8 @@ describe('GraphScreen chrome - node detail and split', () => {
       'similar_dismissed',
       'merge_irreversible_warning'
     ]
-    for (const locale of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
-      const json = readFileSync(join(i18nDir, locale), 'utf8')
+    for (const locale of TEST_LOCALE_CODES) {
+      const json = readLocaleMergedJsonString(i18nDir, locale)
       for (const key of keys) {
         expect(json, `${locale} missing ${key}`).toContain(`"${key}"`)
       }

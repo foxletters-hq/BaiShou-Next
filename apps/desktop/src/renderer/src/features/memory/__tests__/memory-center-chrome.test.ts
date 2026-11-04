@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { readLocaleCatalog, readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared'
 import {
   ALL_SIDEBAR_NAV_IDS,
   DEFAULT_VISIBLE_NAV_IDS
@@ -257,9 +258,7 @@ describe('memory center chrome', () => {
     const bar = readSrc('features/memory/MemoryReadinessBar.tsx')
     const barCss = readSrc('features/memory/MemoryReadinessBar.module.css')
     const toolbar = readRagSrc('RagMemoryToolbar.tsx')
-    const zh = JSON.parse(
-      readFileSync(join(repoRoot, 'packages/shared/src/i18n/zh.i18n.json'), 'utf8')
-    ) as {
+    const zh = readLocaleCatalog(join(repoRoot, 'packages/shared/src/i18n'), 'zh') as {
       memory: {
         readiness_vector_pending: string
         readiness_vector_done: string
@@ -450,7 +449,7 @@ describe('memory center chrome', () => {
   })
 
   it('should call the review entry 检查待确认节点 instead of 检查可疑节点', () => {
-    const zh = readFileSync(join(repoRoot, 'packages/shared/src/i18n/zh.i18n.json'), 'utf8')
+    const zh = readLocaleMergedJsonString(join(repoRoot, 'packages/shared/src/i18n'), 'zh')
     expect(zh).toContain('"review_suspects_toolbar": "检查待确认节点"')
     expect(zh).toContain('"review_suspects_toolbar_count": "检查待确认节点 ({{count}})"')
     expect(zh).not.toContain('检查可疑节点')
@@ -468,8 +467,8 @@ describe('memory center chrome', () => {
       'rag_clear_all_done',
       'rag_clear_all_failed'
     ]
-    for (const locale of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
-      const json = readFileSync(join(repoRoot, 'packages/shared/src/i18n', locale), 'utf8')
+    for (const locale of TEST_LOCALE_CODES) {
+      const json = readLocaleMergedJsonString(join(repoRoot, 'packages/shared/src/i18n'), locale)
       for (const key of keys) {
         expect(json, `${locale} missing ${key}`).toContain(`"${key}"`)
       }
@@ -495,9 +494,9 @@ describe('memory center chrome', () => {
   })
 
   it('C4: Chinese copy states notebook memory is not merged into the center', () => {
-    const zh = JSON.parse(
-      readFileSync(join(repoRoot, 'packages/shared/src/i18n/zh.i18n.json'), 'utf8')
-    ) as { memory: { lead: string; notebook_notice: string } }
+    const zh = readLocaleCatalog(join(repoRoot, 'packages/shared/src/i18n'), 'zh') as {
+      memory: { lead: string; notebook_notice: string }
+    }
     expect(zh.memory.lead).toContain('不并入这里')
     expect(zh.memory.notebook_notice).toContain('不并入这里')
     expect(zh.memory.notebook_notice).toContain('笔记本')
