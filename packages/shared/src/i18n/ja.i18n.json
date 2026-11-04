@@ -2794,10 +2794,6 @@
     "times_count": "回",
     "items_count": "件"
   },
-  "**": "**",
-  "*": "*",
-  "[": "](url)",
-  "![": "](image_url)",
   "activity": {
     "yearly_records": "年間日記記録",
     "monthly_records": "月間日記記録",
@@ -2953,6 +2949,12 @@
     "workbench": "ワークベンチ",
     "memory": "記憶",
     "graph": "関係グラフ"
+  },
+  "image_preview": {
+    "zoom_in": "拡大",
+    "zoom_out": "縮小",
+    "rotate": "回転",
+    "reset": "リセット"
   },
   "titlebar": {
     "minimize": "最小化",

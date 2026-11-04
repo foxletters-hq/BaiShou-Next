@@ -2234,7 +2234,7 @@
       "param_search_engine": "搜索引擎",
       "param_search_engine_desc": "选择用于网络搜索的引擎",
       "url_read": "网页读取",
-      "url_read_desc": "抓取并读取指定网页 URL 的正文内容。",
+      "url_read_desc": "直接读取特定网页 URL 的文本内容。当您有想要分析或总结的特定链接时使用此工具，而不是搜索整个网络。",
       "url_read_tooltip": "读取指定网页链接的正文内容，适合在已有 URL 时深入阅读。",
       "param_max_length": "内容长度上限",
       "param_max_length_desc": "网页读取时返回的最大字符数",
@@ -2258,7 +2258,6 @@
         "summarize_name": "总结",
         "summarize_content": "请总结以下内容背后的核心要义：\n\n"
       },
-      "url_read_desc": "直接读取特定网页 URL 的文本内容。当您有想要分析或总结的特定链接时使用此工具，而不是搜索整个网络。",
       "companion_ask": "伙伴提问",
       "companion_ask_desc": "向用户提出澄清问题，可附带选项；在用户回答前会阻塞等待确认。",
       "companion_ask_tooltip": "向用户提出澄清问题，可附带选项；在用户回答前会阻塞等待确认。",
@@ -2915,10 +2914,6 @@
     "times_count": "次",
     "items_count": "条"
   },
-  "**": "**",
-  "*": "*",
-  "[": "](url)",
-  "![": "](image_url)",
   "activity": {
     "yearly_records": "年度日记记录",
     "monthly_records": "月度日记记录",
