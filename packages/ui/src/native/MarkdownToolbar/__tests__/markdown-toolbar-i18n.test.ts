@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { readLocaleCatalog, TEST_LOCALE_CODES } from '@baishou/shared'
+import { readLocaleCatalog, TEST_LOCALE_CODES } from '@baishou/shared/testing'
 import { MARKDOWN_TOOLBAR_TOOL_META } from '../markdown-toolbar.types'
 
 const here = dirname(fileURLToPath(import.meta.url))

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { readLocaleCatalog, TEST_LOCALE_CODES } from '@baishou/shared'
+import { readLocaleCatalog, TEST_LOCALE_CODES } from '@baishou/shared/testing'
 
 const dir = dirname(fileURLToPath(import.meta.url))
 const headerSrc = readFileSync(join(dir, '..', 'SettingsProfileHeader.tsx'), 'utf8')

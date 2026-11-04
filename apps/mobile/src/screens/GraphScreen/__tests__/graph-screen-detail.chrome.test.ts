@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared'
+import { readLocaleMergedJsonString, TEST_LOCALE_CODES } from '@baishou/shared/testing'
 
 import {
   src,
