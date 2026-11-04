@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast } from '@baishou/ui/native'
-import { AIProviderConfig } from '@baishou/shared'
+import { AIProviderConfig, parseCustomModelNames } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 import {
@@ -129,13 +129,17 @@ export function useAIProviderConfigForm(input: {
         localApiKey,
         baseUrl
       )
-      // 新获取的模型默认全部关闭，仅保留用户此前已启用的模型
+      // 新获取的模型默认全部关闭，仅保留用户此前已启用的模型；同时保留用户手动配置并启用的模型
+      const prevModels = config.models || []
       const prevEnabled = new Set(config.enabledModels || [])
-      const enabledModels = models.filter((m) => prevEnabled.has(m))
+      const remoteSet = new Set(models)
+      const retainedCustom = prevModels.filter((m) => prevEnabled.has(m) && !remoteSet.has(m))
+      const mergedModels = [...models, ...retainedCustom]
+      const enabledModels = mergedModels.filter((m) => prevEnabled.has(m))
       const shouldEnable = !config.isEnabled
       const items = shouldEnable ? buildAndCacheProviderListItems(savedProviders, t) : []
       await persistProvider({
-        models,
+        models: mergedModels,
         enabledModels,
         apiKey: localApiKey,
         baseUrl,
@@ -256,6 +260,76 @@ export function useAIProviderConfigForm(input: {
     await persistProvider({ enabledModels: Array.from(enabled) })
   }
 
+  const handlePromptAddModel = async () => {
+    const rawInput = await dialog.prompt(
+      t('agent.provider.add_model_prompt', '请输入模型名称 / ID (多个模型可用逗号分隔)：'),
+      '',
+      {
+        title: t('agent.provider.add_model_title', '手动添加模型'),
+        placeholder: t('agent.provider.add_model_placeholder', '请输入模型名称')
+      }
+    )
+    if (!rawInput || typeof rawInput !== 'string') return
+    const newModels = parseCustomModelNames(rawInput)
+    if (!newModels.length) return
+
+    const currentConfig = getProviderConfig(savedProviders, providerId, providerMeta)
+    const currentModels = currentConfig.models || []
+    const currentEnabled = new Set(currentConfig.enabledModels || [])
+
+    const modelsToAdd = newModels.filter((m) => !currentModels.includes(m))
+    if (!modelsToAdd.length) {
+      toast.showWarning(t('agent.provider.add_model_exists', '所输入的模型已全部存在于列表中'))
+      return
+    }
+
+    const nextModels = [...currentModels, ...modelsToAdd]
+    for (const m of modelsToAdd) {
+      currentEnabled.add(m)
+    }
+    const nextEnabled = Array.from(currentEnabled)
+
+    const updates: Partial<AIProviderConfig> = {
+      models: nextModels,
+      enabledModels: nextEnabled
+    }
+    if (!currentConfig.defaultDialogueModel && nextEnabled.length > 0) {
+      updates.defaultDialogueModel = nextEnabled[0]
+    }
+
+    await persistProvider(updates)
+    toast.showSuccess(t('agent.provider.add_model_success', '已添加并启用模型'))
+  }
+
+  const handleDeleteModel = async (modelId: string) => {
+    const confirmed = await dialog.confirm(
+      t('agent.provider.delete_model_confirm', '确定要删除模型「{{model}}」吗？', {
+        model: modelId
+      }),
+      {
+        title: t('agent.provider.delete_model_title', '删除模型'),
+        confirmText: t('common.delete'),
+        destructive: true
+      }
+    )
+    if (!confirmed) return
+
+    const currentConfig = getProviderConfig(savedProviders, providerId, providerMeta)
+    const nextModels = (currentConfig.models || []).filter((m) => m !== modelId)
+    const nextEnabled = (currentConfig.enabledModels || []).filter((m) => m !== modelId)
+
+    const updates: Partial<AIProviderConfig> = {
+      models: nextModels,
+      enabledModels: nextEnabled
+    }
+    if (currentConfig.defaultDialogueModel === modelId) {
+      updates.defaultDialogueModel = nextEnabled[0] || ''
+    }
+
+    await persistProvider(updates)
+    toast.showSuccess(t('agent.provider.delete_model_success', '模型已删除'))
+  }
+
   const loadMoreModels = () => {
     setModelVisibleCount((count) => count + MODEL_PAGE_SIZE)
   }
@@ -275,6 +349,8 @@ export function useAIProviderConfigForm(input: {
     handleResetConfig,
     handleToggleEnable,
     handleFetchModels,
+    handlePromptAddModel,
+    handleDeleteModel,
     handleTestConnection,
     handleDeleteProvider,
     sortedDisplayModels,
