@@ -35,6 +35,8 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = (props)
     handleResetConfig,
     handleToggleEnable,
     handleFetchModels,
+    handlePromptAddModel,
+    handleDeleteModel,
     handleTestConnection,
     handleDeleteProvider,
     sortedDisplayModels,
@@ -109,23 +111,25 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = (props)
       <View style={styles.actionRow}>
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: colors.bgApp }]}
-          onPress={handleSaveConfig}
+          onPress={handleFetchModels}
+          disabled={isFetching}
         >
-          <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
-            {t('common.save')}
-          </Text>
+          {isFetching ? (
+            <ActivityIndicator color={colors.primary} size="small" />
+          ) : (
+            <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
+              {t('settings.fetch_models')}
+            </Text>
+          )}
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: colors.bgApp }]}
-          onPress={handleResetConfig}
+          onPress={handlePromptAddModel}
         >
-          <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>
-            {t('settings.reset_default', '恢复默认')}
+          <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
+            {t('agent.provider.add_model', '添加模型')}
           </Text>
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.actionRow}>
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: colors.primary }]}
           onPress={handleTestConnection}
@@ -139,18 +143,24 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = (props)
             </Text>
           )}
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.actionRow}>
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: colors.bgApp }]}
-          onPress={handleFetchModels}
-          disabled={isFetching}
+          onPress={handleResetConfig}
         >
-          {isFetching ? (
-            <ActivityIndicator color={colors.primary} size="small" />
-          ) : (
-            <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
-              {t('settings.fetch_models')}
-            </Text>
-          )}
+          <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>
+            {t('settings.reset_default', '恢复默认')}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: colors.bgApp }]}
+          onPress={handleSaveConfig}
+        >
+          <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
+            {t('common.save')}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -166,6 +176,8 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = (props)
         showAllLoadedHint={showAllLoadedHint}
         onLoadMore={loadMoreModels}
         onToggleModel={toggleModelEnabled}
+        onAddModel={handlePromptAddModel}
+        onDeleteModel={handleDeleteModel}
       />
 
       {!activeConfig.isSystem && (

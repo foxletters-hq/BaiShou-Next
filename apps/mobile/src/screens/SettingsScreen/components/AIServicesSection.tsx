@@ -12,7 +12,7 @@ import {
   modalActionsStyle
 } from '@baishou/ui/native'
 import { PROVIDER_TYPES, resolveProviderTypeLabel } from '../../../constants/known-ai-providers'
-import { AIProviderConfig, ProviderType } from '@baishou/shared'
+import { AIProviderConfig, parseCustomModelNames, ProviderType } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderSortableList } from './ProviderSortableList'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
@@ -40,7 +40,12 @@ export const AIServicesSection: React.FC = () => {
     peekProviderListItemsCache()
   )
   const [showAddModal, setShowAddModal] = useState(false)
-  const [addForm, setAddForm] = useState({ name: '', type: 'openai', baseUrl: '' })
+  const [addForm, setAddForm] = useState({
+    name: '',
+    type: 'openai',
+    baseUrl: '',
+    modelsText: ''
+  })
 
   const loadListFromDb = useCallback(async () => {
     if (!services || !dbReady || loadingRef.current) return
@@ -126,18 +131,19 @@ export const AIServicesSection: React.FC = () => {
     }
     const id = `custom_${Date.now()}`
     const baseUrl = addForm.baseUrl.trim() || effectiveProviderBaseUrl(id, addForm.type, '', '')
+    const parsedModels = parseCustomModelNames(addForm.modelsText)
     const newProvider: AIProviderConfig = {
       id,
       name,
       type: addForm.type as ProviderType,
       apiKey: '',
       baseUrl,
-      models: [],
-      enabledModels: [],
+      models: parsedModels,
+      enabledModels: parsedModels,
       isEnabled: true,
       isSystem: false,
       sortOrder: (peekProviderSettingsCache() ?? []).length + 1,
-      defaultDialogueModel: '',
+      defaultDialogueModel: parsedModels[0] || '',
       defaultNamingModel: ''
     }
     try {
@@ -147,7 +153,7 @@ export const AIServicesSection: React.FC = () => {
       const items = buildAndCacheProviderListItems(next, t)
       setListItems(items)
       setShowAddModal(false)
-      setAddForm({ name: '', type: 'openai', baseUrl: '' })
+      setAddForm({ name: '', type: 'openai', baseUrl: '', modelsText: '' })
       router.push(`/settings/ai-provider/${encodeURIComponent(id)}`)
     } catch {
       toast.showError(t('ai_config.save_failed'))
@@ -235,6 +241,15 @@ export const AIServicesSection: React.FC = () => {
               value={addForm.baseUrl}
               onChangeText={(baseUrl) => setAddForm((f) => ({ ...f, baseUrl }))}
               placeholder="Base URL (optional)"
+              autoCapitalize="none"
+            />
+            <Input
+              value={addForm.modelsText}
+              onChangeText={(modelsText) => setAddForm((f) => ({ ...f, modelsText }))}
+              placeholder={t(
+                'agent.provider.add_models_hint',
+                '请输入模型名称 (多个模型用逗号分隔)'
+              )}
               autoCapitalize="none"
             />
             <View style={modalActionsStyle}>

@@ -95,6 +95,11 @@ export const aiProviderConfigFormStyles = StyleSheet.create({
     fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   },
+  modelRowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.mdTight
+  },
   loadMoreModelsBtn: {
     marginTop: sharedTokens.spacing.smPlus,
     paddingVertical: sharedTokens.spacing.smPlus,

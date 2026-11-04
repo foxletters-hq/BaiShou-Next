@@ -1,8 +1,9 @@
 import React from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Trash2 } from 'lucide-react-native'
 import { Input, ModelVisionBadge, Switch, useNativeTheme } from '@baishou/ui/native'
-import { mobileTypography } from '@baishou/ui/theme/tokens'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 import { aiProviderConfigFormStyles as styles } from './ai-provider-config-form.styles'
 
@@ -21,6 +22,8 @@ export function AIProviderModelList(props: {
   showAllLoadedHint: boolean
   onLoadMore: () => void
   onToggleModel: (modelId: string, nextEnabled?: boolean) => void
+  onAddModel?: () => void
+  onDeleteModel?: (modelId: string) => void
 }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -31,6 +34,26 @@ export function AIProviderModelList(props: {
         <Text style={[styles.emptyModelsText, { color: colors.textTertiary }]}>
           {t('settings.no_models_hint', '暂无模型，可点击上方「获取模型」')}
         </Text>
+        {props.onAddModel && (
+          <TouchableOpacity
+            style={[
+              styles.actionBtn,
+              {
+                marginTop: sharedTokens.spacing.smPlus,
+                backgroundColor: colors.bgApp,
+                borderColor: colors.borderSubtle,
+                borderWidth: StyleSheet.hairlineWidth,
+                paddingHorizontal: sharedTokens.spacing.mdPlus,
+                flex: 0
+              }
+            ]}
+            onPress={props.onAddModel}
+          >
+            <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
+              {t('agent.provider.add_model', '添加模型')}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     )
   }
@@ -94,7 +117,18 @@ export function AIProviderModelList(props: {
                   </Text>
                   <ModelVisionBadge modelId={modelId} providerKey={props.providerId} size={14} />
                 </View>
-                <Switch value={on} onValueChange={(next) => props.onToggleModel(modelId, next)} />
+                <View style={styles.modelRowActions}>
+                  {props.onDeleteModel && (
+                    <TouchableOpacity
+                      onPress={() => props.onDeleteModel?.(modelId)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityLabel={t('agent.provider.delete_model_tooltip', '删除模型')}
+                    >
+                      <Trash2 size={16} color={colors.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                  <Switch value={on} onValueChange={(next) => props.onToggleModel(modelId, next)} />
+                </View>
               </View>
             )
           })
