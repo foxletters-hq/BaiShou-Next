@@ -234,7 +234,45 @@ export async function autoHealMobileDerivativeVaults(
       return !entriesSet.has(name)
     })
 
-    if (derivativeCandidates.length === 0 && staleRegistryDerivatives.length === 0) {
+    // 检查主小窝 Personal/Sessions 下是否存在未清洗的残留衍生会话或旧随机 ID
+    const personalSessionsDir = path.join(storageRoot, 'Personal', 'Sessions')
+    let hasLingeringPersonalSessions = false
+    const lingeringDerivativeNames = new Set<string>()
+    const lingeringDerivativeIds = new Set<string>()
+
+    if (await fileSystem.exists(personalSessionsDir)) {
+      const personalRegistryEntry = registryByName.get('Personal')
+      const targetPersonalId =
+        typeof personalRegistryEntry?.id === 'string' && isVaultId(personalRegistryEntry.id)
+          ? personalRegistryEntry.id
+          : deriveLegacyVaultId('Personal')
+      const personalFiles = await fileSystem.readdir(personalSessionsDir).catch(() => [])
+
+      for (const file of personalFiles) {
+        if (!file.endsWith('.json')) continue
+        const filePath = path.join(personalSessionsDir, path.basename(file))
+        try {
+          const raw = await fileSystem.readFile(filePath, 'utf8')
+          const meta = parseSessionMeta(raw)
+          const needsRepair =
+            (meta.vaultName && DERIVATIVE_DIR_PATTERN.test(meta.vaultName)) ||
+            (meta.vaultId && meta.vaultId !== targetPersonalId && isVaultId(meta.vaultId))
+          if (needsRepair) {
+            hasLingeringPersonalSessions = true
+            if (meta.vaultName) lingeringDerivativeNames.add(meta.vaultName)
+            if (meta.vaultId) lingeringDerivativeIds.add(meta.vaultId)
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    if (
+      derivativeCandidates.length === 0 &&
+      staleRegistryDerivatives.length === 0 &&
+      !hasLingeringPersonalSessions
+    ) {
       return result
     }
 
@@ -247,7 +285,8 @@ export async function autoHealMobileDerivativeVaults(
     logger.info('[AutoHeal] 启动自愈检查', {
       storageRoot,
       derivatives: derivativeCandidates.map((item) => item.derivativeName),
-      staleRegistryDerivatives: staleRegistryDerivatives.map((item) => item.name)
+      staleRegistryDerivatives: staleRegistryDerivatives.map((item) => item.name),
+      hasLingeringPersonalSessions
     })
 
     /** baseName -> 需要清洗的衍生小窝名集合 */
@@ -270,6 +309,13 @@ export async function autoHealMobileDerivativeVaults(
       const registryEntry = registryByName.get(name)
       const registryId = typeof registryEntry?.id === 'string' ? registryEntry.id : ''
       if (registryId) addSetValue(derivativeIdsByBase, baseName, registryId)
+    }
+
+    for (const name of lingeringDerivativeNames) {
+      addSetValue(derivativeNamesByBase, 'Personal', name)
+    }
+    for (const id of lingeringDerivativeIds) {
+      addSetValue(derivativeIdsByBase, 'Personal', id)
     }
 
     for (const stale of staleRegistryDerivatives) {
@@ -321,7 +367,10 @@ export async function autoHealMobileDerivativeVaults(
               const destRaw = await fileSystem.readFile(destPath, 'utf8').catch(() => null)
               const destStat = await fileSystem.stat(destPath).catch(() => null)
               const canReplaceEmpty = destStat ? destStat.size === 0 : false
-              if (destRaw !== contentToWrite && !canReplaceEmpty) {
+              const destMeta = destRaw ? parseSessionMeta(destRaw) : {}
+              const isDestDerivative =
+                Boolean(destMeta.vaultName && DERIVATIVE_DIR_PATTERN.test(destMeta.vaultName))
+              if (destRaw !== contentToWrite && !canReplaceEmpty && !isDestDerivative) {
                 // 同名会话内容不同：保留源文件，避免静默丢弃历史消息
                 mergeFailed = true
                 logger.warn('[AutoHeal] 目标会话已存在且内容不同，保留衍生文件:', {
@@ -330,7 +379,7 @@ export async function autoHealMobileDerivativeVaults(
                 })
                 continue
               }
-              if (canReplaceEmpty) {
+              if (canReplaceEmpty || isDestDerivative) {
                 await fileSystem.writeFile(destPath, contentToWrite, 'utf8')
               }
             } else {
@@ -447,7 +496,10 @@ export async function autoHealMobileDerivativeVaults(
           const meta = parseSessionMeta(raw)
           const referencesDerivative =
             (meta.vaultName !== undefined && derivativeNames.has(meta.vaultName)) ||
-            (meta.vaultId !== undefined && derivativeIds.has(meta.vaultId))
+            (meta.vaultId !== undefined && derivativeIds.has(meta.vaultId)) ||
+            (baseName === 'Personal' &&
+              ((meta.vaultName !== undefined && DERIVATIVE_DIR_PATTERN.test(meta.vaultName)) ||
+                (meta.vaultId !== undefined && meta.vaultId !== targetVaultId && isVaultId(meta.vaultId))))
           if (!referencesDerivative) continue
 
           const sanitized = sanitizeSessionJsonContent(raw, baseName, targetVaultId)

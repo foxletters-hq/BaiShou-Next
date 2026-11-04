@@ -320,4 +320,63 @@ describe('mobile-vault-auto-heal.service', () => {
     expect(await fs.exists('/root/Personal/Sessions/sess_active.json')).toBe(false)
     expect(initRegistry).not.toHaveBeenCalled()
   })
+
+  it('cleans orphaned derivative sessions directly in Personal/Sessions even with clean registry and no derivative dirs', async () => {
+    const fs = new MockMemoryFileSystem()
+    await fs.mkdir('/root/Personal/Sessions')
+    // 模拟用户的真实数据场景：Personal8273 衍生会话直接落在 Personal/Sessions 下
+    await fs.writeFile(
+      '/root/Personal/Sessions/1792893581323.json',
+      JSON.stringify({
+        session: {
+          id: '1792893581323',
+          title: '新的一天还记得我吗',
+          vaultId: 'vlt_de4984f63c641c5e',
+          vaultName: 'Personal8273',
+          assistantId: '1792893571420'
+        },
+        messages: []
+      })
+    )
+    // 模拟早期会话遗留随机 ID
+    await fs.writeFile(
+      '/root/Personal/Sessions/1792838612754.json',
+      JSON.stringify({
+        session: {
+          id: '1792838612754',
+          title: '你是谁',
+          vaultId: 'vlt_983254cfa2072f0c',
+          vaultName: 'Personal',
+          assistantId: 'latte'
+        },
+        messages: []
+      })
+    )
+    // 干净的 registry，只有 Personal
+    await fs.writeFile(
+      '/root/vault_registry.json',
+      JSON.stringify([
+        { id: 'vlt_pers', name: 'Personal', path: '/root/Personal' }
+      ])
+    )
+
+    const sqlExecutor = vi.fn().mockResolvedValue({ rows: [] })
+    const result = await autoHealMobileDerivativeVaults({
+      fileSystem: fs,
+      storageRoot: '/root',
+      sqlExecutor
+    })
+
+    const healedSess1 = JSON.parse(await fs.readFile('/root/Personal/Sessions/1792893581323.json'))
+    expect(healedSess1.session.vaultName).toBe('Personal')
+    expect(healedSess1.session.vaultId).toBe('vlt_pers')
+    expect(healedSess1.session.assistantId).toBe('1792893571420')
+
+    const healedSess2 = JSON.parse(await fs.readFile('/root/Personal/Sessions/1792838612754.json'))
+    expect(healedSess2.session.vaultName).toBe('Personal')
+    expect(healedSess2.session.vaultId).toBe('vlt_pers')
+    expect(healedSess2.session.assistantId).toBe('latte')
+
+    expect(sqlExecutor).toHaveBeenCalled()
+  })
 })
