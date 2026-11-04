@@ -24,7 +24,7 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
       readAssistant: vi.fn(),
       deleteAssistant: vi.fn(),
       listAllAssistants: vi.fn(),
-      listAssistantsAcrossVaults: vi.fn()
+      listAssistantsAcrossVaults: vi.fn().mockResolvedValue([])
     } as any
 
     mockRepo = {
@@ -383,5 +383,100 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
       })
     )
     expect(items.map((item) => item.id)).toEqual(['latte', 'custom-1'])
+  })
+
+  it('listImportableAssistantsAcrossVaults() filters out current vault and returns assistants with session counts', async () => {
+    mockRepo.findAllAcrossVaults = vi.fn().mockResolvedValue([
+      {
+        id: 'latte',
+        name: '宇泽玲夏',
+        vaultId: VAULT_PERSONAL,
+        isDefault: true,
+        assistantKind: 'default'
+      },
+      {
+        id: 'ast_other',
+        name: '宇泽玲静',
+        vaultId: 'vlt_work',
+        isDefault: false,
+        assistantKind: 'custom'
+      }
+    ])
+    mockRepo.countSessionsByAssistant = vi.fn().mockImplementation((id, vaultId) => {
+      if (id === 'ast_other' && vaultId === 'vlt_work') return Promise.resolve(5)
+      return Promise.resolve(0)
+    })
+
+    const importable = await manager.listImportableAssistantsAcrossVaults({
+      currentVaultId: VAULT_PERSONAL,
+      allVaults: [
+        { id: VAULT_PERSONAL, name: 'Personal' },
+        { id: 'vlt_work', name: 'Work' }
+      ]
+    })
+
+    expect(importable).toHaveLength(1)
+    expect(importable[0]).toMatchObject({
+      id: 'ast_other',
+      name: '宇泽玲静',
+      sourceVaultId: 'vlt_work',
+      sourceVaultName: 'Work',
+      sessionCount: 5
+    })
+  })
+
+  it('importAssistantsFromOtherVaults() reincarnates latte into custom id when target has latte', async () => {
+    mockRepo.findById.mockImplementation((id, vaultId) => {
+      if (id === 'latte' && vaultId === VAULT_PERSONAL) {
+        return Promise.resolve({ id: 'latte', name: '当前小窝Latte', isDefault: true } as any)
+      }
+      if (id === 'latte' && vaultId === 'vlt_work') {
+        return Promise.resolve({ id: 'latte', name: '源小窝宇泽玲静', isDefault: true } as any)
+      }
+      return Promise.resolve(undefined as any)
+    })
+
+    const mockFs = {
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      exists: vi.fn().mockResolvedValue(false),
+      copyFile: vi.fn().mockResolvedValue(undefined),
+      writeFile: vi.fn().mockResolvedValue(undefined),
+      readFile: vi.fn().mockResolvedValue('{}'),
+      readdir: vi.fn().mockResolvedValue([])
+    }
+    const mockPathProvider = {
+      getVaultDirectory: vi.fn().mockResolvedValue('/root/Personal')
+    }
+
+    mockFileService.getFileSystem = vi.fn().mockReturnValue(mockFs)
+    mockFileService.getPathProvider = vi.fn().mockReturnValue(mockPathProvider)
+    mockFileService.writeAssistant = vi
+      .fn()
+      .mockResolvedValue('/root/Personal/Assistants/test.json')
+
+    const result = await manager.importAssistantsFromOtherVaults({
+      targetVaultId: VAULT_PERSONAL,
+      targetVaultName: 'Personal',
+      selected: [
+        {
+          assistantId: 'latte',
+          sourceVaultId: 'vlt_work',
+          sourceVaultName: 'Work'
+        }
+      ]
+    })
+
+    expect(result.importedAssistantsCount).toBe(1)
+    const createdId = result.createdAssistantIds[0]
+    expect(createdId).toMatch(/^ast_migrated_/)
+    expect(mockRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: createdId,
+        name: '源小窝宇泽玲静',
+        isDefault: false,
+        assistantKind: 'companion',
+        vaultId: VAULT_PERSONAL
+      })
+    )
   })
 })
