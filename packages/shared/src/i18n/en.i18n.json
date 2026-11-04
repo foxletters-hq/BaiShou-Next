@@ -2868,10 +2868,6 @@
     "times_count": "times",
     "items_count": "items"
   },
-  "**": "**",
-  "*": "*",
-  "[": "](url)",
-  "![": "](image_url)",
   "activity": {
     "yearly_records": "Yearly Diary Records",
     "monthly_records": "Monthly Diary Records",

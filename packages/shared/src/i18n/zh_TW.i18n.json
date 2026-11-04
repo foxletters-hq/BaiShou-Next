@@ -2906,10 +2906,6 @@
     "times_count": "次",
     "items_count": "條"
   },
-  "**": "**",
-  "*": "*",
-  "[": "](url)",
-  "![": "](image_url)",
   "activity": {
     "yearly_records": "年度日記記錄",
     "monthly_records": "月度日記記錄",
