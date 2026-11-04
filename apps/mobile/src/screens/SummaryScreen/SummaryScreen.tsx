@@ -197,6 +197,7 @@ export const SummaryScreen: React.FC = () => {
           errText = t('summary.generation_timeout')
         } else if (
           cur.error?.includes('Generated content was empty') ||
+          // eslint-disable-next-line i18n-chinese/no-hardcoded-chinese
           cur.error?.includes('生成内容为空')
         ) {
           errText = t(

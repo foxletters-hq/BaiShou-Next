@@ -462,7 +462,128 @@ export async function autoHealMobileDerivativeVaults(
         }
       }
 
-      // 4. 仅在全部内容迁移成功时移除衍生目录，否则保留以便下次重试
+      // 4. 合并 Assistants/*.json
+      const derivAssistantsDir = path.join(derivDir, 'Assistants')
+      const baseAssistantsDir = path.join(baseDir, 'Assistants')
+      if (await fileSystem.exists(derivAssistantsDir)) {
+        await fileSystem.mkdir(baseAssistantsDir, { recursive: true })
+        const assistantFiles = await fileSystem.readdir(derivAssistantsDir).catch(() => [])
+
+        for (const file of assistantFiles) {
+          if (!file.endsWith('.json')) continue
+          const safeFile = path.basename(file)
+          const srcPath = path.join(derivAssistantsDir, safeFile)
+          const destPath = path.join(baseAssistantsDir, safeFile)
+
+          try {
+            const destExists = await fileSystem.exists(destPath)
+            if (destExists) {
+              const [srcRaw, destRaw] = await Promise.all([
+                fileSystem.readFile(srcPath, 'utf8'),
+                fileSystem.readFile(destPath, 'utf8').catch(() => null)
+              ])
+              if (srcRaw !== destRaw) {
+                // 若为 latte.json 且内容不同，转存为衍生自定义助手，避免静默丢失
+                if (safeFile.toLowerCase() === 'latte.json') {
+                  try {
+                    const parsed = JSON.parse(srcRaw)
+                    const newId = `ast_derived_${Date.now()}`
+                    parsed.id = newId
+                    parsed.isDefault = false
+                    const migratedPath = path.join(baseAssistantsDir, `${newId}.json`)
+                    await fileSystem.writeFile(
+                      migratedPath,
+                      JSON.stringify(parsed, null, 2),
+                      'utf8'
+                    )
+                    if (sqlExecutor) {
+                      await runSql(
+                        sqlExecutor,
+                        `INSERT OR REPLACE INTO agent_assistants (id, name, emoji, avatar_path, description, system_prompt, custom_system_prompt, is_default, is_pinned, context_window, provider_id, model_id, compress_token_threshold, compress_keep_turns, assistant_kind, sort_order, vault_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                          newId,
+                          parsed.name || 'Latte',
+                          parsed.emoji || '✨',
+                          parsed.avatarPath || null,
+                          parsed.description || null,
+                          parsed.systemPrompt || null,
+                          parsed.customSystemPrompt || null,
+                          0,
+                          parsed.isPinned ? 1 : 0,
+                          parsed.contextWindow || null,
+                          parsed.providerId || null,
+                          parsed.modelId || null,
+                          parsed.compressTokenThreshold || null,
+                          parsed.compressKeepTurns || null,
+                          'custom',
+                          parsed.sortOrder || 0,
+                          targetVaultId,
+                          Date.now(),
+                          Date.now()
+                        ]
+                      )
+                    }
+                  } catch (astParseErr) {
+                    mergeFailed = true
+                    logger.warn('[AutoHeal] 转存衍生 latte 失败:', astParseErr as Error)
+                    continue
+                  }
+                } else {
+                  mergeFailed = true
+                  logger.warn('[AutoHeal] 目标助手已存在且内容不同，保留衍生文件:', {
+                    derivativeName,
+                    file: safeFile
+                  })
+                  continue
+                }
+              }
+            } else {
+              const content = await fileSystem.readFile(srcPath, 'utf8')
+              await fileSystem.writeFile(destPath, content, 'utf8')
+              if (sqlExecutor) {
+                try {
+                  const parsed = JSON.parse(content)
+                  if (parsed.id && parsed.name) {
+                    await runSql(
+                      sqlExecutor,
+                      `INSERT OR REPLACE INTO agent_assistants (id, name, emoji, avatar_path, description, system_prompt, custom_system_prompt, is_default, is_pinned, context_window, provider_id, model_id, compress_token_threshold, compress_keep_turns, assistant_kind, sort_order, vault_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                      [
+                        parsed.id,
+                        parsed.name,
+                        parsed.emoji || '✨',
+                        parsed.avatarPath || null,
+                        parsed.description || null,
+                        parsed.systemPrompt || null,
+                        parsed.customSystemPrompt || null,
+                        parsed.isDefault ? 1 : 0,
+                        parsed.isPinned ? 1 : 0,
+                        parsed.contextWindow || null,
+                        parsed.providerId || null,
+                        parsed.modelId || null,
+                        parsed.compressTokenThreshold || null,
+                        parsed.compressKeepTurns || null,
+                        parsed.assistantKind || (parsed.isDefault ? 'default' : 'custom'),
+                        parsed.sortOrder || 0,
+                        targetVaultId,
+                        Date.now(),
+                        Date.now()
+                      ]
+                    )
+                  }
+                } catch {
+                  // 忽略个别非法 JSON
+                }
+              }
+            }
+            await fileSystem.unlink(srcPath).catch(() => {})
+          } catch (assistantErr) {
+            mergeFailed = true
+            logger.warn(`[AutoHeal] 迁移助手 ${safeFile} 失败:`, assistantErr as Error)
+          }
+        }
+      }
+
+      // 5. 仅在全部内容迁移成功时移除衍生目录，否则保留以便下次重试
       if (mergeFailed) {
         logger.warn('[AutoHeal] 衍生工作区存在未迁移内容，保留目录:', derivativeName)
         continue

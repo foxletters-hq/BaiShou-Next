@@ -377,4 +377,47 @@ describe('mobile-vault-auto-heal.service', () => {
 
     expect(sqlExecutor).toHaveBeenCalled()
   })
+
+  it('merges Assistants from derivative vaults into Personal', async () => {
+    const fs = new MockMemoryFileSystem()
+    await fs.mkdir('/root/Personal/Assistants')
+    await fs.writeFile(
+      '/root/Personal/Assistants/latte.json',
+      JSON.stringify({ id: 'latte', name: '宇泽玲夏', isDefault: true })
+    )
+
+    // 衍生工作区 Personal45
+    await fs.mkdir('/root/Personal45/Assistants')
+    await fs.writeFile(
+      '/root/Personal45/Assistants/ast_custom.json',
+      JSON.stringify({ id: 'ast_custom', name: '宇泽玲静', isDefault: false })
+    )
+
+    await fs.writeFile(
+      '/root/vault_registry.json',
+      JSON.stringify([
+        { id: 'vlt_pers', name: 'Personal', path: '/root/Personal' },
+        { id: 'vlt_p45', name: 'Personal45', path: '/root/Personal45' }
+      ])
+    )
+
+    const sqlExecutor = vi.fn().mockResolvedValue({ rows: [] })
+
+    const result = await autoHealMobileDerivativeVaults({
+      fileSystem: fs,
+      storageRoot: '/root',
+      sqlExecutor
+    })
+
+    expect(result.healed).toBe(true)
+    expect(result.removedVaults).toContain('Personal45')
+
+    // 验证自定义助手已被合并到 Personal
+    expect(await fs.exists('/root/Personal/Assistants/ast_custom.json')).toBe(true)
+    const customContent = JSON.parse(await fs.readFile('/root/Personal/Assistants/ast_custom.json'))
+    expect(customContent.name).toBe('宇泽玲静')
+
+    // 验证衍生工作区已删除
+    expect(await fs.exists('/root/Personal45')).toBe(false)
+  })
 })
