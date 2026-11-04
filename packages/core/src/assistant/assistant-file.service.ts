@@ -19,6 +19,14 @@ export class AssistantFileService {
     private readonly fileSystem: IFileSystem
   ) {}
 
+  getPathProvider(): IStoragePathService {
+    return this.pathProvider
+  }
+
+  getFileSystem(): IFileSystem {
+    return this.fileSystem
+  }
+
   private async getDirectory(vaultName?: string | null): Promise<string> {
     if (vaultName?.trim()) {
       const vaultDir = await this.pathProvider.getVaultDirectory(vaultName.trim())

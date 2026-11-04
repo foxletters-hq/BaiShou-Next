@@ -11,8 +11,10 @@ import {
   isVaultId,
   isSystemLatteAssistantId,
   SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE,
-  logger
+  logger,
+  type AssistantKind
 } from '@baishou/shared'
+import * as path from '../fs/path.util'
 import { AssistantFileService } from './assistant-file.service'
 import { emitDomainMutation } from '../events'
 import { IAttachmentManager } from '../attachments/attachment-manager.types'
@@ -484,4 +486,340 @@ export class AssistantManagerService {
     })
     return sessionIds
   }
+
+  /**
+   * 列出所有可从其他小窝迁入当前小窝的心智伙伴。
+   * 自动排除当前小窝，整合 SQLite 与磁盘文件中的数据，并附带历史会话数统计。
+   */
+  async listImportableAssistantsAcrossVaults(options?: {
+    currentVaultId?: string | null
+    allVaults?: Array<{ id: string; name: string }>
+  }): Promise<ImportableAssistantItem[]> {
+    const currentVaultId = this.tryVaultId(options?.currentVaultId)
+    const vaultNameById = new Map<string, string>()
+    const vaultIdByName = new Map<string, string>()
+
+    if (options?.allVaults) {
+      for (const v of options.allVaults) {
+        if (v.id) vaultNameById.set(v.id, v.name)
+        if (v.name) vaultIdByName.set(v.name, v.id)
+      }
+    }
+
+    // 1. 获取 SQLite 中所有非当前小窝的伙伴
+    const allDbAssistants = await this.repo.findAllAcrossVaults()
+    const candidates = new Map<string, any>() // key: `${vaultId}_${assistantId}`
+
+    for (const item of allDbAssistants) {
+      if (currentVaultId && item.vaultId === currentVaultId) continue
+      const key = `${item.vaultId}_${item.id}`
+      candidates.set(key, item)
+    }
+
+    // 2. 补充磁盘上未入库或新同步的其他小窝伙伴
+    if (options?.allVaults) {
+      const otherVaultNames = options.allVaults
+        .filter((v) => !currentVaultId || v.id !== currentVaultId)
+        .map((v) => v.name)
+      const diskFiles =
+        (await this.fileService.listAssistantsAcrossVaults(otherVaultNames).catch(() => [])) || []
+
+      for (const diskItem of diskFiles) {
+        const vaultId =
+          vaultIdByName.get(diskItem.vaultName) || deriveLegacyVaultId(diskItem.vaultName)
+        if (currentVaultId && vaultId === currentVaultId) continue
+        const key = `${vaultId}_${diskItem.id}`
+        if (!candidates.has(key)) {
+          const raw = await this.fileService.readAssistant(diskItem.id, diskItem.vaultName)
+          const normalized = normalizeDiskAssistantRecord(raw)
+          if (normalized?.id && normalized.name) {
+            candidates.set(key, { ...normalized, vaultId })
+          }
+        }
+      }
+    }
+
+    // 3. 构建结果列表并统计各伙伴在源小窝的会话数
+    const results: ImportableAssistantItem[] = []
+    for (const item of candidates.values()) {
+      const sourceVaultId = item.vaultId
+      const sourceVaultName =
+        vaultNameById.get(sourceVaultId) ||
+        (sourceVaultId.startsWith('vlt_') ? 'Personal' : sourceVaultId)
+      const sessionCount = await this.repo.countSessionsByAssistant(item.id, sourceVaultId)
+
+      results.push({
+        id: item.id,
+        name: item.name,
+        emoji: item.emoji || '✨',
+        avatarPath: item.avatarPath
+          ? (toPersistedAssistantAvatarPath(item.avatarPath) ?? null)
+          : null,
+        description: item.description || null,
+        systemPrompt: item.systemPrompt || null,
+        customSystemPrompt: item.customSystemPrompt || null,
+        isDefault: Boolean(item.isDefault),
+        assistantKind: normalizeAssistantKind(item.assistantKind),
+        sortOrder: item.sortOrder ?? 0,
+        sourceVaultId,
+        sourceVaultName,
+        sessionCount
+      })
+    }
+
+    return results
+  }
+
+  /**
+   * 将其他小窝的心智伙伴批量迁入当前小窝。
+   * - 解决默认伙伴冲突：若源伙伴 ID 为 latte 且目标小窝已有系统 latte，自动转生为全新自定义伙伴 ID，不覆盖现有 latte；
+   * - 物理拷贝头像资源附件；
+   * - 支持连带历史对话会话文件与记录一同迁移。
+   */
+  async importAssistantsFromOtherVaults(
+    options: ImportAssistantsOptions
+  ): Promise<ImportAssistantsResult> {
+    const targetVaultId = this.requireVaultId(options.targetVaultId)
+    const targetVaultName = options.targetVaultName?.trim() || 'Personal'
+    const fileSystem = this.fileService.getFileSystem()
+    const pathProvider = this.fileService.getPathProvider()
+
+    const targetVaultDir = await pathProvider.getVaultDirectory(targetVaultName)
+    const targetAssistantsDir = path.join(targetVaultDir, 'Assistants')
+    const targetAttachmentsDir = path.join(targetVaultDir, 'Attachments')
+    const targetSessionsDir = path.join(targetVaultDir, 'Sessions')
+
+    await fileSystem.mkdir(targetAssistantsDir, { recursive: true })
+    await fileSystem.mkdir(targetAttachmentsDir, { recursive: true })
+    if (options.includeSessions) {
+      await fileSystem.mkdir(targetSessionsDir, { recursive: true })
+    }
+
+    const targetLatte = await this.repo.findById('latte', targetVaultId)
+    const result: ImportAssistantsResult = {
+      importedAssistantsCount: 0,
+      importedSessionsCount: 0,
+      createdAssistantIds: []
+    }
+
+    for (const selectedItem of options.selected) {
+      const { assistantId, sourceVaultId, sourceVaultName } = selectedItem
+      let sourceAssistant = await this.repo.findById(assistantId, sourceVaultId)
+      if (!sourceAssistant) {
+        const raw = await this.fileService.readAssistant(assistantId, sourceVaultName)
+        sourceAssistant = normalizeDiskAssistantRecord(raw) as any
+      }
+
+      if (!sourceAssistant) {
+        logger.warn('[AssistantManager] 迁入跳过：源伙伴不存在', selectedItem)
+        continue
+      }
+
+      // 1. 计算目标 ID 与属性（避免冲突）
+      let targetId = assistantId
+      let finalIsDefault = false
+      let finalKind: AssistantKind = normalizeAssistantKind(sourceAssistant.assistantKind)
+
+      if (assistantId === 'latte') {
+        if (targetLatte) {
+          // 目标已有系统 latte，源 latte 转生为独立自定义伙伴
+          targetId = `ast_migrated_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+          finalIsDefault = false
+        } else {
+          targetId = 'latte'
+          finalIsDefault = true
+        }
+      } else {
+        const existing = await this.repo.findById(assistantId, targetVaultId)
+        if (existing) {
+          targetId = `ast_migrated_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+        } else {
+          targetId = assistantId
+        }
+        finalIsDefault = false
+      }
+
+      // 2. 头像物理拷贝
+      let finalAvatarPath = sourceAssistant.avatarPath ?? null
+      if (
+        finalAvatarPath &&
+        typeof finalAvatarPath === 'string' &&
+        finalAvatarPath.startsWith('avatars/')
+      ) {
+        try {
+          const srcVaultDir = await pathProvider.getVaultDirectory(sourceVaultName)
+          const srcAvatarFile = path.join(srcVaultDir, 'Attachments', finalAvatarPath)
+          const destAvatarFile = path.join(targetAttachmentsDir, finalAvatarPath)
+
+          if (await fileSystem.exists(srcAvatarFile)) {
+            await fileSystem.mkdir(path.dirname(destAvatarFile), { recursive: true })
+            if (!(await fileSystem.exists(destAvatarFile))) {
+              await fileSystem.copyFile(srcAvatarFile, destAvatarFile)
+            }
+          }
+        } catch (copyErr) {
+          logger.warn('[AssistantManager] 迁入伙伴头像复制失败，保留路径引用:', copyErr as Error)
+        }
+      }
+
+      // 3. 入库与写入目标 Assistants/{targetId}.json
+      const persistedAvatar = finalAvatarPath
+        ? toPersistedAssistantAvatarPath(finalAvatarPath)
+        : undefined
+
+      const insertData: InsertAssistantInput = {
+        id: targetId,
+        vaultId: targetVaultId,
+        name: sourceAssistant.name,
+        emoji: sourceAssistant.emoji || '✨',
+        description: sourceAssistant.description ?? undefined,
+        avatarPath: persistedAvatar ?? undefined,
+        systemPrompt: sourceAssistant.systemPrompt ?? undefined,
+        customSystemPrompt: sourceAssistant.customSystemPrompt ?? undefined,
+        isDefault: finalIsDefault,
+        isPinned: Boolean(sourceAssistant.isPinned),
+        contextWindow: sourceAssistant.contextWindow ?? undefined,
+        providerId: sourceAssistant.providerId ?? undefined,
+        modelId: sourceAssistant.modelId ?? undefined,
+        compressTokenThreshold: sourceAssistant.compressTokenThreshold ?? undefined,
+        compressKeepTurns: sourceAssistant.compressKeepTurns ?? undefined,
+        assistantKind: finalKind,
+        sortOrder: sourceAssistant.sortOrder ?? 0
+      }
+
+      await this.repo.create(insertData)
+      await this.fileService.writeAssistant(
+        targetId,
+        {
+          ...insertData,
+          isDefault: finalIsDefault,
+          assistantKind: finalKind
+        },
+        targetVaultName
+      )
+
+      result.importedAssistantsCount++
+      result.createdAssistantIds.push(targetId)
+
+      // 4. 若勾选迁移会话
+      if (options.includeSessions) {
+        try {
+          const srcVaultDir = await pathProvider.getVaultDirectory(sourceVaultName)
+          const srcSessionsDir = path.join(srcVaultDir, 'Sessions')
+
+          if (await fileSystem.exists(srcSessionsDir)) {
+            const sessionFiles = await fileSystem.readdir(srcSessionsDir).catch(() => [])
+
+            for (const file of sessionFiles) {
+              if (!file.endsWith('.json')) continue
+              const srcSessionPath = path.join(srcSessionsDir, file)
+              try {
+                const rawContent = await fileSystem.readFile(srcSessionPath, 'utf8')
+                const parsed = JSON.parse(rawContent)
+                const sess = parsed?.session ?? parsed
+                const currentSessionAssistantId = sess?.assistantId
+
+                // 匹配该伙伴的会话（兼容历史 default 与原 assistantId）
+                const isMatch =
+                  currentSessionAssistantId === assistantId ||
+                  (assistantId === 'latte' &&
+                    (currentSessionAssistantId === 'default' || !currentSessionAssistantId))
+
+                if (!isMatch) continue
+
+                // 为迁入生成目标 Session ID，避免跨小窝同名冲突
+                const originalSessionId = (sess?.id || file.replace(/\.json$/i, '')).trim()
+                const destFileStandardPath = path.join(
+                  targetSessionsDir,
+                  `${originalSessionId}.json`
+                )
+                const idConflict = await fileSystem.exists(destFileStandardPath)
+                const newSessionId = idConflict
+                  ? `sess_migrated_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+                  : originalSessionId
+
+                // 更新会话属性
+                if (parsed.session && typeof parsed.session === 'object') {
+                  parsed.session.id = newSessionId
+                  parsed.session.vaultId = targetVaultId
+                  parsed.session.vaultName = targetVaultName
+                  parsed.session.assistantId = targetId
+                }
+                parsed.id = newSessionId
+                parsed.vaultId = targetVaultId
+                parsed.vaultName = targetVaultName
+                parsed.assistantId = targetId
+
+                const destPath = path.join(targetSessionsDir, `${newSessionId}.json`)
+                await fileSystem.writeFile(destPath, JSON.stringify(parsed, null, 2), 'utf8')
+
+                if (options.sessionRepo) {
+                  await options.sessionRepo.upsertSession({
+                    id: newSessionId,
+                    title: sess?.title || '新对话',
+                    vaultId: targetVaultId,
+                    assistantId: targetId,
+                    systemPrompt: sess?.systemPrompt,
+                    providerId: sess?.providerId || 'default',
+                    modelId: sess?.modelId || 'default'
+                  })
+                }
+
+                result.importedSessionsCount++
+              } catch (sessionErr) {
+                logger.warn(`[AssistantManager] 迁入会话 ${file} 失败:`, sessionErr as Error)
+              }
+            }
+          }
+        } catch (sessMigrateErr) {
+          logger.warn('[AssistantManager] 扫描源会话目录失败:', sessMigrateErr as Error)
+        }
+      }
+    }
+
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: 'assistants_imported' },
+      reason: 'assistant-import'
+    })
+
+    return result
+  }
+}
+
+export interface ImportableAssistantItem {
+  id: string
+  name: string
+  emoji: string
+  avatarPath: string | null
+  description: string | null
+  systemPrompt: string | null
+  customSystemPrompt: string | null
+  isDefault: boolean
+  assistantKind?: AssistantKind | null
+  sortOrder?: number
+  sourceVaultId: string
+  sourceVaultName: string
+  sessionCount: number
+}
+
+export interface ImportAssistantsOptions {
+  targetVaultId?: string | null
+  targetVaultName?: string | null
+  selected: Array<{
+    assistantId: string
+    sourceVaultId: string
+    sourceVaultName: string
+  }>
+  includeSessions?: boolean
+  sessionRepo?: {
+    upsertSession(input: any): Promise<void>
+  }
+}
+
+export interface ImportAssistantsResult {
+  importedAssistantsCount: number
+  importedSessionsCount: number
+  createdAssistantIds: string[]
 }

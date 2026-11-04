@@ -247,7 +247,20 @@
       "kind_work": "工作伙伴",
       "system_latte_cannot_delete": "官方 Latte 为系统伙伴，无法删除",
       "kind_companion_description": "可编辑日记、检索伙伴记忆，适合日常陪伴与记录生活。",
-      "kind_work_description": "仅用于知识查询与工作协助，无法读写日记或访问记忆库。"
+      "kind_work_description": "仅用于知识查询与工作协助，无法读写日记或访问记忆库。",
+      "import_from_other_vaults": "从其他小窝迁入",
+      "import_modal_title": "迁入其他小窝伙伴",
+      "import_modal_empty": "当前没有在其他小窝中发现可迁入的心智伙伴",
+      "import_select_all": "全选",
+      "import_deselect_all": "取消全选",
+      "import_include_sessions": "同时迁移该伙伴的历史对话记录",
+      "import_include_sessions_desc": "将该伙伴在源小窝中的全部历史会话安全拷贝至当前小窝",
+      "import_confirm": "确认迁入",
+      "import_confirm_count": "确认迁入 ({{count}})",
+      "import_success": "成功迁入 {{assistants}} 位伙伴",
+      "import_success_with_sessions": "成功迁入 {{assistants}} 位伙伴，并迁移了 {{sessions}} 条历史会话",
+      "import_sessions_count": "{{count}} 条对话",
+      "import_source_vault": "源小窝：{{vault}}"
     },
     "provider": {
       "add_title": "新增 AI 供应商",

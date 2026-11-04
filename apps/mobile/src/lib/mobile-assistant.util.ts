@@ -200,3 +200,22 @@ export function toUpdateAssistantInput(
 ): UpdateAssistantInput {
   return input
 }
+
+export function sortAssistantsByOrder(list: MobileAssistantUi[]): MobileAssistantUi[] {
+  return [...list].sort((a, b) => {
+    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+  })
+}
+
+export function mergeAssistantAvatars(
+  next: MobileAssistantUi[],
+  prev: MobileAssistantUi[]
+): MobileAssistantUi[] {
+  if (prev.length === 0) return next
+  const prevById = new Map(prev.map((item) => [item.id, item]))
+  return next.map((item) => {
+    const cached = prevById.get(item.id)?.displayAvatarUri
+    return cached ? { ...item, displayAvatarUri: cached } : item
+  })
+}

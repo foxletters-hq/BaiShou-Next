@@ -88,6 +88,18 @@ export class AssistantRepository {
   }
 
   /**
+   * 跨工作区拉取所有助手（用于跨小窝迁入伙伴等管理功能）
+   */
+  async findAllAcrossVaults() {
+    return this.run(async () => {
+      return this.db
+        .select()
+        .from(agentAssistantsTable)
+        .orderBy(asc(agentAssistantsTable.vaultId), asc(agentAssistantsTable.sortOrder))
+    })
+  }
+
+  /**
    * 按 ID + vault 查找特定助手
    */
   async findById(id: string, vaultId?: string | null) {
@@ -228,6 +240,23 @@ export class AssistantRepository {
       await this.db
         .delete(agentAssistantsTable)
         .where(and(eq(agentAssistantsTable.vaultId, scoped), eq(agentAssistantsTable.id, id)))
+    })
+  }
+
+  async countSessionsByAssistant(assistantId: string, vaultId: string): Promise<number> {
+    return this.run(async () => {
+      const scoped = this.tryVaultId(vaultId)
+      if (!scoped) return 0
+      const rows = await this.db
+        .select({ id: agentSessionsTable.id })
+        .from(agentSessionsTable)
+        .where(
+          and(
+            eq(agentSessionsTable.vaultId, scoped),
+            eq(agentSessionsTable.assistantId, assistantId)
+          )
+        )
+      return rows.length
     })
   }
 

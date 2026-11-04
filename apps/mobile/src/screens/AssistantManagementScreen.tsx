@@ -4,7 +4,7 @@ import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams
 } from 'react-native-draggable-flatlist'
-import { GripVertical, Pin, Plus, Sparkles, Trash2 } from 'lucide-react-native'
+import { FolderInput, GripVertical, Pin, Plus, Sparkles, Trash2 } from 'lucide-react-native'
 import {
   useNativeTheme,
   useNativeToast,
@@ -14,50 +14,20 @@ import {
   AssistantAvatar,
   AssistantKindBadge
 } from '@baishou/ui/native'
-import type { AssistantKind } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useThrottledFocusRefresh } from '../hooks/useThrottledFocusRefresh'
 import { useTranslation } from 'react-i18next'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
-import { listAssistantsForUi } from '../lib/mobile-assistant.util'
+import {
+  listAssistantsForUi,
+  sortAssistantsByOrder,
+  mergeAssistantAvatars,
+  type MobileAssistantUi as Assistant
+} from '../lib/mobile-assistant.util'
 import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
-
-interface Assistant {
-  id: string
-  name: string
-  emoji: string
-  description?: string
-  systemPrompt?: string
-  isDefault: boolean
-  isPinned: boolean
-  providerId?: string
-  modelId?: string
-  avatarPath?: string
-  createdAt?: number
-  lastUsedAt?: number
-  useCount?: number
-  displayAvatarUri?: string
-  assistantKind?: AssistantKind
-  sortOrder?: number
-}
-
-function sortAssistantsByOrder(list: Assistant[]): Assistant[] {
-  return [...list].sort((a, b) => {
-    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
-    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
-  })
-}
-
-function mergeAssistantAvatars(next: Assistant[], prev: Assistant[]): Assistant[] {
-  if (prev.length === 0) return next
-  const prevById = new Map(prev.map((item) => [item.id, item]))
-  return next.map((item) => {
-    const cached = prevById.get(item.id)?.displayAvatarUri
-    return cached ? { ...item, displayAvatarUri: cached } : item
-  })
-}
+import { AssistantImportModal } from '../components/AssistantImportModal'
 
 function ListSeparator() {
   return <View style={{ height: 12 }} />
@@ -91,6 +61,7 @@ export const AssistantManagementScreen: React.FC = () => {
   const [orderedAssistants, setOrderedAssistants] = useState<Assistant[]>([])
   const [initialLoading, setInitialLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [importModalVisible, setImportModalVisible] = useState(false)
   const reorderingRef = useRef(false)
   const hasLoadedRef = useRef(false)
 
@@ -311,11 +282,24 @@ export const AssistantManagementScreen: React.FC = () => {
     <StackScreenLayout
       title={t('agent.assistant.title', '伙伴管理')}
       {...getStackScreenChrome(colors)}
-      headerRight={{
-        icon: Plus,
-        onPress: handleCreateAssistant,
-        accessibilityLabel: t('agent.assistant.create_new', '新增伙伴')
-      }}
+      rightAction={
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => setImportModalVisible(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={t('agent.assistant.import_from_other_vaults', '从其他小窝迁入')}
+          >
+            <FolderInput size={21} color={colors.textPrimary} strokeWidth={2} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleCreateAssistant}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={t('agent.assistant.create_new', '新增伙伴')}
+          >
+            <Plus size={24} color={colors.textPrimary} strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
+      }
       contentStyle={styles.container}
     >
       {isBootstrapping || initialLoading ? (
@@ -328,15 +312,26 @@ export const AssistantManagementScreen: React.FC = () => {
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
             {t('agent.assistant.empty_hint', '全列阵空爆：您的矩阵里还没有服役的心智')}
           </Text>
-          <TouchableOpacity
-            style={[styles.createFirstButton, { borderColor: colors.primary }]}
-            onPress={handleCreateAssistant}
-          >
-            <Plus size={18} color={colors.primary} strokeWidth={2} />
-            <Text style={[styles.createFirstText, { color: colors.primary }]}>
-              {t('agent.assistant.create_first', '执行首建协议')}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.emptyActionRow}>
+            <TouchableOpacity
+              style={[styles.createFirstButton, { borderColor: colors.primary }]}
+              onPress={handleCreateAssistant}
+            >
+              <Plus size={18} color={colors.primary} strokeWidth={2} />
+              <Text style={[styles.createFirstText, { color: colors.primary }]}>
+                {t('agent.assistant.create_first', '执行首建协议')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.importEmptyButton, { borderColor: colors.borderControl }]}
+              onPress={() => setImportModalVisible(true)}
+            >
+              <FolderInput size={18} color={colors.textPrimary} strokeWidth={2} />
+              <Text style={[styles.importEmptyText, { color: colors.textPrimary }]}>
+                {t('agent.assistant.import_from_other_vaults', '从其他小窝迁入')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <View style={[styles.listHost, { backgroundColor: colors.bgApp }]}>
@@ -367,6 +362,12 @@ export const AssistantManagementScreen: React.FC = () => {
           />
         </View>
       )}
+
+      <AssistantImportModal
+        visible={importModalVisible}
+        onClose={() => setImportModalVisible(false)}
+        onImportSuccess={() => void loadAssistants()}
+      />
     </StackScreenLayout>
   )
 }
@@ -400,6 +401,31 @@ const styles = StyleSheet.create({
     fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.md
+  },
+  emptyActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.smPlus,
+    flexWrap: 'wrap',
+    justifyContent: 'center'
+  },
+  importEmptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.full,
+    borderWidth: 1
+  },
+  importEmptyText: {
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '500'
+  },
   searchWrap: {
     paddingHorizontal: sharedTokens.spacing.md,
     paddingTop: sharedTokens.spacing.md,
@@ -417,9 +443,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: sharedTokens.spacing.xl
-  },
-  columnWrap: {
-    gap: sharedTokens.spacing.mdTight
   },
   card: {
     borderWidth: 1,
@@ -439,21 +462,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: sharedTokens.spacing.smPlus
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
-  avatarImage: {
-    width: 44,
-    height: 44
-  },
-  emojiText: {
-    fontSize: mobileTypography.display.fontSize
   },
   cardMeta: {
     flex: 1,
