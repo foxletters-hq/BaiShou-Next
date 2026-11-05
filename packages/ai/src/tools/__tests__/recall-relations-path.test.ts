@@ -256,4 +256,30 @@ describe('RecallRelationsTool path rendering', () => {
     expect(text).toContain('用户刚写入或再次追问后可以再查')
     expect(text).not.toContain('Do not retry this tool')
   })
+
+  it('safely passes depth within [1, 3] to graphReader and accepts valid integers', async () => {
+    const tool = new RecallRelationsTool()
+    const recallRelations = vi.fn().mockResolvedValue({
+      anchors: [{ id: 'a', name: '小明', nodeType: 'person' }],
+      subgraph: [],
+      nodes: [{ id: 'a', name: '小明', nodeType: 'person' }],
+      paths: []
+    })
+    const context = { graphReader: { recallRelations } } as unknown as ToolContext
+
+    await tool.execute({ entity: '小明', mode: 'network', depth: 2 }, context)
+    expect(recallRelations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        depth: 2
+      })
+    )
+
+    // Check schema does not produce number enum/anyOf that breaks Gemini API
+    const parsed = tool.parameters.safeParse({ entity: '小明', depth: 3 })
+    expect(parsed.success).toBe(true)
+
+    // Number outside [1, 3] is rejected by schema validation
+    const invalidParsed = tool.parameters.safeParse({ entity: '小明', depth: 5 })
+    expect(invalidParsed.success).toBe(false)
+  })
 })

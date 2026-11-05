@@ -24,7 +24,10 @@ const params = z.object({
     .optional()
     .describe('Optional type filter when searching or resolving the entity.'),
   depth: z
-    .union([z.literal(1), z.literal(2), z.literal(3)])
+    .number()
+    .int()
+    .min(1)
+    .max(3)
     .optional()
     .describe('Hop cap for neighbors (default 1) or network paths (default 3).'),
   limit: z
@@ -116,11 +119,16 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
     }
 
     const mode = args.mode ?? 'network'
+    const rawDepth = args.depth
+    const depth =
+      typeof rawDepth === 'number' && Number.isFinite(rawDepth)
+        ? (Math.min(3, Math.max(1, Math.floor(rawDepth))) as 1 | 2 | 3)
+        : undefined
     try {
       const result = await reader.recallRelations({
         entity,
         mode,
-        depth: args.depth,
+        depth,
         nodeType: args.node_type,
         limit: args.limit
       })
