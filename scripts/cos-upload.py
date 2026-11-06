@@ -10,8 +10,8 @@ import sys
 import time
 from qcloud_cos import CosConfig, CosS3Client
 
-PART_SIZE = 2 * 1024 * 1024  # 2 MB per part
-MAX_THREADS = 10
+PART_SIZE = 1 * 1024 * 1024  # 1 MB per part (minimum COS multipart size for fast feedback)
+MAX_THREADS = 24
 
 
 def get_client():
@@ -22,9 +22,9 @@ def get_client():
         Region=region,
         SecretId=secret_id,
         SecretKey=secret_key,
-        Timeout=45,
-        PoolConnections=16,
-        PoolMaxSize=16,
+        Timeout=120,
+        PoolConnections=32,
+        PoolMaxSize=32,
     )
     return CosS3Client(config, retry=3), os.environ.get("COS_BUCKET", "baishou-release-1305030750").strip() or "baishou-release-1305030750", region
 

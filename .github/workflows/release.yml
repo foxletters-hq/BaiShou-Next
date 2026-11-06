@@ -430,6 +430,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sudo modprobe tcp_bbr 2>/dev/null || true
+          sudo sysctl -w net.core.default_qdisc=fq net.ipv4.tcp_congestion_control=bbr net.ipv4.tcp_mtu_probing=1 >/dev/null 2>&1 || true
           pip install --quiet --upgrade cos-python-sdk-v5
           SEMVER="${{ needs.prepare.outputs.semver }}"
           TAG="${{ needs.prepare.outputs.release_tag }}"
@@ -552,6 +554,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sudo modprobe tcp_bbr 2>/dev/null || true
+          sudo sysctl -w net.core.default_qdisc=fq net.ipv4.tcp_congestion_control=bbr net.ipv4.tcp_mtu_probing=1 >/dev/null 2>&1 || true
           pip install --quiet --upgrade cos-python-sdk-v5
           SEMVER="${{ needs.prepare.outputs.semver }}"
           TAG="${{ needs.prepare.outputs.release_tag }}"
@@ -613,6 +617,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sudo modprobe tcp_bbr 2>/dev/null || true
+          sudo sysctl -w net.core.default_qdisc=fq net.ipv4.tcp_congestion_control=bbr net.ipv4.tcp_mtu_probing=1 >/dev/null 2>&1 || true
           pip install --quiet --upgrade cos-python-sdk-v5
 
           # 1. 第一时间先把几百字节的 channel.json 传上去（0.1秒生效）
