@@ -23,11 +23,10 @@ def get_client():
         SecretId=secret_id,
         SecretKey=secret_key,
         Timeout=45,
-        MaxRetry=3,
         PoolConnections=16,
         PoolMaxSize=16,
     )
-    return CosS3Client(config), os.environ.get("COS_BUCKET", "baishou-release-1305030750").strip() or "baishou-release-1305030750", region
+    return CosS3Client(config, retry=3), os.environ.get("COS_BUCKET", "baishou-release-1305030750").strip() or "baishou-release-1305030750", region
 
 
 def upload_file(local_path: str, cos_key: str):
