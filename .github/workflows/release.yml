@@ -613,34 +613,50 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pip install --quiet coscmd
+          pip install --quiet --upgrade coscmd
           BUCKET="baishou-release-1305030750"
           REGION="ap-shanghai"
-          coscmd config -a "$(echo "$COS_SECRET_ID" | tr -d '[:space:]')" -s "$(echo "$COS_SECRET_KEY" | tr -d '[:space:]')" -b "$BUCKET" -r "$REGION" -m 30
+          coscmd config -a "$(echo "$COS_SECRET_ID" | tr -d '[:space:]')" -s "$(echo "$COS_SECRET_KEY" | tr -d '[:space:]')" -b "$BUCKET" -r "$REGION" -m 10 -p 20
 
           # 1. 第一时间先把几百字节的 channel.json 传上去（0.1秒生效）
-          coscmd upload "releases/channel.json" "channel.json"
-          coscmd upload "releases/channel.json" "releases/channel.json"
+          coscmd upload -rs "releases/channel.json" "channel.json"
+          coscmd upload -rs "releases/channel.json" "releases/channel.json"
           echo "channel.json 已上传至 COS"
 
           # 2. 如果是 sync-cos 模式，从 GitHub Release 拉取主安装包并只上传 1 份，其余走 COS 内网秒级 copy
           if [ "${{ needs.prepare.outputs.scope }}" = "sync-cos" ]; then
-            mkdir -p cos-sync-tmp
-            ANDROID_TAG=$(node -p "require('./releases/channel.json').android?.tag || ''")
-            if [ -n "$ANDROID_TAG" ]; then
-              echo "正在同步 ${ANDROID_TAG}/BaiShou-Android.apk ..."
-              gh release download "$ANDROID_TAG" --repo "${{ github.repository }}" -p "BaiShou-Android.apk" -D cos-sync-tmp --clobber
-              coscmd upload "cos-sync-tmp/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-Android.apk"
-              coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${ANDROID_TAG}/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
-            fi
+            touch /tmp/cos-sync.log
+            (while true; do sleep 4; coscmd upload -rs /tmp/cos-sync.log cos-sync.log >/dev/null 2>&1 || true; done) &
+            LOG_PID=$!
+            trap "kill $LOG_PID 2>/dev/null || true; coscmd upload -rs /tmp/cos-sync.log cos-sync.log >/dev/null 2>&1 || true" EXIT
 
-            WINDOWS_TAG=$(node -p "require('./releases/channel.json').windows?.tag || ''")
-            if [ -n "$WINDOWS_TAG" ]; then
-              echo "正在同步 ${WINDOWS_TAG}/BaiShou-Windows-Setup.exe ..."
-              gh release download "$WINDOWS_TAG" --repo "${{ github.repository }}" -p "BaiShou-Windows-Setup.exe" -D cos-sync-tmp --clobber
-              coscmd upload "cos-sync-tmp/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe"
-              coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
-            fi
+            {
+              echo "[$(date -u +%T)] 开始 sync-cos..."
+              mkdir -p cos-sync-tmp
+              ANDROID_TAG=$(node -p "require('./releases/channel.json').android?.tag || ''")
+              if [ -n "$ANDROID_TAG" ]; then
+                echo "[$(date -u +%T)] 正在从 GitHub Release 下载 ${ANDROID_TAG}/BaiShou-Android.apk ..."
+                gh release download "$ANDROID_TAG" --repo "${{ github.repository }}" -p "BaiShou-Android.apk" -D cos-sync-tmp --clobber
+                ls -lh cos-sync-tmp/BaiShou-Android.apk
+                echo "[$(date -u +%T)] 正在上传 BaiShou-Android.apk 到 COS ..."
+                coscmd -d upload -rs "cos-sync-tmp/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-Android.apk"
+                echo "[$(date -u +%T)] 正在 COS 内网复制 latest/BaiShou-Android.apk ..."
+                coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${ANDROID_TAG}/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
+                echo "[$(date -u +%T)] Android 同步完成！"
+              fi
+
+              WINDOWS_TAG=$(node -p "require('./releases/channel.json').windows?.tag || ''")
+              if [ -n "$WINDOWS_TAG" ]; then
+                echo "[$(date -u +%T)] 正在从 GitHub Release 下载 ${WINDOWS_TAG}/BaiShou-Windows-Setup.exe ..."
+                gh release download "$WINDOWS_TAG" --repo "${{ github.repository }}" -p "BaiShou-Windows-Setup.exe" -D cos-sync-tmp --clobber
+                ls -lh cos-sync-tmp/BaiShou-Windows-Setup.exe
+                echo "[$(date -u +%T)] 正在上传 BaiShou-Windows-Setup.exe 到 COS ..."
+                coscmd -d upload -rs "cos-sync-tmp/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe"
+                echo "[$(date -u +%T)] 正在 COS 内网复制 latest/BaiShou-Windows-Setup.exe ..."
+                coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
+                echo "[$(date -u +%T)] Windows 同步完成！"
+              fi
+            } 2>&1 | tee -a /tmp/cos-sync.log
           fi
 
       - name: Commit channel manifest
