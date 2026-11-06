@@ -626,55 +626,32 @@ jobs:
           python3 scripts/cos-upload.py upload "releases/channel.json" "releases/channel.json"
           echo "channel.json 已上传至 COS"
 
-          # 2. 如果是 sync-cos 模式，从 GitHub Release 拉取主安装包并强制走 2MB 分块并发上传，其余走 COS 内网秒级 copy
+          # 2. 如果是 sync-cos 模式，从 GitHub Release 拉取主安装包并强制走 1MB×24 线程 BBR 并发上传，其余走 COS 内网秒级 copy
           if [ "${{ needs.prepare.outputs.scope }}" = "sync-cos" ]; then
-            touch /tmp/cos-sync.log
-            (
-              i=0
-              while true; do
-                sleep 5
-                i=$((i + 1))
-                python3 scripts/cos-upload.py upload /tmp/cos-sync.log "logs/sync-${{ github.run_id }}-${i}.log" >/dev/null 2>&1 || true
-              done
-            ) &
-            LOG_PID=$!
-            trap "kill $LOG_PID 2>/dev/null || true; python3 scripts/cos-upload.py upload /tmp/cos-sync.log 'logs/sync-${{ github.run_id }}-final.log' >/dev/null 2>&1 || true" EXIT
-
-            {
-              echo "[$(date -u +%T)] 开始 sync-cos (run ${{ github.run_id }})..."
-              mkdir -p cos-sync-tmp
-              ANDROID_TAG=$(node -p "require('./releases/channel.json').android?.tag || ''")
-              ANDROID_VER=$(node -p "require('./releases/channel.json').android?.version || ''")
-              if [ -n "$ANDROID_TAG" ]; then
-                echo "[$(date -u +%T)] 正在从 GitHub Release 下载 ${ANDROID_TAG}/BaiShou-Android.apk ..."
-                gh release download "$ANDROID_TAG" --repo "${{ github.repository }}" -p "BaiShou-Android.apk" -D cos-sync-tmp --clobber
-                ls -lh cos-sync-tmp/BaiShou-Android.apk
-                echo "[$(date -u +%T)] 正在并发分片上传 BaiShou-Android.apk 到 COS ..."
-                python3 scripts/cos-upload.py upload "cos-sync-tmp/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-Android.apk"
-                echo "[$(date -u +%T)] 正在 COS 内网复制 latest/BaiShou-Android.apk ..."
-                python3 scripts/cos-upload.py copy "releases/download/${ANDROID_TAG}/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
-                if [ -n "$ANDROID_VER" ]; then
-                  python3 scripts/cos-upload.py copy "releases/download/${ANDROID_TAG}/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-v${ANDROID_VER}-Android.apk"
-                fi
-                echo "[$(date -u +%T)] Android 同步完成！"
+            mkdir -p cos-sync-tmp
+            ANDROID_TAG=$(node -p "require('./releases/channel.json').android?.tag || ''")
+            ANDROID_VER=$(node -p "require('./releases/channel.json').android?.version || ''")
+            if [ -n "$ANDROID_TAG" ]; then
+              echo "正在从 GitHub Release 下载 ${ANDROID_TAG}/BaiShou-Android.apk ..."
+              gh release download "$ANDROID_TAG" --repo "${{ github.repository }}" -p "BaiShou-Android.apk" -D cos-sync-tmp --clobber
+              python3 scripts/cos-upload.py upload "cos-sync-tmp/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-Android.apk"
+              python3 scripts/cos-upload.py copy "releases/download/${ANDROID_TAG}/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
+              if [ -n "$ANDROID_VER" ]; then
+                python3 scripts/cos-upload.py copy "releases/download/${ANDROID_TAG}/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-v${ANDROID_VER}-Android.apk"
               fi
+            fi
 
-              WINDOWS_TAG=$(node -p "require('./releases/channel.json').windows?.tag || ''")
-              WINDOWS_VER=$(node -p "require('./releases/channel.json').windows?.version || ''")
-              if [ -n "$WINDOWS_TAG" ]; then
-                echo "[$(date -u +%T)] 正在从 GitHub Release 下载 ${WINDOWS_TAG}/BaiShou-Windows-Setup.exe ..."
-                gh release download "$WINDOWS_TAG" --repo "${{ github.repository }}" -p "BaiShou-Windows-Setup.exe" -D cos-sync-tmp --clobber
-                ls -lh cos-sync-tmp/BaiShou-Windows-Setup.exe
-                echo "[$(date -u +%T)] 正在并发分片上传 BaiShou-Windows-Setup.exe 到 COS ..."
-                python3 scripts/cos-upload.py upload "cos-sync-tmp/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe"
-                echo "[$(date -u +%T)] 正在 COS 内网复制 latest/BaiShou-Windows-Setup.exe ..."
-                python3 scripts/cos-upload.py copy "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
-                if [ -n "$WINDOWS_VER" ]; then
-                  python3 scripts/cos-upload.py copy "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-v${WINDOWS_VER}-Windows-Setup.exe"
-                fi
-                echo "[$(date -u +%T)] Windows 同步完成！"
+            WINDOWS_TAG=$(node -p "require('./releases/channel.json').windows?.tag || ''")
+            WINDOWS_VER=$(node -p "require('./releases/channel.json').windows?.version || ''")
+            if [ -n "$WINDOWS_TAG" ]; then
+              echo "正在从 GitHub Release 下载 ${WINDOWS_TAG}/BaiShou-Windows-Setup.exe ..."
+              gh release download "$WINDOWS_TAG" --repo "${{ github.repository }}" -p "BaiShou-Windows-Setup.exe" -D cos-sync-tmp --clobber
+              python3 scripts/cos-upload.py upload "cos-sync-tmp/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe"
+              python3 scripts/cos-upload.py copy "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
+              if [ -n "$WINDOWS_VER" ]; then
+                python3 scripts/cos-upload.py copy "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-v${WINDOWS_VER}-Windows-Setup.exe"
               fi
-            } 2>&1 | tee -a /tmp/cos-sync.log
+            fi
           fi
 
       - name: Commit channel manifest
