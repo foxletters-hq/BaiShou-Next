@@ -421,22 +421,23 @@ jobs:
           make_latest: ${{ steps.notes.outputs.make_latest == 'true' }}
 
       - name: Upload Android APK to Tencent COS
-        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != '' && env.COS_BUCKET != '' && env.COS_REGION != ''
+        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != ''
         env:
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
-          COS_BUCKET: ${{ secrets.COS_BUCKET }}
-          COS_REGION: ${{ secrets.COS_REGION }}
         shell: bash
         run: |
           set -euo pipefail
           pip install --quiet coscmd
-          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
+          BUCKET="baishou-release-1305030750"
+          REGION="ap-shanghai"
+          coscmd config -a "$(echo "$COS_SECRET_ID" | tr -d '[:space:]')" -s "$(echo "$COS_SECRET_KEY" | tr -d '[:space:]')" -b "$BUCKET" -r "$REGION" -m 30
           SEMVER="${{ needs.prepare.outputs.semver }}"
           TAG="${{ needs.prepare.outputs.release_tag }}"
-          coscmd upload "artifacts/BaiShou-v${SEMVER}-Android.apk" "releases/download/${TAG}/BaiShou-v${SEMVER}-Android.apk"
+          # 只跨国上传 1 份主文件，其余路径直接走腾讯云 COS 内网秒级 copy
           coscmd upload "artifacts/BaiShou-Android.apk" "releases/download/${TAG}/BaiShou-Android.apk"
-          coscmd upload "artifacts/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
+          coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${TAG}/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
+          coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${TAG}/BaiShou-Android.apk" "releases/download/${TAG}/BaiShou-v${SEMVER}-Android.apk"
 
   release-desktop:
     name: Release Windows
@@ -543,22 +544,23 @@ jobs:
           make_latest: ${{ steps.notes.outputs.make_latest == 'true' }}
 
       - name: Upload Windows installer to Tencent COS
-        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != '' && env.COS_BUCKET != '' && env.COS_REGION != ''
+        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != ''
         env:
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
-          COS_BUCKET: ${{ secrets.COS_BUCKET }}
-          COS_REGION: ${{ secrets.COS_REGION }}
         shell: bash
         run: |
           set -euo pipefail
           pip install --quiet coscmd
-          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
+          BUCKET="baishou-release-1305030750"
+          REGION="ap-shanghai"
+          coscmd config -a "$(echo "$COS_SECRET_ID" | tr -d '[:space:]')" -s "$(echo "$COS_SECRET_KEY" | tr -d '[:space:]')" -b "$BUCKET" -r "$REGION" -m 30
           SEMVER="${{ needs.prepare.outputs.semver }}"
           TAG="${{ needs.prepare.outputs.release_tag }}"
-          coscmd upload "artifacts/BaiShou-v${SEMVER}-Windows-Setup.exe" "releases/download/${TAG}/BaiShou-v${SEMVER}-Windows-Setup.exe"
+          # 只跨国上传 1 份主文件，其余路径直接走腾讯云 COS 内网秒级 copy
           coscmd upload "artifacts/BaiShou-Windows-Setup.exe" "releases/download/${TAG}/BaiShou-Windows-Setup.exe"
-          coscmd upload "artifacts/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
+          coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${TAG}/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
+          coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${TAG}/BaiShou-Windows-Setup.exe" "releases/download/${TAG}/BaiShou-v${SEMVER}-Windows-Setup.exe"
 
   update-channel:
     name: Update release channel manifest
@@ -603,45 +605,43 @@ jobs:
             --repo "${{ github.repository }}"
 
       - name: Sync channel.json and missing release assets to Tencent COS
-        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != '' && env.COS_BUCKET != '' && env.COS_REGION != ''
+        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != ''
         env:
           GH_TOKEN: ${{ github.token }}
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
-          COS_BUCKET: ${{ secrets.COS_BUCKET }}
-          COS_REGION: ${{ secrets.COS_REGION }}
         shell: bash
         run: |
           set -euo pipefail
           pip install --quiet coscmd
-          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
-          mkdir -p cos-sync-tmp
+          BUCKET="baishou-release-1305030750"
+          REGION="ap-shanghai"
+          coscmd config -a "$(echo "$COS_SECRET_ID" | tr -d '[:space:]')" -s "$(echo "$COS_SECRET_KEY" | tr -d '[:space:]')" -b "$BUCKET" -r "$REGION" -m 30
 
-          # 确保 channel.json 指向的当前最新 Android / Windows 安装包已存在于 COS（首次迁移或单端发版时自动从 GitHub Release 补齐）
-          ANDROID_TAG=$(node -p "require('./releases/channel.json').android?.tag || ''")
-          ANDROID_VER=$(node -p "require('./releases/channel.json').android?.version || ''")
-          if [ -n "$ANDROID_TAG" ] && ! coscmd info "releases/download/${ANDROID_TAG}/BaiShou-Android.apk" >/dev/null 2>&1; then
-            echo "COS 缺少 ${ANDROID_TAG}/BaiShou-Android.apk，正在从 GitHub Release 同步..."
-            if gh release download "$ANDROID_TAG" --repo "${{ github.repository }}" -p "*Android.apk" -D cos-sync-tmp --clobber; then
-              [ -f "cos-sync-tmp/BaiShou-Android.apk" ] && coscmd upload "cos-sync-tmp/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-Android.apk"
-              [ -f "cos-sync-tmp/BaiShou-Android.apk" ] && coscmd upload "cos-sync-tmp/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
-              [ -f "cos-sync-tmp/BaiShou-v${ANDROID_VER}-Android.apk" ] && coscmd upload "cos-sync-tmp/BaiShou-v${ANDROID_VER}-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-v${ANDROID_VER}-Android.apk" || true
-            fi
-          fi
-
-          WINDOWS_TAG=$(node -p "require('./releases/channel.json').windows?.tag || ''")
-          WINDOWS_VER=$(node -p "require('./releases/channel.json').windows?.version || ''")
-          if [ -n "$WINDOWS_TAG" ] && ! coscmd info "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" >/dev/null 2>&1; then
-            echo "COS 缺少 ${WINDOWS_TAG}/BaiShou-Windows-Setup.exe，正在从 GitHub Release 同步..."
-            if gh release download "$WINDOWS_TAG" --repo "${{ github.repository }}" -p "*Windows-Setup.exe" -D cos-sync-tmp --clobber; then
-              [ -f "cos-sync-tmp/BaiShou-Windows-Setup.exe" ] && coscmd upload "cos-sync-tmp/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe"
-              [ -f "cos-sync-tmp/BaiShou-Windows-Setup.exe" ] && coscmd upload "cos-sync-tmp/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
-              [ -f "cos-sync-tmp/BaiShou-v${WINDOWS_VER}-Windows-Setup.exe" ] && coscmd upload "cos-sync-tmp/BaiShou-v${WINDOWS_VER}-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-v${WINDOWS_VER}-Windows-Setup.exe" || true
-            fi
-          fi
-
+          # 1. 第一时间先把几百字节的 channel.json 传上去（0.1秒生效）
           coscmd upload "releases/channel.json" "channel.json"
           coscmd upload "releases/channel.json" "releases/channel.json"
+          echo "channel.json 已上传至 COS"
+
+          # 2. 如果是 sync-cos 模式，从 GitHub Release 拉取主安装包并只上传 1 份，其余走 COS 内网秒级 copy
+          if [ "${{ needs.prepare.outputs.scope }}" = "sync-cos" ]; then
+            mkdir -p cos-sync-tmp
+            ANDROID_TAG=$(node -p "require('./releases/channel.json').android?.tag || ''")
+            if [ -n "$ANDROID_TAG" ]; then
+              echo "正在同步 ${ANDROID_TAG}/BaiShou-Android.apk ..."
+              gh release download "$ANDROID_TAG" --repo "${{ github.repository }}" -p "BaiShou-Android.apk" -D cos-sync-tmp --clobber
+              coscmd upload "cos-sync-tmp/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-Android.apk"
+              coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${ANDROID_TAG}/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
+            fi
+
+            WINDOWS_TAG=$(node -p "require('./releases/channel.json').windows?.tag || ''")
+            if [ -n "$WINDOWS_TAG" ]; then
+              echo "正在同步 ${WINDOWS_TAG}/BaiShou-Windows-Setup.exe ..."
+              gh release download "$WINDOWS_TAG" --repo "${{ github.repository }}" -p "BaiShou-Windows-Setup.exe" -D cos-sync-tmp --clobber
+              coscmd upload "cos-sync-tmp/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe"
+              coscmd copy "${BUCKET}.cos.${REGION}.myqcloud.com/releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
+            fi
+          fi
 
       - name: Commit channel manifest
         env:
