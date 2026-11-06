@@ -1,5 +1,8 @@
 import { GITHUB_REPO_URL } from '../constants/github.constants'
-import { RELEASE_CHANNEL_MANIFEST_URL } from '../constants/release-channel.constants'
+import {
+  RELEASE_CHANNEL_MANIFEST_URL,
+  RELEASE_CHANNEL_MANIFEST_URLS
+} from '../constants/release-channel.constants'
 import { normalizeAppVersionNumber } from './version.utils'
 
 export interface ReleaseChannelPlatformEntry {
@@ -7,6 +10,7 @@ export interface ReleaseChannelPlatformEntry {
   tag: string
   artifact: string
   downloadUrl: string
+  githubDownloadUrl?: string
   versionCode?: number
 }
 
@@ -79,10 +83,22 @@ export async function fetchReleaseChannelManifest(
   url: string = RELEASE_CHANNEL_MANIFEST_URL,
   fetchFn: typeof fetch = fetch
 ): Promise<ReleaseChannelManifest> {
-  const response = await fetchFn(url, { cache: 'no-store' })
-  if (!response.ok) {
-    throw new Error(`Release channel HTTP ${response.status}`)
+  const candidates =
+    url === RELEASE_CHANNEL_MANIFEST_URL ? [...RELEASE_CHANNEL_MANIFEST_URLS] : [url]
+
+  let lastError: unknown = null
+  for (const candidateUrl of candidates) {
+    try {
+      const response = await fetchFn(candidateUrl, { cache: 'no-store' })
+      if (!response.ok) {
+        throw new Error(`Release channel HTTP ${response.status}`)
+      }
+      const json: unknown = await response.json()
+      return parseReleaseChannelManifest(json)
+    } catch (error) {
+      lastError = error
+    }
   }
-  const json: unknown = await response.json()
-  return parseReleaseChannelManifest(json)
+
+  throw lastError instanceof Error ? lastError : new Error('Failed to fetch release channel manifest')
 }

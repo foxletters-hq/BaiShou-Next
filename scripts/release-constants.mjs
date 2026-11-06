@@ -1,5 +1,7 @@
 /** 发版脚本与 CI 共用的常量 */
-export const OFFICIAL_WEBSITE_URL = 'https://baishou.foxletters.com'
+export const OFFICIAL_WEBSITE_URL = 'https://foxletters.com'
+
+export const CDN_DOWNLOAD_BASE_URL = 'https://dl.foxletters.com'
 
 export const RELEASE_ARTIFACTS = {
   android: 'BaiShou-Android.apk',
@@ -49,4 +51,8 @@ export function hostVersionFromReleaseTag(tag) {
 
 export function releaseDownloadUrl(repo, version, artifact) {
   return `https://github.com/${repo}/releases/download/${releaseTagForVersion(version)}/${artifact}`
+}
+
+export function cdnReleaseDownloadUrl(version, artifact, cdnBase = CDN_DOWNLOAD_BASE_URL) {
+  return `${cdnBase.replace(/\/+$/, '')}/releases/download/${releaseTagForVersion(version)}/${artifact}`
 }

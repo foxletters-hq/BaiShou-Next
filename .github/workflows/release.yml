@@ -20,6 +20,7 @@ on:
           - mobile
           - desktop
           - both
+          - sync-cos
       ref:
         description: 构建使用的分支或 commit（默认 main）
         required: false
@@ -78,6 +79,10 @@ jobs:
                 fi
                 TAG="mobile/v${MOBILE}"
                 SEMVER="$MOBILE"
+                ;;
+              sync-cos)
+                TAG="v${DESKTOP}"
+                SEMVER="$DESKTOP"
                 ;;
               *) echo "::error::未知 platform: $SCOPE"; exit 1 ;;
             esac
@@ -415,6 +420,24 @@ jobs:
           prerelease: false
           make_latest: ${{ steps.notes.outputs.make_latest == 'true' }}
 
+      - name: Upload Android APK to Tencent COS
+        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != '' && env.COS_BUCKET != '' && env.COS_REGION != ''
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_REGION: ${{ secrets.COS_REGION }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install --quiet coscmd
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
+          SEMVER="${{ needs.prepare.outputs.semver }}"
+          TAG="${{ needs.prepare.outputs.release_tag }}"
+          coscmd upload "artifacts/BaiShou-v${SEMVER}-Android.apk" "releases/download/${TAG}/BaiShou-v${SEMVER}-Android.apk"
+          coscmd upload "artifacts/BaiShou-Android.apk" "releases/download/${TAG}/BaiShou-Android.apk"
+          coscmd upload "artifacts/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
+
   release-desktop:
     name: Release Windows
     if: |
@@ -519,13 +542,31 @@ jobs:
           prerelease: false
           make_latest: ${{ steps.notes.outputs.make_latest == 'true' }}
 
+      - name: Upload Windows installer to Tencent COS
+        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != '' && env.COS_BUCKET != '' && env.COS_REGION != ''
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_REGION: ${{ secrets.COS_REGION }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install --quiet coscmd
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
+          SEMVER="${{ needs.prepare.outputs.semver }}"
+          TAG="${{ needs.prepare.outputs.release_tag }}"
+          coscmd upload "artifacts/BaiShou-v${SEMVER}-Windows-Setup.exe" "releases/download/${TAG}/BaiShou-v${SEMVER}-Windows-Setup.exe"
+          coscmd upload "artifacts/BaiShou-Windows-Setup.exe" "releases/download/${TAG}/BaiShou-Windows-Setup.exe"
+          coscmd upload "artifacts/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
+
   update-channel:
     name: Update release channel manifest
     needs: [prepare, release-mobile, release-desktop]
     if: |
       always() &&
       needs.prepare.result == 'success' &&
-      (needs.release-mobile.result == 'success' || needs.release-desktop.result == 'success')
+      (needs.prepare.outputs.scope == 'sync-cos' || needs.release-mobile.result == 'success' || needs.release-desktop.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -541,7 +582,7 @@ jobs:
           node-version: 22
 
       - name: Patch channel.json (Android)
-        if: needs.release-mobile.result == 'success'
+        if: needs.release-mobile.result == 'success' || needs.prepare.outputs.scope == 'sync-cos'
         run: |
           MOBILE_VER=$(node -p "require('./apps/mobile/src/version.json').version")
           node scripts/update-release-channel.mjs \
@@ -552,7 +593,7 @@ jobs:
             --repo "${{ github.repository }}"
 
       - name: Patch channel.json (Windows)
-        if: needs.release-desktop.result == 'success'
+        if: needs.release-desktop.result == 'success' || needs.prepare.outputs.scope == 'sync-cos'
         run: |
           DESKTOP_VER=$(node -p "require('./apps/desktop/src/version.json').version")
           node scripts/update-release-channel.mjs \
@@ -560,6 +601,47 @@ jobs:
             --version "$DESKTOP_VER" \
             --tag "${{ needs.prepare.outputs.release_tag }}" \
             --repo "${{ github.repository }}"
+
+      - name: Sync channel.json and missing release assets to Tencent COS
+        if: env.COS_SECRET_ID != '' && env.COS_SECRET_KEY != '' && env.COS_BUCKET != '' && env.COS_REGION != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_REGION: ${{ secrets.COS_REGION }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install --quiet coscmd
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
+          mkdir -p cos-sync-tmp
+
+          # 确保 channel.json 指向的当前最新 Android / Windows 安装包已存在于 COS（首次迁移或单端发版时自动从 GitHub Release 补齐）
+          ANDROID_TAG=$(node -p "require('./releases/channel.json').android?.tag || ''")
+          ANDROID_VER=$(node -p "require('./releases/channel.json').android?.version || ''")
+          if [ -n "$ANDROID_TAG" ] && ! coscmd info "releases/download/${ANDROID_TAG}/BaiShou-Android.apk" >/dev/null 2>&1; then
+            echo "COS 缺少 ${ANDROID_TAG}/BaiShou-Android.apk，正在从 GitHub Release 同步..."
+            if gh release download "$ANDROID_TAG" --repo "${{ github.repository }}" -p "*Android.apk" -D cos-sync-tmp --clobber; then
+              [ -f "cos-sync-tmp/BaiShou-Android.apk" ] && coscmd upload "cos-sync-tmp/BaiShou-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-Android.apk"
+              [ -f "cos-sync-tmp/BaiShou-Android.apk" ] && coscmd upload "cos-sync-tmp/BaiShou-Android.apk" "latest/BaiShou-Android.apk"
+              [ -f "cos-sync-tmp/BaiShou-v${ANDROID_VER}-Android.apk" ] && coscmd upload "cos-sync-tmp/BaiShou-v${ANDROID_VER}-Android.apk" "releases/download/${ANDROID_TAG}/BaiShou-v${ANDROID_VER}-Android.apk" || true
+            fi
+          fi
+
+          WINDOWS_TAG=$(node -p "require('./releases/channel.json').windows?.tag || ''")
+          WINDOWS_VER=$(node -p "require('./releases/channel.json').windows?.version || ''")
+          if [ -n "$WINDOWS_TAG" ] && ! coscmd info "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe" >/dev/null 2>&1; then
+            echo "COS 缺少 ${WINDOWS_TAG}/BaiShou-Windows-Setup.exe，正在从 GitHub Release 同步..."
+            if gh release download "$WINDOWS_TAG" --repo "${{ github.repository }}" -p "*Windows-Setup.exe" -D cos-sync-tmp --clobber; then
+              [ -f "cos-sync-tmp/BaiShou-Windows-Setup.exe" ] && coscmd upload "cos-sync-tmp/BaiShou-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-Windows-Setup.exe"
+              [ -f "cos-sync-tmp/BaiShou-Windows-Setup.exe" ] && coscmd upload "cos-sync-tmp/BaiShou-Windows-Setup.exe" "latest/BaiShou-Windows-Setup.exe"
+              [ -f "cos-sync-tmp/BaiShou-v${WINDOWS_VER}-Windows-Setup.exe" ] && coscmd upload "cos-sync-tmp/BaiShou-v${WINDOWS_VER}-Windows-Setup.exe" "releases/download/${WINDOWS_TAG}/BaiShou-v${WINDOWS_VER}-Windows-Setup.exe" || true
+            fi
+          fi
+
+          coscmd upload "releases/channel.json" "channel.json"
+          coscmd upload "releases/channel.json" "releases/channel.json"
 
       - name: Commit channel manifest
         env:
