@@ -19,34 +19,39 @@ function parseArgs() {
   const version = get('--version')
   const tag = get('--tag')
   const repo = get('--repo') || 'foxletters-hq/BaiShou-Next'
+  const cdnBase = get('--cdn-base') || 'https://dl.foxletters.com'
   const versionCode = get('--version-code')
   if (!platform || !version || !tag) {
     console.error(
-      '用法: update-release-channel.mjs --platform android|windows --version 1.2.3 --tag v1.2.3 [--version-code 80]'
+      '用法: update-release-channel.mjs --platform android|windows --version 1.2.3 --tag v1.2.3 [--version-code 80] [--cdn-base https://dl.foxletters.com]'
     )
     process.exit(1)
   }
-  return { platform, version, tag, repo, versionCode }
+  return { platform, version, tag, repo, cdnBase, versionCode }
 }
 
-const { platform, version, tag, repo, versionCode } = parseArgs()
+const { platform, version, tag, repo, cdnBase, versionCode } = parseArgs()
 const channel = JSON.parse(readFileSync(channelPath, 'utf8'))
 
-const base = `https://github.com/${repo}/releases/download/${tag}`
+const normalizedCdnBase = cdnBase.replace(/\/+$/, '')
+const primaryBase = `${normalizedCdnBase}/releases/download/${tag}`
+const githubBase = `https://github.com/${repo}/releases/download/${tag}`
 if (platform === 'android') {
   channel.android = {
     version,
     ...(versionCode ? { versionCode: Number(versionCode) } : {}),
     tag,
     artifact: 'BaiShou-Android.apk',
-    downloadUrl: `${base}/BaiShou-Android.apk`
+    downloadUrl: `${primaryBase}/BaiShou-Android.apk`,
+    githubDownloadUrl: `${githubBase}/BaiShou-Android.apk`
   }
 } else if (platform === 'windows') {
   channel.windows = {
     version,
     tag,
     artifact: 'BaiShou-Windows-Setup.exe',
-    downloadUrl: `${base}/BaiShou-Windows-Setup.exe`
+    downloadUrl: `${primaryBase}/BaiShou-Windows-Setup.exe`,
+    githubDownloadUrl: `${githubBase}/BaiShou-Windows-Setup.exe`
   }
 } else {
   console.error(`未知 platform: ${platform}`)

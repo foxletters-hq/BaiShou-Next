@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
+  fetchReleaseChannelManifest,
   isAppVersionNewer,
   parseReleaseChannelManifest,
   releaseTagToPageUrl
@@ -31,5 +32,25 @@ describe('release-channel.util', () => {
 
   it('releaseTagToPageUrl encodes tag', () => {
     expect(releaseTagToPageUrl('mobile/v1.2.3')).toContain('/releases/tag/mobile%2Fv1.2.3')
+  })
+
+  it('fetchReleaseChannelManifest falls back to GitHub raw when primary CDN fails', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('CDN unreachable'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          windows: {
+            version: '1.5.10',
+            tag: 'v1.5.10',
+            downloadUrl: 'https://dl.foxletters.com/releases/download/v1.5.10/BaiShou-Windows-Setup.exe'
+          }
+        })
+      })
+
+    const manifest = await fetchReleaseChannelManifest(undefined, mockFetch as unknown as typeof fetch)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(manifest.windows?.version).toBe('1.5.10')
   })
 })
