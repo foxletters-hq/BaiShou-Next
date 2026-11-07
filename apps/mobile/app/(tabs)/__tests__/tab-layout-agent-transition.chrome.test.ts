@@ -7,6 +7,10 @@ const currentDir = dirname(fileURLToPath(import.meta.url))
 const rootLayoutSrc = readFileSync(join(currentDir, '../../_layout.tsx'), 'utf8')
 const tabLayoutSrc = readFileSync(join(currentDir, '../_layout.tsx'), 'utf8')
 const settingsLayoutSrc = readFileSync(join(currentDir, '../../settings/_layout.tsx'), 'utf8')
+const stackScreenLayoutSrc = readFileSync(
+  join(currentDir, '../../../src/components/StackScreenLayout.tsx'),
+  'utf8'
+)
 const fadeAnimSrc = readFileSync(
   join(currentDir, '../../../src/navigation/fadeStackAnimation.ts'),
   'utf8'
@@ -33,13 +37,14 @@ describe('mobile tab bar agent transition structure', () => {
     expect(fadeAnimSrc).toContain('duration: FADE_DURATION_MS')
   })
 
-  it('slideStackAnimation and themed slide options configure native slide transitions', () => {
-    expect(fadeAnimSrc).toContain('slideStackAnimation')
-    expect(fadeAnimSrc).toContain("Platform.OS === 'ios' ? 'default' : 'slide_from_right'")
-    expect(fadeAnimSrc).toContain('gestureEnabled: true')
-    expect(themedNavSrc).toContain('buildThemedSlideStackOptions')
-    expect(settingsLayoutSrc).toContain('buildThemedSlideStackOptions')
-    expect(rootLayoutSrc).toContain('themedSlideStackOptions')
+  it('preserves fadeStackAnimation and themed fade stack options across root and settings layout', () => {
+    expect(fadeAnimSrc).toContain('fadeStackAnimation')
+    expect(fadeAnimSrc).toContain("animation: 'fade'")
+    expect(fadeAnimSrc).not.toContain('slideStackAnimation')
+    expect(themedNavSrc).toContain('buildThemedFadeStackOptions')
+    expect(settingsLayoutSrc).toContain('buildThemedFadeStackOptions')
+    expect(rootLayoutSrc).toContain('themedFadeStackOptions')
+    expect(stackScreenLayoutSrc).toContain('FadeIn')
   })
 
   it('agent tab is a flat tab screen without nested redundant native stack', () => {

@@ -2,11 +2,14 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { getHubItemTitleKey } from '../settingsHubItems'
 
 const dir = dirname(fileURLToPath(import.meta.url))
 
 describe('mobile companion chat settings chrome', () => {
   it('should expose restoreLastSessionOnReturn in companion chat tools, not agent behavior', () => {
+    expect(getHubItemTitleKey('agent-tools')).toBe('settings.companion_chat_tools_title')
+
     const hub = readFileSync(join(dir, '..', 'settingsHubItems.ts'), 'utf8')
     const tools = readFileSync(join(dir, '..', 'components', 'AgentToolsSection.tsx'), 'utf8')
     const behavior = readFileSync(join(dir, '..', 'components', 'AgentBehaviorSection.tsx'), 'utf8')
