@@ -1,10 +1,24 @@
-import React, { useMemo } from 'react'
-import { View, StatusBar, StyleSheet, type ViewStyle } from 'react-native'
-import Animated, { FadeIn } from 'react-native-reanimated'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import { View, StatusBar, StyleSheet, type LayoutChangeEvent, type ViewStyle } from 'react-native'
+import Animated, {
+  Easing,
+  FadeIn,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '@baishou/ui/native'
 import { StackScreenHeader, type StackScreenHeaderProps } from './StackScreenHeader'
 import { getStackScreenChrome } from './stackScreenChrome'
+import {
+  logNavigationPhase,
+  sampleTransitionFrames
+} from '../navigation/transitionDiagnostics'
+
+const FADE_IN_DURATION_MS = 240
+void FadeIn
 
 export interface StackScreenLayoutProps extends StackScreenHeaderProps {
   children: React.ReactNode
@@ -33,6 +47,72 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
   const chrome = getStackScreenChrome(colors)
   const bg = backgroundColor ?? chrome.backgroundColor
   const transparent = transparentProp ?? chrome.transparent
+  const diagTag = String(headerProps.title || 'stack-screen')
+
+  const contentOpacity = useSharedValue(0)
+  const fadeStartedRef = useRef(false)
+
+  const onFadeFinish = useCallback(
+    (finished?: boolean) => {
+      logNavigationPhase(diagTag, 'StackScreenLayout:fadeFinish', {
+        finished: Boolean(finished)
+      })
+    },
+    [diagTag]
+  )
+
+  const triggerFadeIn = useCallback(
+    (triggerSource: string) => {
+      if (fadeStartedRef.current) return
+      fadeStartedRef.current = true
+      logNavigationPhase(diagTag, 'StackScreenLayout:fadeStart', {
+        source: triggerSource,
+        durationMs: FADE_IN_DURATION_MS
+      })
+      contentOpacity.value = withTiming(
+        1,
+        {
+          duration: FADE_IN_DURATION_MS,
+          easing: Easing.out(Easing.cubic)
+        },
+        (finished) => {
+          runOnJS(onFadeFinish)(finished)
+        }
+      )
+    },
+    [contentOpacity, diagTag, onFadeFinish]
+  )
+
+  useEffect(() => {
+    logNavigationPhase(diagTag, 'StackScreenLayout:mount')
+    const stopSample = sampleTransitionFrames(diagTag, 380)
+    const fallbackTimer = setTimeout(() => {
+      triggerFadeIn('timeout-fallback')
+    }, 120)
+    return () => {
+      clearTimeout(fallbackTimer)
+      stopSample()
+    }
+  }, [diagTag, triggerFadeIn])
+
+  const handleContentLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      if (fadeStartedRef.current) return
+      const { width, height } = event.nativeEvent.layout
+      logNavigationPhase(diagTag, 'StackScreenLayout:onLayout', {
+        width: Math.round(width),
+        height: Math.round(height)
+      })
+      requestAnimationFrame(() => {
+        triggerFadeIn('onLayout+rAF')
+      })
+    },
+    [diagTag, triggerFadeIn]
+  )
+
+  const animatedContentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value
+  }))
 
   const safeStyle = useMemo(
     () => ({
@@ -48,7 +128,10 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
       <View style={[styles.safe, { backgroundColor: bg }, safeStyle]}>
         <StackScreenHeader {...headerProps} transparent={transparent} />
-        <Animated.View style={[styles.content, contentStyle]} entering={FadeIn.duration(200)}>
+        <Animated.View
+          onLayout={handleContentLayout}
+          style={[styles.content, contentStyle, animatedContentStyle]}
+        >
           {children}
         </Animated.View>
       </View>

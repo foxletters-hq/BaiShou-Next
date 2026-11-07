@@ -5,6 +5,7 @@ import { scrollIndicatorStyle, KeyboardAwareScrollView, useNativeTheme } from '@
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { getHubItemTitleKey } from './settingsHubItems'
+import { logNavigationPhase } from '../../navigation/transitionDiagnostics'
 import { appendDiagnosticBreadcrumb } from '../../services/mobile-diagnostic-log.service'
 import { AIServicesSection } from './components/AIServicesSection'
 import { AIModelsSection } from './components/AIModelsSection'
@@ -34,7 +35,8 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
 
   useEffect(() => {
     appendDiagnosticBreadcrumb(`settings detail open: ${section}`)
-  }, [section])
+    logNavigationPhase(section, 'SettingsDetailScreen:mount', { title })
+  }, [section, title])
 
   const renderContent = () => {
     switch (section) {

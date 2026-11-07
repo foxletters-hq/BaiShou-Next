@@ -50,10 +50,14 @@ async function readToolManagementConfig(
   return mergeToolManagementConfig(saved)
 }
 
+let cachedToolManagementConfig: ToolManagementConfig | null = null
+
 /** 工具管理页：聚焦时 reload，并订阅表情包设置的共享态 */
 export function useToolManagementConfig() {
   const { dbReady, services } = useBaishou()
-  const [config, setConfig] = useState<ToolManagementConfig>(DEFAULT_TOOL_MANAGEMENT_CONFIG)
+  const [config, setConfig] = useState<ToolManagementConfig>(
+    () => cachedToolManagementConfig ?? DEFAULT_TOOL_MANAGEMENT_CONFIG
+  )
 
   const loadConfig = useCallback(async () => {
     if (!dbReady || !services) return
@@ -61,14 +65,11 @@ export function useToolManagementConfig() {
       services.settingsManager.get.bind(services.settingsManager),
       services.settingsManager.set.bind(services.settingsManager)
     )
+    cachedToolManagementConfig = next
     setConfig(next)
     publishEmojiToolConfig(next.emojiConfig!)
     publishPlayfulProcessStatus(next.playfulProcessStatus !== false)
   }, [dbReady, services])
-
-  useEffect(() => {
-    void loadConfig()
-  }, [loadConfig])
 
   useFocusEffect(
     useCallback(() => {
@@ -78,13 +79,19 @@ export function useToolManagementConfig() {
 
   useEffect(() => {
     return subscribeEmojiToolConfig((emojiConfig) => {
-      setConfig((prev) => ({ ...prev, emojiConfig }))
+      setConfig((prev) => {
+        if (prev.emojiConfig === emojiConfig) return prev
+        const next = { ...prev, emojiConfig }
+        cachedToolManagementConfig = next
+        return next
+      })
     })
   }, [])
 
   const persist = useCallback(
     async (next: ToolManagementConfig) => {
       const normalized = mergeToolManagementConfig(next)
+      cachedToolManagementConfig = normalized
       setConfig(normalized)
       publishEmojiToolConfig(normalized.emojiConfig!)
       publishPlayfulProcessStatus(normalized.playfulProcessStatus !== false)

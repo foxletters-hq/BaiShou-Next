@@ -29,7 +29,6 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
 }) => {
   const { colors, tokens, isDark } = useNativeTheme()
   const [isVisible, setIsVisible] = useState(false)
-  const [, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 })
 
   const handlePress = useCallback(() => {
     setIsVisible(true)
@@ -37,11 +36,6 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
 
   const handleClose = useCallback(() => {
     setIsVisible(false)
-  }, [])
-
-  const handleLayout = useCallback((event: any) => {
-    const { x, y, width, height } = event.nativeEvent.layout
-    setLayout({ x, y, width, height })
   }, [])
 
   const solidBg = colors.bgSurface
@@ -58,7 +52,6 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
     <>
       <Pressable
         onPress={handlePress}
-        onLayout={handleLayout}
         hitSlop={hitSlop}
         style={style}
         {...props}
