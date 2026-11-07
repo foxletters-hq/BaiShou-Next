@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { StyleSheet } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +9,7 @@ import {
   useNativeTheme
 } from '@baishou/ui/native'
 import type { EmojiImportResult } from '@baishou/core-mobile'
-import { findEmojiGroup, normalizeEmojiToolConfig } from '@baishou/shared'
+import { findEmojiGroup, normalizeEmojiToolConfig, upsertEmojiGroup } from '@baishou/shared'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { useEmojiToolSettings } from '../hooks/useEmojiToolSettings'
@@ -28,6 +28,53 @@ export const EmojiGroupDetailScreen: React.FC = () => {
 
   const normalized = normalizeEmojiToolConfig(config)
   const group = groupId ? findEmojiGroup(normalized, groupId) : undefined
+
+  const groupRef = useRef(group)
+  groupRef.current = group
+  const normalizedRef = useRef(normalized)
+  normalizedRef.current = normalized
+  const persistRef = useRef(persist)
+  persistRef.current = persist
+
+  // Android: 恢复 Activity 被回收前由相册选择返回的 pending 结果
+  useEffect(() => {
+    if (!services || !groupRef.current) return
+    let cancelled = false
+    void (async () => {
+      const recovered = await MobileAttachmentManagerService.recoverPendingEmojiPickerResult(
+        services.attachmentManager
+      )
+      if (cancelled || recovered.length === 0) return
+      const currentGroup = groupRef.current
+      if (!currentGroup) return
+      const newEmojis = recovered
+        .filter((r) => r.relativePath && !r.error)
+        .map((r) => {
+          const name =
+            r.originalName ||
+            r.relativePath
+              .split('/')
+              .pop()
+              ?.replace(/\.[^.]+$/, '') ||
+            ''
+          return {
+            id: r.relativePath.split('/').pop() || r.relativePath,
+            name: name.replace(/^emoji_/, ''),
+            relativePath: r.relativePath
+          }
+        })
+      if (newEmojis.length > 0) {
+        const nextGroup = {
+          ...currentGroup,
+          emojis: [...(currentGroup.emojis || []), ...newEmojis]
+        }
+        void persistRef.current(upsertEmojiGroup(normalizedRef.current, nextGroup))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [services, groupId])
 
   const handlePickAndImport = useCallback(async (): Promise<EmojiImportResult[]> => {
     if (!services) return []

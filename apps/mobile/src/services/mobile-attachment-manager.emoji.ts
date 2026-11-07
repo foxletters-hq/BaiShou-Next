@@ -6,8 +6,9 @@ import type {
   IStoragePathService
 } from '@baishou/core-mobile'
 import { joinPath, basename } from '@baishou/core-mobile'
-import { importUriToPath } from './mobile-uri-import'
+import { importUriToPath, inferImageExtension } from './mobile-uri-import'
 import { toFileUri } from './android-external-fs'
+import { compressImageForEmojiImport } from '../utils/mobile-attachment-image-resolver'
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'])
 
@@ -18,7 +19,8 @@ type EmojiDeps = {
 
 export async function importMobileEmoji(
   deps: EmojiDeps,
-  absoluteSourcePath: string
+  absoluteSourcePath: string,
+  options?: { originalFileName?: string }
 ): Promise<EmojiImportResult> {
   if (!absoluteSourcePath || absoluteSourcePath.trim() === '') {
     return {
@@ -53,28 +55,37 @@ export async function importMobileEmoji(
       }
     }
 
+    // 预压缩与尺寸缩放（限制最大边 512px，避免超大原图导致解码 OOM 闪退）
+    const compressedUri = await compressImageForEmojiImport(absoluteSourcePath)
+
     const sourceUri =
-      absoluteSourcePath.startsWith('file://') || absoluteSourcePath.startsWith('content://')
-        ? absoluteSourcePath
-        : toFileUri(absoluteSourcePath)
+      compressedUri.startsWith('file://') || compressedUri.startsWith('content://')
+        ? compressedUri
+        : toFileUri(compressedUri)
 
-    const originalBasename = basename(absoluteSourcePath.split('?')[0])
-    const originalNameWithoutExt = originalBasename.replace(/\.[^.]+$/, '')
-    const targetFileName = originalBasename
-    const targetPath = joinPath(emojisDir, targetFileName)
+    const ext = inferImageExtension(
+      options?.originalFileName || compressedUri || absoluteSourcePath
+    )
+    const rawBasename = basename((options?.originalFileName || absoluteSourcePath).split('?')[0])
+    let nameWithoutExt = rawBasename.replace(/\.[^.]+$/, '').trim()
+    // 若原名是 Photo Picker 的随机数字（如 1000000034）或空名，统一使用友好命名
+    if (!nameWithoutExt || nameWithoutExt === '.' || /^\d+$/.test(nameWithoutExt)) {
+      nameWithoutExt = `emoji_${Date.now()}`
+    }
+    const safeName = nameWithoutExt.replace(/[/\\?%*:|"<>]/g, '_')
+    let targetFileName = `${safeName}.${ext}`
+    let targetPath = joinPath(emojisDir, targetFileName)
 
+    // 若同名文件已存在，为避免覆盖使用唯一后缀
     if (await deps.fileSystem.exists(targetPath)) {
-      return {
-        relativePath: `emojis/${targetFileName}`,
-        originalName: originalNameWithoutExt,
-        error: null
-      }
+      targetFileName = `${safeName}_${Date.now().toString(36)}.${ext}`
+      targetPath = joinPath(emojisDir, targetFileName)
     }
 
     await importUriToPath(sourceUri, targetPath, deps.fileSystem)
     return {
       relativePath: `emojis/${targetFileName}`,
-      originalName: originalNameWithoutExt,
+      originalName: nameWithoutExt.replace(/^emoji_/, ''),
       error: null
     }
   } catch (e: unknown) {
