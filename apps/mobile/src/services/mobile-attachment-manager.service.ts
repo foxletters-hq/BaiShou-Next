@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import {
   extractReferencedFileNames,
   collectSessionAttachmentFileNames,
@@ -421,8 +422,11 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
 
   // ===== Emoji operations =====
 
-  async importEmoji(absoluteSourcePath: string): Promise<EmojiImportResult> {
-    return importMobileEmoji(this.emojiDeps(), absoluteSourcePath)
+  async importEmoji(
+    absoluteSourcePath: string,
+    originalFileName?: string
+  ): Promise<EmojiImportResult> {
+    return importMobileEmoji(this.emojiDeps(), absoluteSourcePath, { originalFileName })
   }
 
   async resolveEmojiPath(relativePath: string): Promise<string> {
@@ -452,15 +456,44 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
-      quality: 1
+      quality: 0.88
     })
     if (result.canceled || !result.assets || result.assets.length === 0) return []
 
     const results: EmojiImportResult[] = []
     for (const asset of result.assets) {
-      const importResult = await manager.importEmoji(asset.uri)
+      const importResult = await manager.importEmoji(asset.uri, asset.fileName ?? undefined)
       results.push(importResult)
     }
     return results
+  }
+
+  /**
+   * Android: 宿主 Activity 在打开系统相册时可能被系统回收（如 vivo 激进保活策略），
+   * 重建后可通过 getPendingResultAsync 恢复相册选择结果，避免闪退或结果丢失。
+   */
+  static async recoverPendingEmojiPickerResult(
+    manager: MobileAttachmentManagerService
+  ): Promise<EmojiImportResult[]> {
+    if (Platform.OS !== 'android') return []
+    try {
+      const ImagePicker = await import('expo-image-picker')
+      const pending = await ImagePicker.getPendingResultAsync()
+      if (
+        !pending ||
+        !('assets' in pending) ||
+        !pending.assets ||
+        ('canceled' in pending && pending.canceled)
+      )
+        return []
+      const results: EmojiImportResult[] = []
+      for (const asset of pending.assets) {
+        const importResult = await manager.importEmoji(asset.uri, asset.fileName ?? undefined)
+        results.push(importResult)
+      }
+      return results
+    } catch {
+      return []
+    }
   }
 }

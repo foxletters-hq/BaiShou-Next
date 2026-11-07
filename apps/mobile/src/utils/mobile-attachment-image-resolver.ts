@@ -214,3 +214,56 @@ export async function compressImageForBackgroundImport(sourceUri: string): Promi
     return normalizedSource
   }
 }
+
+/** 表情包导入：最长边上限（512px，满足网格与气泡展示，避免全尺寸解码 OOM） */
+export const EMOJI_IMPORT_MAX_DIMENSION = 512
+const EMOJI_IMPORT_JPEG_QUALITY = 0.85
+
+/** 导入表情包：等比缩放到 512px，GIF 动图跳过静态重编码，静态图压缩输出 */
+export async function compressImageForEmojiImport(sourceUri: string): Promise<string> {
+  const normalizedSource = normalizeImportSourceUri(sourceUri)
+  const lower = sourceUri.toLowerCase()
+  if (lower.endsWith('.gif') || lower.includes('.gif?')) {
+    return normalizedSource
+  }
+
+  const manipulator = await loadManipulator()
+  if (!manipulator) return normalizedSource
+
+  await ensureAppCacheNoMediaMarker()
+
+  const { manipulateAsync, SaveFormat } = manipulator
+  const dimensions = await resolveImageDimensions(normalizedSource)
+  if (!dimensions) return normalizedSource
+
+  const { width, height } = dimensions
+  const maxSide = Math.max(width, height)
+  const actions: Action[] = []
+
+  if (maxSide > EMOJI_IMPORT_MAX_DIMENSION) {
+    if (width >= height) {
+      actions.push({ resize: { width: EMOJI_IMPORT_MAX_DIMENSION } })
+    } else {
+      actions.push({ resize: { height: EMOJI_IMPORT_MAX_DIMENSION } })
+    }
+  }
+
+  const isPng = lower.endsWith('.png') || lower.includes('.png?')
+  const format = isPng ? SaveFormat.PNG : SaveFormat.JPEG
+  const compress = isPng ? 1 : EMOJI_IMPORT_JPEG_QUALITY
+
+  if (actions.length === 0 && (isPng || lower.endsWith('.jpg') || lower.endsWith('.jpeg'))) {
+    return normalizedSource
+  }
+
+  try {
+    const result = await manipulateAsync(normalizedSource, actions, {
+      compress,
+      format
+    })
+    return result.uri
+  } catch (e) {
+    console.warn('[AttachmentImage] emoji import prepare failed, using original:', e)
+    return normalizedSource
+  }
+}
