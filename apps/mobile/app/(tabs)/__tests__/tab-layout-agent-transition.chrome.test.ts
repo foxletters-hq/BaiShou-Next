@@ -4,9 +4,15 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
+const rootLayoutSrc = readFileSync(join(currentDir, '../../_layout.tsx'), 'utf8')
 const tabLayoutSrc = readFileSync(join(currentDir, '../_layout.tsx'), 'utf8')
+const settingsLayoutSrc = readFileSync(join(currentDir, '../../settings/_layout.tsx'), 'utf8')
 const fadeAnimSrc = readFileSync(
   join(currentDir, '../../../src/navigation/fadeStackAnimation.ts'),
+  'utf8'
+)
+const themedNavSrc = readFileSync(
+  join(currentDir, '../../../src/navigation/themedNavigation.ts'),
   'utf8'
 )
 const agentTabPath = join(currentDir, '../agent.tsx')
@@ -25,6 +31,15 @@ describe('mobile tab bar agent transition structure', () => {
     expect(fadeAnimSrc).toContain("animation: 'fade'")
     expect(fadeAnimSrc).toContain("animation: 'timing'")
     expect(fadeAnimSrc).toContain('duration: FADE_DURATION_MS')
+  })
+
+  it('slideStackAnimation and themed slide options configure native slide transitions', () => {
+    expect(fadeAnimSrc).toContain('slideStackAnimation')
+    expect(fadeAnimSrc).toContain("Platform.OS === 'ios' ? 'default' : 'slide_from_right'")
+    expect(fadeAnimSrc).toContain('gestureEnabled: true')
+    expect(themedNavSrc).toContain('buildThemedSlideStackOptions')
+    expect(settingsLayoutSrc).toContain('buildThemedSlideStackOptions')
+    expect(rootLayoutSrc).toContain('themedSlideStackOptions')
   })
 
   it('agent tab is a flat tab screen without nested redundant native stack', () => {

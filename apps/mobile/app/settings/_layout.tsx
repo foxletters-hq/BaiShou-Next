@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router'
 import { useNativeTheme } from '@baishou/ui/native'
-import { buildThemedFadeStackOptions } from '@/src/navigation/themedNavigation'
+import { buildThemedSlideStackOptions } from '@/src/navigation/themedNavigation'
 
 export default function SettingsStackLayout() {
   const { colors } = useNativeTheme()
@@ -9,7 +9,7 @@ export default function SettingsStackLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        ...buildThemedFadeStackOptions(colors.bgApp)
+        ...buildThemedSlideStackOptions(colors.bgApp)
       }}
     >
       <Stack.Screen name="[section]" />
