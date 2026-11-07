@@ -28,7 +28,8 @@ import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
 import { LegacyMigrationPrompt } from '@/src/components/LegacyMigrationPrompt'
 import {
   buildAppNavigationTheme,
-  buildThemedFadeStackOptions
+  buildThemedFadeStackOptions,
+  buildThemedSlideStackOptions
 } from '@/src/navigation/themedNavigation'
 import { useDevLanTransferDeepLinkReplayGuard } from '@/src/navigation/useDevLanTransferDeepLinkReplayGuard'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
@@ -57,6 +58,10 @@ function AppContent() {
   )
   const themedFadeStackOptions = useMemo(
     () => buildThemedFadeStackOptions(colors.bgApp),
+    [colors.bgApp]
+  )
+  const themedSlideStackOptions = useMemo(
+    () => buildThemedSlideStackOptions(colors.bgApp),
     [colors.bgApp]
   )
   const { t } = useTranslation()
@@ -112,19 +117,30 @@ function AppContent() {
       <Stack
         screenOptions={{
           headerShown: false,
-          ...themedFadeStackOptions
+          ...themedSlideStackOptions
         }}
       >
-        <Stack.Screen name="index" />
+        <Stack.Screen
+          name="index"
+          options={{
+            ...themedFadeStackOptions
+          }}
+        />
         <Stack.Screen
           name="onboarding"
           options={{
             gestureEnabled: false,
             fullScreenGestureEnabled: false,
-            headerBackVisible: false
+            headerBackVisible: false,
+            ...themedFadeStackOptions
           }}
         />
-        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="(tabs)"
+          options={{
+            ...themedFadeStackOptions
+          }}
+        />
         <Stack.Screen name="settings" />
         <Stack.Screen
           name="diary-editor"
@@ -138,15 +154,14 @@ function AppContent() {
         <Stack.Screen name="assistants" />
         <Stack.Screen name="assistant-edit" />
         <Stack.Screen name="data-sync" />
-        <Stack.Screen
-          name="summary-detail"
-          options={{
-            headerShown: false,
-            ...themedFadeStackOptions
-          }}
-        />
+        <Stack.Screen name="summary-detail" />
         <Stack.Screen name="storage" />
         <Stack.Screen name="incremental-sync" />
+        <Stack.Screen name="graph" />
+        <Stack.Screen name="graph-view" />
+        <Stack.Screen name="graph-node" />
+        <Stack.Screen name="graph-review" />
+        <Stack.Screen name="memory" />
       </Stack>
       <RestoreBlockingOverlay
         visible={Boolean(switchingVaultName)}
