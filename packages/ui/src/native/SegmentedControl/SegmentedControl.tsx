@@ -56,6 +56,7 @@ export function SegmentedControl<T extends string>({
   activeIndexRef.current = activeIndex
   const framesRef = useRef<Array<SegmentedItemFrame | undefined>>([])
   const hasMeasuredThumbRef = useRef(false)
+  const lastAppliedRectRef = useRef<{ left: number; width: number } | null>(null)
   const [thumbReady, setThumbReady] = useState(false)
   const thumbLeft = useSharedValue(0)
   const thumbWidth = useSharedValue(0)
@@ -68,6 +69,11 @@ export function SegmentedControl<T extends string>({
     (index: number) => {
       const rect = segmentedThumbRect(framesRef.current, index)
       if (!rect) return
+      const prevRect = lastAppliedRectRef.current
+      if (prevRect && prevRect.left === rect.left && prevRect.width === rect.width) {
+        return
+      }
+      lastAppliedRectRef.current = { left: rect.left, width: rect.width }
       if (!hasMeasuredThumbRef.current) {
         thumbLeft.value = rect.left
         thumbWidth.value = rect.width

@@ -18,6 +18,7 @@ import {
 import { QuickSettingsGroup } from './components/SettingsAccountPanel'
 import { SettingsAboutGroup } from './components/SettingsAboutGroup'
 import { StorageSettingsInline } from './components/StorageSettingsInline'
+import { markNavigationStart } from '../../navigation/transitionDiagnostics'
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -26,8 +27,11 @@ export const SettingsScreen: React.FC = () => {
 
   const navigate = (route: SettingsHubRoute) => {
     if (route.type === 'section') {
-      router.push(`/settings/${route.section}`)
+      const target = `/settings/${route.section}` as const
+      markNavigationStart(`settings:${route.section}`, target)
+      router.push(target)
     } else if (route.type === 'stack') {
+      markNavigationStart(`settings:${route.pathname}`, route.pathname)
       router.push(route.pathname)
     }
   }
