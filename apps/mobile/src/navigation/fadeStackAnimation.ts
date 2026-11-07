@@ -1,5 +1,5 @@
 import { Platform } from 'react-native'
-import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs'
+import { TransitionPresets, type BottomTabNavigationOptions } from '@react-navigation/bottom-tabs'
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack'
 
 const FADE_DURATION_MS = Platform.OS === 'ios' ? 250 : 200
@@ -12,6 +12,7 @@ export const fadeStackAnimation: NativeStackNavigationOptions = {
 
 /** Bottom Tabs 切换时的淡入淡出转场 */
 export const fadeTabAnimation: BottomTabNavigationOptions = {
+  ...TransitionPresets.FadeTransition,
   animation: 'fade',
   transitionSpec: {
     animation: 'timing',

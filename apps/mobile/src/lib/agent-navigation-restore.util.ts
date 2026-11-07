@@ -29,3 +29,16 @@ export function shouldPersistNavigationImmediately(input: {
 }): boolean {
   return input.assistantChanged || input.sessionCleared || input.sessionChanged
 }
+
+/** 冷启动初始恢复未完成前，若开启了恢复且当前无会话，禁止持久化空快照避免抹平历史会话 */
+export function shouldSkipNavigationPersistBeforeRestore(input: {
+  restoreLastSessionOnReturn?: boolean
+  initialRestoreDone: boolean
+  currentSessionId: string | null
+}): boolean {
+  return Boolean(
+    input.restoreLastSessionOnReturn !== false &&
+    !input.initialRestoreDone &&
+    !input.currentSessionId
+  )
+}
