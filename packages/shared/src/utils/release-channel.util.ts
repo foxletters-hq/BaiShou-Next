@@ -100,5 +100,7 @@ export async function fetchReleaseChannelManifest(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error('Failed to fetch release channel manifest')
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Failed to fetch release channel manifest')
 }

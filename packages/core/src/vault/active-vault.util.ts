@@ -7,9 +7,6 @@ function getVaultPriority(name?: string | null): number {
   if (DERIVATIVE_VAULT_NAME_PATTERN.test(trimmed)) {
     return -10 // 衍生小窝降级，防止反客为主
   }
-  if (trimmed.toLowerCase() === 'personal') {
-    return 10 // 官方默认主小窝在无偏好时拥有最高兜底权重
-  }
   return 0
 }
 
