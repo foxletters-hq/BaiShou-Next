@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { View, StatusBar, StyleSheet, type ViewStyle } from 'react-native'
+import Animated, { FadeIn } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '@baishou/ui/native'
 import { StackScreenHeader, type StackScreenHeaderProps } from './StackScreenHeader'
@@ -47,7 +48,9 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
       <View style={[styles.safe, { backgroundColor: bg }, safeStyle]}>
         <StackScreenHeader {...headerProps} transparent={transparent} />
-        <View style={[styles.content, contentStyle]}>{children}</View>
+        <Animated.View style={[styles.content, contentStyle]} entering={FadeIn.duration(200)}>
+          {children}
+        </Animated.View>
       </View>
     </>
   )

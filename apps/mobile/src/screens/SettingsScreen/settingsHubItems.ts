@@ -185,7 +185,10 @@ export function getHubItemTitleKey(section: string): string | undefined {
   }
   for (const group of SETTINGS_HUB_GROUPS) {
     for (const item of group.items) {
-      if (item.route.type === 'section' && item.route.section === section) {
+      if (
+        item.id === section ||
+        (item.route.type === 'section' && item.route.section === section)
+      ) {
         return item.titleKey
       }
     }
@@ -196,7 +199,10 @@ export function getHubItemTitleKey(section: string): string | undefined {
 export function getHubItemIconId(section: string): SettingsNavIconId | undefined {
   for (const group of SETTINGS_HUB_GROUPS) {
     for (const item of group.items) {
-      if (item.route.type === 'section' && item.route.section === section) {
+      if (
+        item.id === section ||
+        (item.route.type === 'section' && item.route.section === section)
+      ) {
         return item.icon
       }
     }
