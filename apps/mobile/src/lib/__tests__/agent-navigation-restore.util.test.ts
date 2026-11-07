@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   shouldPersistNavigationImmediately,
+  shouldSkipNavigationPersistBeforeRestore,
   shouldSkipSessionRestoreForAssistantMismatch,
   shouldThrottleNavigationReconcile
 } from '../agent-navigation-restore.util'
@@ -89,5 +90,47 @@ describe('shouldPersistNavigationImmediately', () => {
         sessionChanged: true
       })
     ).toBe(true)
+  })
+})
+
+describe('shouldSkipNavigationPersistBeforeRestore', () => {
+  it('skips persisting empty session before initial restore is done', () => {
+    expect(
+      shouldSkipNavigationPersistBeforeRestore({
+        restoreLastSessionOnReturn: true,
+        initialRestoreDone: false,
+        currentSessionId: null
+      })
+    ).toBe(true)
+  })
+
+  it('allows persisting when session is loaded even if initial restore is not marked done', () => {
+    expect(
+      shouldSkipNavigationPersistBeforeRestore({
+        restoreLastSessionOnReturn: true,
+        initialRestoreDone: false,
+        currentSessionId: 'sess-123'
+      })
+    ).toBe(false)
+  })
+
+  it('allows persisting once initial restore is done', () => {
+    expect(
+      shouldSkipNavigationPersistBeforeRestore({
+        restoreLastSessionOnReturn: true,
+        initialRestoreDone: true,
+        currentSessionId: null
+      })
+    ).toBe(false)
+  })
+
+  it('allows persisting when restoreLastSessionOnReturn is explicitly false', () => {
+    expect(
+      shouldSkipNavigationPersistBeforeRestore({
+        restoreLastSessionOnReturn: false,
+        initialRestoreDone: false,
+        currentSessionId: null
+      })
+    ).toBe(false)
   })
 })

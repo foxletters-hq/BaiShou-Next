@@ -9,6 +9,7 @@ import {
 } from '../lib/agent-navigation-persistence'
 import {
   shouldPersistNavigationImmediately,
+  shouldSkipNavigationPersistBeforeRestore,
   shouldSkipSessionRestoreForAssistantMismatch,
   shouldThrottleNavigationReconcile
 } from '../lib/agent-navigation-restore.util'
@@ -20,6 +21,7 @@ type Services = {
   sessionManager: {
     getSessionById: (sessionId: string) => Promise<SessionRow | null>
     notifySessionMutated?: (sessionId: string) => void
+    list?: (limit?: number, offset?: number, assistantId?: string) => Promise<Array<{ id: string }>>
   }
   sessionRepo?: {
     updateSessionVaultId?: (sessionId: string, vaultId: string) => Promise<void>
@@ -31,6 +33,7 @@ type UseAgentNavigationPersistenceOptions = {
   dbReady: boolean
   vaultSwitching: boolean
   vaultRevision: number
+  restorePrefReady?: boolean
   restoreLastSessionOnReturn?: boolean
   services: Services | null
   assistants: MobileAssistantUi[]
@@ -59,6 +62,7 @@ export function useAgentNavigationPersistence({
   dbReady,
   vaultSwitching,
   vaultRevision,
+  restorePrefReady = true,
   restoreLastSessionOnReturn = true,
   services,
   assistants,
@@ -128,15 +132,26 @@ export function useAgentNavigationPersistence({
   }, [dbReady, services, vaultRevision, vaultSwitching])
 
   useEffect(() => {
+    if (!restorePrefReady) return
+    if (!restoreLastSessionOnReturn && currentSessionId) {
+      clearSession()
+    }
+  }, [clearSession, currentSessionId, restoreLastSessionOnReturn, restorePrefReady])
+
+  useEffect(() => {
     if (!hydratedRef.current || !dbReady || !services || vaultSwitching || restoringRef.current) {
       return
     }
     if (initialRestoreDoneRef.current) return
-    if (currentSessionId) {
+    if (!restorePrefReady) return
+    if (!restoreLastSessionOnReturn) {
       initialRestoreDoneRef.current = true
+      if (currentSessionId) {
+        clearSession()
+      }
       return
     }
-    if (!restoreLastSessionOnReturn) {
+    if (currentSessionId) {
       initialRestoreDoneRef.current = true
       return
     }
@@ -170,9 +185,18 @@ export function useAgentNavigationPersistence({
           if (cancelled) return
           if (!session) {
             console.warn(
-              '[useAgentNavigation] 持久化会话未找到或无法在此小窝中加载，清空当前会话:',
+              '[useAgentNavigation] 持久化会话未找到或无法在此小窝中加载，尝试恢复伙伴最新会话:',
               saved.sessionId
             )
+            const recent =
+              assistantToUse?.id && services.sessionManager.list
+                ? await services.sessionManager.list(1, 0, assistantToUse.id).catch(() => [])
+                : []
+            if (!cancelled && recent.length > 0 && recent[0]?.id) {
+              await handleSelectSession(recent[0].id)
+              void loadSessions(true, assistantToUse?.id)
+              return
+            }
             invalidateCurrentSession()
             return
           }
@@ -189,6 +213,16 @@ export function useAgentNavigationPersistence({
           await handleSelectSession(saved.sessionId)
           void loadSessions(true, assistantToUse?.id ?? sessionAssistantId ?? undefined)
           return
+        }
+
+        // 快照无 sessionId，但开启了「返回后继续上次会话」且已确定助手：兜底恢复最新会话
+        if (restoreLastSessionOnReturn && assistantToUse?.id && services.sessionManager.list) {
+          const recent = await services.sessionManager.list(1, 0, assistantToUse.id).catch(() => [])
+          if (!cancelled && recent.length > 0 && recent[0]?.id) {
+            await handleSelectSession(recent[0].id)
+            void loadSessions(true, assistantToUse.id)
+            return
+          }
         }
 
         if (!currentSessionId) {
@@ -217,6 +251,7 @@ export function useAgentNavigationPersistence({
     handleSelectSession,
     loadSessions,
     navigationHydrationEpoch,
+    restorePrefReady,
     restoreLastSessionOnReturn,
     services,
     vaultSwitching
@@ -227,9 +262,19 @@ export function useAgentNavigationPersistence({
       return
     }
 
+    if (
+      shouldSkipNavigationPersistBeforeRestore({
+        restoreLastSessionOnReturn,
+        initialRestoreDone: initialRestoreDoneRef.current,
+        currentSessionId
+      })
+    ) {
+      return
+    }
+
     const snapshot = {
       assistantId: currentAssistant?.id ?? null,
-      sessionId: currentSessionId
+      sessionId: restoreLastSessionOnReturn ? currentSessionId : null
     }
 
     const prevSessionId = prevSessionIdRef.current
@@ -257,7 +302,15 @@ export function useAgentNavigationPersistence({
     }, 180)
 
     return () => clearTimeout(timer)
-  }, [currentAssistant?.id, currentSessionId, dbReady, persistSnapshot, services, vaultSwitching])
+  }, [
+    currentAssistant?.id,
+    currentSessionId,
+    dbReady,
+    persistSnapshot,
+    restoreLastSessionOnReturn,
+    services,
+    vaultSwitching
+  ])
 
   useEffect(() => {
     if (!dbReady || !services || !currentSessionId) return
@@ -297,7 +350,7 @@ export function useAgentNavigationPersistence({
   ])
 
   const reconcileSessionAssistant = useCallback(async () => {
-    if (!hydratedRef.current || !dbReady || !services || vaultSwitching) return
+    if (!hydratedRef.current || !dbReady || !services || vaultSwitching || !restorePrefReady) return
 
     const vaultKey = await services.pathService.getActiveVaultNameForContext()
     const reconcileKey = `${vaultKey}:${currentAssistant?.id ?? ''}:${currentSessionId ?? ''}`
@@ -316,21 +369,17 @@ export function useAgentNavigationPersistence({
     lastReconcileKeyRef.current = reconcileKey
     lastReconcileAtRef.current = now
 
-    const saved = useAgentNavigationStore.getState().getContext(vaultKey)
-    let persistedSessionId: string | null | undefined = saved.sessionId
-    if (lastPersistedRef.current) {
-      try {
-        const parsed = JSON.parse(lastPersistedRef.current) as { sessionId?: string | null }
-        persistedSessionId = parsed.sessionId ?? null
-      } catch {
-        // ignore malformed cache
+    if (!restoreLastSessionOnReturn) {
+      if (currentSessionId) {
+        clearSession()
       }
+      return
     }
+
+    const saved = useAgentNavigationStore.getState().getContext(vaultKey)
 
     if (!currentSessionId) {
       if (!restoreLastSessionOnReturn) return
-      if (!saved.sessionId) return
-      if (persistedSessionId == null) return
       if (assistants.length === 0) return
 
       if (
@@ -343,20 +392,44 @@ export function useAgentNavigationPersistence({
         return
       }
 
+      let assistantToUse = currentAssistant
       if (saved.assistantId) {
         const assistant = assistants.find((item) => item.id === saved.assistantId)
         if (assistant && assistant.id !== currentAssistant?.id) {
           handleSelectAssistant(assistant)
+          assistantToUse = assistant
         }
       }
 
-      const session = await lookupSession(services, saved.sessionId)
-      if (!session) {
-        invalidateCurrentSession()
+      if (saved.sessionId) {
+        const session = await lookupSession(services, saved.sessionId)
+        if (!session) {
+          const recent =
+            assistantToUse?.id && services.sessionManager.list
+              ? await services.sessionManager.list(1, 0, assistantToUse.id).catch(() => [])
+              : []
+          if (recent.length > 0 && recent[0]?.id) {
+            await handleSelectSession(recent[0].id)
+            void loadSessions(true, assistantToUse?.id)
+            return
+          }
+          invalidateCurrentSession()
+          return
+        }
+        await handleSelectSession(saved.sessionId)
+        void loadSessions(true, saved.assistantId ?? assistantToUse?.id ?? undefined)
         return
       }
-      await handleSelectSession(saved.sessionId)
-      void loadSessions(true, saved.assistantId ?? currentAssistant?.id ?? undefined)
+
+      // 快照无 sessionId，但开启了「返回后继续上次会话」：兜底拉取该助手最新会话
+      if (assistantToUse?.id && services.sessionManager.list) {
+        const recent = await services.sessionManager.list(1, 0, assistantToUse.id).catch(() => [])
+        if (recent.length > 0 && recent[0]?.id) {
+          await handleSelectSession(recent[0].id)
+          void loadSessions(true, assistantToUse.id)
+          return
+        }
+      }
       return
     }
 
@@ -382,6 +455,7 @@ export function useAgentNavigationPersistence({
     }
   }, [
     assistants,
+    clearSession,
     invalidateCurrentSession,
     currentAssistant,
     currentSessionId,
@@ -390,6 +464,7 @@ export function useAgentNavigationPersistence({
     handleSelectSession,
     loadSessions,
     persistSnapshot,
+    restorePrefReady,
     restoreLastSessionOnReturn,
     services,
     vaultSwitching
@@ -402,13 +477,22 @@ export function useAgentNavigationPersistence({
 
       return () => {
         if (!hydratedRef.current || !services) return
+        if (
+          shouldSkipNavigationPersistBeforeRestore({
+            restoreLastSessionOnReturn,
+            initialRestoreDone: initialRestoreDoneRef.current,
+            currentSessionId: currentSessionIdRef.current
+          })
+        ) {
+          return
+        }
         void (async () => {
           await persistSnapshot({
             assistantId: currentAssistantIdRef.current,
-            sessionId: currentSessionIdRef.current
+            sessionId: restoreLastSessionOnReturn ? currentSessionIdRef.current : null
           })
         })()
       }
-    }, [reconcileSessionAssistant, persistSnapshot, services])
+    }, [reconcileSessionAssistant, persistSnapshot, restoreLastSessionOnReturn, services])
   )
 }

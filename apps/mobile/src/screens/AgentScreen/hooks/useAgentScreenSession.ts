@@ -55,6 +55,7 @@ export function useAgentScreenSession(deps: {
   } = useBaishou()
   const currentSessionIdRef = useRef<string | null>(null)
   const [aiProviders, setAiProviders] = useState<AIProviderConfig[]>([])
+  const [restorePrefReady, setRestorePrefReady] = useState(false)
   const [restoreLastSessionOnReturn, setRestoreLastSessionOnReturn] = useState(true)
   const userProfile = useAgentUserProfile()
 
@@ -65,8 +66,12 @@ export function useAgentScreenSession(deps: {
       .then((saved) => {
         const merged = { ...DEFAULT_AGENT_BEHAVIOR, ...saved }
         setRestoreLastSessionOnReturn(merged.restoreLastSessionOnReturn !== false)
+        setRestorePrefReady(true)
       })
-      .catch(() => setRestoreLastSessionOnReturn(true))
+      .catch(() => {
+        setRestoreLastSessionOnReturn(true)
+        setRestorePrefReady(true)
+      })
   }, [dbReady, services])
 
   useEffect(() => {
@@ -244,6 +249,7 @@ export function useAgentScreenSession(deps: {
     dbReady,
     vaultSwitching,
     vaultRevision,
+    restorePrefReady,
     restoreLastSessionOnReturn,
     services,
     assistants,
