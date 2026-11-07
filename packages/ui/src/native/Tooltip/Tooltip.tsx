@@ -50,12 +50,7 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
 
   return (
     <>
-      <Pressable
-        onPress={handlePress}
-        hitSlop={hitSlop}
-        style={style}
-        {...props}
-      >
+      <Pressable onPress={handlePress} hitSlop={hitSlop} style={style} {...props}>
         {children}
       </Pressable>
 

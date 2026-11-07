@@ -44,12 +44,16 @@ describe('release-channel.util', () => {
           windows: {
             version: '1.5.10',
             tag: 'v1.5.10',
-            downloadUrl: 'https://dl.foxletters.com/releases/download/v1.5.10/BaiShou-Windows-Setup.exe'
+            downloadUrl:
+              'https://dl.foxletters.com/releases/download/v1.5.10/BaiShou-Windows-Setup.exe'
           }
         })
       })
 
-    const manifest = await fetchReleaseChannelManifest(undefined, mockFetch as unknown as typeof fetch)
+    const manifest = await fetchReleaseChannelManifest(
+      undefined,
+      mockFetch as unknown as typeof fetch
+    )
     expect(mockFetch).toHaveBeenCalledTimes(2)
     expect(manifest.windows?.version).toBe('1.5.10')
   })

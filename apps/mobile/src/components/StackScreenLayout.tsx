@@ -12,10 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '@baishou/ui/native'
 import { StackScreenHeader, type StackScreenHeaderProps } from './StackScreenHeader'
 import { getStackScreenChrome } from './stackScreenChrome'
-import {
-  logNavigationPhase,
-  sampleTransitionFrames
-} from '../navigation/transitionDiagnostics'
+import { logNavigationPhase, sampleTransitionFrames } from '../navigation/transitionDiagnostics'
 
 const FADE_IN_DURATION_MS = 240
 void FadeIn
