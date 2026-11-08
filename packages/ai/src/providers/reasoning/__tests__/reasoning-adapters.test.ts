@@ -237,6 +237,31 @@ describe('reasoning adapters', () => {
     ).toBeUndefined()
   })
 
+  it('builds adaptive thinking for claude 5.5 models without budgetTokens', () => {
+    for (const modelId of [
+      'claude-5-5-sonnet',
+      'claude-5.5-sonnet',
+      'claude-sonnet-5.5',
+      'claude-5.5',
+      'claude-5-5-haiku',
+      'claude-5-5-opus'
+    ]) {
+      const built = buildReasoningProviderOptions({
+        modelId,
+        providerType: 'anthropic',
+        effort: 'xhigh'
+      })
+      expect(built?.anthropic).toMatchObject({
+        thinking: { type: 'adaptive', display: 'summarized' },
+        effort: 'xhigh'
+      })
+      expect(
+        (built?.anthropic as { thinking?: { budgetTokens?: number } } | undefined)?.thinking
+          ?.budgetTokens
+      ).toBeUndefined()
+    }
+  })
+
   it('passes deepseek-v4 max via openaiCompatible providerOptions', () => {
     expect(
       resolveReasoningApiShape({

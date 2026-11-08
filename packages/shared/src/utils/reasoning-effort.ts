@@ -123,7 +123,9 @@ export function isDashScopeThinkingToggleModel(
   const type = (providerTypeOrId || '').toLowerCase()
   if (type !== 'dashscope' && !type.includes('dashscope')) return false
   const id = normalizeModelBaseId(modelId)
-  return Boolean(id && /qwen|thinking|reasoner|qwq/.test(id))
+  if (!id) return false
+  if (id.includes('deepseek-chat') || id.includes('deepseek-v3')) return false
+  return /qwen|thinking|reasoner|reasoning|qwq|deepseek-r1|\br1\b|kimi.*k2/.test(id)
 }
 
 /**
@@ -160,7 +162,52 @@ export function listDeepSeekReasoningEfforts(modelId: string): ReasoningEffort[]
 
 export function isAnthropicReasoningModel(modelId: string): boolean {
   const id = normalizeModelBaseId(modelId)
-  return Boolean(id && (id.includes('claude') || id.startsWith('anthropic')))
+  return Boolean(
+    id && (id.includes('claude') || id.startsWith('anthropic') || /^(sonnet|opus|haiku)/i.test(id))
+  )
+}
+
+/**
+ * 解析 Claude 模型的版本号（主版本号 major 与次版本号 minor）。
+ * 兼容 family-first（如 claude-sonnet-5.5、claude-opus-4.7）
+ * 与 version-first（如 claude-5.5-sonnet、claude-5-5-sonnet、claude-5.5、claude-5-5-haiku）等多种命名风格。
+ * 次版本号限制 1~2 位数字，避免将年月日发布日期误当成次版本。
+ */
+export function parseAnthropicModelVersion(
+  modelId: string
+): { major: number; minor: number } | null {
+  const id = normalizeModelBaseId(modelId).toLowerCase()
+  if (!id.includes('claude') && !/^(anthropic\/)?(sonnet|opus|haiku)/i.test(id)) {
+    return null
+  }
+  const match =
+    /(?:claude-(?:(?:opus|sonnet|haiku)-)?|(?:opus|sonnet|haiku)-)(\d+)(?:[.-](\d{1,2}))?(?:[.@-]|$)/i.exec(
+      id
+    )
+  if (match) {
+    const major = Number(match[1])
+    const minor = Number(match[2] ?? 0)
+    return { major, minor }
+  }
+  // 未带具体数字版本的泛 Claude 模型（如 claude-latest），安全兜底为现代自适应模型
+  if (id.includes('claude') || /^(anthropic\/)?(sonnet|opus|haiku)/i.test(id)) {
+    return { major: 999, minor: 0 }
+  }
+  return null
+}
+
+/** Claude 4.7+ / 5.x / 5.5 等现代自适应思考模型（含 xhigh） */
+export function isAnthropicModernAdaptiveModel(modelId: string): boolean {
+  const parsed = parseAnthropicModelVersion(modelId)
+  if (!parsed) return false
+  return parsed.major > 4 || (parsed.major === 4 && parsed.minor >= 7)
+}
+
+/** Claude 4.6 系列自适应思考模型（支持 low|medium|high|max，无 xhigh） */
+export function isAnthropic46AdaptiveModel(modelId: string): boolean {
+  const parsed = parseAnthropicModelVersion(modelId)
+  if (!parsed) return false
+  return parsed.major === 4 && parsed.minor === 6
 }
 
 export function isGeminiReasoningModel(modelId: string): boolean {
@@ -228,21 +275,18 @@ export function listOpenAiStyleReasoningEfforts(modelId: string): ReasoningEffor
 
 export function listAnthropicReasoningEfforts(modelId: string): ReasoningEffort[] {
   const id = normalizeModelBaseId(modelId)
-  if (!id) return []
-  // Opus 4.7+ / Sonnet 5 等：含 xhigh
-  if (
-    /claude.*4[.-][7-9]|claude.*4[.-]\d{2}|opus-4[.-][7-9]|sonnet-4[.-][7-9]|sonnet-5|opus-5|claude.*sonnet-5|claude.*opus-5/.test(
-      id
-    )
-  ) {
+  if (!id || !isAnthropicReasoningModel(modelId)) return []
+
+  // Opus 4.7+ / Sonnet 5 / 5.5 等：含 xhigh
+  if (isAnthropicModernAdaptiveModel(modelId)) {
     return ['low', 'medium', 'high', 'xhigh', 'max']
   }
   // Claude 4.6 系：low|medium|high|max
-  if (/claude.*4[.-]6|opus-4[.-]6|sonnet-4[.-]6/.test(id)) {
+  if (isAnthropic46AdaptiveModel(modelId)) {
     return ['low', 'medium', 'high', 'max']
   }
   // Opus 4.5：low|medium|high（无 max）
-  if (/opus-4[.-]5|claude.*opus.*4[.-]5/.test(id)) {
+  if (/opus-4[.-]5|claude.*opus.*4[.-]5/i.test(id)) {
     return ['low', 'medium', 'high']
   }
   // 其它支持 effort 的 Claude：保守 high|max

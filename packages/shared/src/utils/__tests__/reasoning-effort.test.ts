@@ -109,10 +109,24 @@ describe('reasoning-effort', () => {
     const ctl = getReasoningControlForModel('qwen-plus', 'dashscope')
     expect(ctl.mode).toBe('toggle')
     expect(ctl.supportsToggle).toBe(true)
+    const dsR1 = getReasoningControlForModel('deepseek-r1', 'dashscope')
+    expect(dsR1.mode).toBe('toggle')
+    expect(dsR1.supportsToggle).toBe(true)
+    const dsKimi = getReasoningControlForModel('kimi-k2.5', 'dashscope')
+    expect(dsKimi.mode).toBe('toggle')
+    expect(dsKimi.supportsToggle).toBe(true)
+    const dsChat = getReasoningControlForModel('deepseek-chat', 'dashscope')
+    expect(dsChat.supportsToggle).toBeFalsy()
   })
 
   it('lists anthropic and gemini efforts', () => {
     expect(listAnthropicReasoningEfforts('claude-sonnet-4-6')).toEqual([
+      'low',
+      'medium',
+      'high',
+      'max'
+    ])
+    expect(listAnthropicReasoningEfforts('claude-4-6-sonnet')).toEqual([
       'low',
       'medium',
       'high',
@@ -124,6 +138,53 @@ describe('reasoning-effort', () => {
       'high',
       'xhigh',
       'max'
+    ])
+    expect(listAnthropicReasoningEfforts('claude-5-5-sonnet')).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max'
+    ])
+    expect(listAnthropicReasoningEfforts('claude-5.5-sonnet')).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max'
+    ])
+    expect(listAnthropicReasoningEfforts('claude-sonnet-5.5')).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max'
+    ])
+    expect(listAnthropicReasoningEfforts('claude-5.5')).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max'
+    ])
+    expect(listAnthropicReasoningEfforts('claude-5-5-haiku')).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max'
+    ])
+    expect(listAnthropicReasoningEfforts('sonnet-5.5')).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max'
+    ])
+    expect(listAnthropicReasoningEfforts('claude-opus-4-5-20250929')).toEqual([
+      'low',
+      'medium',
+      'high'
     ])
     expect(listGeminiReasoningEfforts('gemini-2.5-pro')).toEqual(['high', 'max'])
     expect(listGeminiReasoningEfforts('gemini-3-flash')).toEqual([

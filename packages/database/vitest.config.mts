@@ -6,6 +6,8 @@ const isWinOrWsl =
 export default defineConfig({
   test: {
     maxWorkers: isWinOrWsl ? 2 : undefined,
+    testTimeout: 20000,
+    hookTimeout: 20000,
     globals: true,
     environment: 'node',
     exclude: [

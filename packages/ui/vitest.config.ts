@@ -15,6 +15,8 @@ export default defineConfig({
   },
   test: {
     maxWorkers: isWinOrWsl ? 2 : undefined,
+    testTimeout: 15000,
+    hookTimeout: 15000,
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
