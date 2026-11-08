@@ -25,4 +25,26 @@ describe('resolveProviderBaseUrl', () => {
     expect(resolved).not.toContain('api.openai.com')
     expect(resolved).toContain('siliconflow.cn')
   })
+
+  it('normalizes root base URL to /v1 for ollama and lmstudio', () => {
+    expect(resolveProviderBaseUrl('ollama', 'ollama', 'http://127.0.0.1:11435')).toBe(
+      'http://127.0.0.1:11435/v1'
+    )
+    expect(resolveProviderBaseUrl('ollama', 'ollama', 'http://127.0.0.1:11435/')).toBe(
+      'http://127.0.0.1:11435/v1'
+    )
+    expect(resolveProviderBaseUrl('ollama', 'ollama', 'http://localhost:11434')).toBe(
+      'http://localhost:11434/v1'
+    )
+    expect(resolveProviderBaseUrl('ollama', 'ollama', 'http://127.0.0.1:11435/v1')).toBe(
+      'http://127.0.0.1:11435/v1'
+    )
+    expect(resolveProviderBaseUrl('lmstudio', 'lmstudio', 'http://localhost:1234')).toBe(
+      'http://localhost:1234/v1'
+    )
+    // 其他非本地兼容服务保持原样
+    expect(resolveProviderBaseUrl('deepseek', 'deepseek', 'https://api.deepseek.com')).toBe(
+      'https://api.deepseek.com'
+    )
+  })
 })
