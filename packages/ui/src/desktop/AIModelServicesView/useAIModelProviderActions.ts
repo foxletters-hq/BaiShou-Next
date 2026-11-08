@@ -124,6 +124,8 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
     let url = localFormData.baseUrl
     if (url && url.includes('generativelanguage.googleapis.com') && !url.includes('v1')) {
       url = url.replace(/\/+$/, '') + '/v1beta'
+    } else if (url) {
+      url = resolveProviderBaseUrl(selectedProviderId, providerType(), url)
     }
     if (url !== localFormData.baseUrl) {
       setLocalFormData((prev) => ({ ...prev, baseUrl: url }))

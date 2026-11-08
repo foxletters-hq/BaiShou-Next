@@ -26,6 +26,39 @@ export const PROVIDER_DEFAULT_BASE_URLS: Record<string, string> = {
   custom: 'https://api.openai.com/v1'
 }
 
+/**
+ * 针对需要固定 API 命名空间的供应商（如 Ollama / LM Studio 等本地兼容服务）
+ * 在用户仅填写了 host:port 根地址时自动规范化补齐 /v1。
+ */
+export function normalizeProviderBaseUrl(
+  providerId: string,
+  providerType?: string,
+  rawUrl?: string | null
+): string {
+  let url = (rawUrl ?? '').trim()
+  if (!url) return ''
+
+  url = url.replace(/\/+$/, '')
+
+  const type = (providerType || providerId || '').trim().toLowerCase()
+  if (type === 'ollama' || type === 'lmstudio') {
+    try {
+      const candidate = /^https?:\/\//i.test(url) ? url : `http://${url}`
+      const parsed = new URL(candidate)
+      if (parsed.pathname === '/' || parsed.pathname === '') {
+        parsed.pathname = '/v1'
+        return parsed.toString().replace(/\/+$/, '')
+      }
+    } catch {
+      if (!url.endsWith('/v1')) {
+        return `${url}/v1`
+      }
+    }
+  }
+
+  return url
+}
+
 export function resolveProviderBaseUrl(
   providerId: string,
   providerType?: string,
@@ -33,7 +66,7 @@ export function resolveProviderBaseUrl(
 ): string {
   const trimmed = (baseUrl ?? '').trim()
   if (trimmed) {
-    return trimmed
+    return normalizeProviderBaseUrl(providerId, providerType, trimmed)
   }
 
   const typeKey = (providerType || '').trim().toLowerCase()

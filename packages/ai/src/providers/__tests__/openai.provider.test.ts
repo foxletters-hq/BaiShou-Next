@@ -192,5 +192,70 @@ describe('OpenAIAdaptedProvider', () => {
       const models = await provider.fetchAvailableModels()
       expect(models).toEqual(['jina-embeddings-v3', 'jina-clip-v2', 'reader-lm-1.5b'])
     })
+
+    it('fetches models from ollama with root url and falls back to /api/tags on 404', async () => {
+      // 第一次请求 /v1/models 返回 404
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found'
+      } as Response)
+      // 第二次请求 /api/tags 成功返回 Ollama 原生 models 格式
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [
+            { name: 'bge-m3:latest', model: 'bge-m3:latest' },
+            { name: 'llama3:latest', model: 'llama3:latest' }
+          ]
+        })
+      } as Response)
+
+      const provider = new OpenAIAdaptedProvider(
+        createAiProvider({
+          id: ProviderType.Ollama,
+          name: 'Ollama',
+          type: ProviderType.Ollama,
+          apiKey: '',
+          baseUrl: 'http://127.0.0.1:11435'
+        })
+      )
+
+      const models = await provider.fetchAvailableModels()
+      expect(models).toEqual(['bge-m3:latest', 'llama3:latest'])
+      expect(fetch).toHaveBeenNthCalledWith(
+        1,
+        'http://127.0.0.1:11435/v1/models',
+        expect.any(Object)
+      )
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        'http://127.0.0.1:11435/api/tags',
+        expect.any(Object)
+      )
+    })
+
+    it('fetches models from ollama /v1/models when available', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ id: 'bge-m3' }, { id: 'qwen2.5:7b' }]
+        })
+      } as Response)
+
+      const provider = new OpenAIAdaptedProvider(
+        createAiProvider({
+          id: ProviderType.Ollama,
+          name: 'Ollama',
+          type: ProviderType.Ollama,
+          apiKey: 'local',
+          baseUrl: 'http://127.0.0.1:11435'
+        })
+      )
+
+      const models = await provider.fetchAvailableModels()
+      expect(models).toEqual(['bge-m3', 'qwen2.5:7b'])
+      expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:11435/v1/models', expect.any(Object))
+    })
   })
 })

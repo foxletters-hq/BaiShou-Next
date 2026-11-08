@@ -175,6 +175,19 @@ function createOpenAICompatFetchInterceptor(
   }
 }
 
+function extractModelIdsFromResponse(data: any): string[] {
+  if (!data || typeof data !== 'object') return []
+  // OpenAI 兼容格式：{ data: [{ id: "..." }] }
+  if (Array.isArray(data.data)) {
+    return data.data.map((m: any) => (m?.id || m?.name || m?.model) as string).filter(Boolean)
+  }
+  // Ollama 原生格式：{ models: [{ name: "...", model: "..." }] }
+  if (Array.isArray(data.models)) {
+    return data.models.map((m: any) => (m?.name || m?.model || m?.id) as string).filter(Boolean)
+  }
+  return []
+}
+
 /**
  * 通用的兼容 OpenAI 标准 API 格式的 Provider
  */
@@ -259,26 +272,55 @@ export class OpenAIAdaptedProvider implements IAIProvider {
 
     const base = this.resolvedBaseUrl()
     const endpoint = base ? base.replace(/\/$/, '') + '/models' : 'https://api.openai.com/v1/models'
+    const headers = sanitizeRequestHeaders(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
+    const sanitizedFetch = createSanitizedFetch()
 
     try {
-      const response = await createSanitizedFetch()(endpoint, {
-        headers: sanitizeRequestHeaders({
-          Authorization: `Bearer ${apiKey}`
-        })
-      })
-      if (!response.ok) {
-        throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`)
+      let response: Response | null = null
+      let primaryError: Error | null = null
+
+      try {
+        const res = await sanitizedFetch(endpoint, { headers })
+        if (res.ok) {
+          response = res
+        } else {
+          primaryError = new Error(`Failed to fetch models: ${res.status} ${res.statusText}`)
+        }
+      } catch (e: any) {
+        primaryError = e instanceof Error ? e : new Error(String(e))
       }
+
+      // 针对 Ollama：若标准 /v1/models 响应 404 或网络失败，尝试请求 Ollama 原生 /api/tags 接口
+      if (this.config.type === 'ollama' && (!response || !response.ok)) {
+        try {
+          const host = base.replace(/\/v1\/?$/i, '').replace(/\/+$/, '')
+          const nativeEndpoint = `${host}/api/tags`
+          if (nativeEndpoint !== endpoint) {
+            const nativeRes = await sanitizedFetch(nativeEndpoint, { headers })
+            if (nativeRes.ok) {
+              response = nativeRes
+              primaryError = null
+            }
+          }
+        } catch {
+          // 保留原 primaryError
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw primaryError || new Error('Failed to fetch models')
+      }
+
       const data = await response.json()
-      if (data && data.data && Array.isArray(data.data)) {
-        let remoteIds = data.data.map((m: any) => m.id as string).filter(Boolean)
+      let remoteIds = extractModelIdsFromResponse(data)
+      if (remoteIds.length > 0) {
         remoteIds = normalizeRemoteModelIds(remoteIds)
         if (this.config.type.toLowerCase() === 'zhipu') {
           return mergeZhipuKnownEmbeddingModels(remoteIds)
         }
         return remoteIds
       }
-      throw new Error(`Invalid response format from API. Expected data array.`)
+      throw new Error(`Invalid response format from API. Expected data or models array.`)
     } catch (e: any) {
       console.error(`Fetch models error for ${this.config.name}:`, e)
       throw new Error(e.message || 'Unknown network error')
