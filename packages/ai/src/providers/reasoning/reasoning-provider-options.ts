@@ -14,6 +14,8 @@ import {
   isMiniMaxM3Model,
   isGlm52ReasoningModel,
   isKimiThinkingControlModel,
+  isAnthropicModernAdaptiveModel,
+  isAnthropic46AdaptiveModel,
   REASONING_EFFORTS
 } from '@baishou/shared'
 import { resolveReasoningApiShape, type ReasoningApiShapeContext } from './reasoning-api-shape'
@@ -73,19 +75,6 @@ function openAiResponsesOptions(effort: ReasoningEffort): Record<string, unknown
   }
 }
 
-/** Claude ≥4.7：adaptive + display summarized；4.6：adaptive 无 display（对齐参考） */
-function isAnthropicModernAdaptive(modelId: string): boolean {
-  const id = normalizeModelBaseId(modelId)
-  return /claude.*4[.-][7-9]|claude.*4[.-]\d{2}|opus-4[.-][7-9]|sonnet-4[.-][7-9]|sonnet-5|opus-5|claude.*sonnet-5|claude.*opus-5/.test(
-    id
-  )
-}
-
-function isAnthropic46Adaptive(modelId: string): boolean {
-  const id = normalizeModelBaseId(modelId)
-  return /claude.*4[.-]6|opus-4[.-]6|sonnet-4[.-]6/.test(id)
-}
-
 function budgetBoundsForRequest(
   modelId: string,
   transport: 'anthropic' | 'native' = 'native',
@@ -136,7 +125,7 @@ function anthropicOptions(
     }
   }
 
-  if (isAnthropicModernAdaptive(modelId)) {
+  if (isAnthropicModernAdaptiveModel(modelId)) {
     return {
       anthropic: {
         thinking: { type: 'adaptive', display: 'summarized' },
@@ -145,7 +134,7 @@ function anthropicOptions(
     }
   }
 
-  if (isAnthropic46Adaptive(modelId)) {
+  if (isAnthropic46AdaptiveModel(modelId)) {
     return {
       anthropic: {
         thinking: { type: 'adaptive' },
