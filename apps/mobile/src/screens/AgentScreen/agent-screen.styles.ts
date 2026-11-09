@@ -86,6 +86,7 @@ export const agentScreenStyles = StyleSheet.create({
   scrollBtnWrap: {
     position: 'absolute',
     right: sharedTokens.spacing.lg,
+    bottom: 0,
     zIndex: 15
   },
   scrollBtn: {
@@ -100,6 +101,7 @@ export const agentScreenStyles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
+    bottom: 0,
     overflow: 'visible',
     zIndex: 10
   },

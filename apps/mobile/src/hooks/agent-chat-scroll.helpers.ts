@@ -1,6 +1,6 @@
 import type { MutableRefObject } from 'react'
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
-import { logAgentScrollEvent } from '../utils/agent-scroll-diagnostics'
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native'
+import { logAgentScrollEvent, type AgentScrollSnapshot } from '../utils/agent-scroll-diagnostics'
 import { shouldTreatScrollAsUserLeave } from './agent-chat-scroll.decisions'
 
 export const BOTTOM_THRESHOLD_PX = 48
@@ -36,6 +36,53 @@ export function isNearContentBottom(
 ): boolean {
   if (viewportHeight <= 0 || contentHeight <= 0) return false
   return contentHeight - offsetY - viewportHeight <= threshold
+}
+
+export function syncScrollOffsetOnIdleShrink(input: {
+  scrollView: ScrollView | null
+  contentHeight: number
+  viewportHeight: number
+  lastScrollOffsetRef: MutableRefObject<number>
+  suppressInterruptRef: MutableRefObject<number>
+  forceToMaxOffset: boolean
+}): number {
+  const maxOffset = Math.max(0, input.contentHeight - input.viewportHeight)
+  const clampedOffset = Math.min(input.lastScrollOffsetRef.current, maxOffset)
+  if (
+    input.viewportHeight > 0 &&
+    input.scrollView &&
+    (input.forceToMaxOffset || input.lastScrollOffsetRef.current > maxOffset)
+  ) {
+    input.suppressInterruptRef.current += 1
+    input.scrollView.scrollTo({ y: maxOffset, animated: false })
+  }
+  input.lastScrollOffsetRef.current = input.forceToMaxOffset ? maxOffset : clampedOffset
+  return input.lastScrollOffsetRef.current
+}
+
+export function buildAgentScrollSnapshot(input: {
+  metrics: NativeScrollEvent | null
+  lastContentHeight: number
+  offsetY: number
+  lockedAway: boolean
+  followMode: ScrollFollowMode
+  anchor: number | undefined
+  peakContentH: number
+}): AgentScrollSnapshot {
+  const contentH = input.metrics?.contentSize.height ?? input.lastContentHeight
+  const viewportH = input.metrics?.layoutMeasurement.height ?? 0
+  const maxOffset = Math.max(0, contentH - viewportH)
+  return {
+    offsetY: Math.round(input.offsetY),
+    contentH: Math.round(contentH),
+    viewportH: Math.round(viewportH),
+    maxOffset: Math.round(maxOffset),
+    nearBottom: input.metrics ? isNearBottom(input.metrics) : undefined,
+    lockedAway: input.lockedAway,
+    followMode: input.followMode,
+    anchorMinH: input.anchor != null ? Math.round(input.anchor) : 0,
+    peakContentH: Math.round(input.peakContentH)
+  }
 }
 
 export interface AgentChatListScrollHandlerDeps {

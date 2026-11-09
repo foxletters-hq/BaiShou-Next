@@ -104,6 +104,7 @@ export const AgentScreen = () => {
           handleBubbleEditingChange={c.handleBubbleEditingChange}
           isRetryActionBusy={c.isRetryActionBusy}
           listFooter={c.streaming.listFooter}
+          listKeyboardAnimatedStyle={c.listKeyboardAnimatedStyle}
           showScrollButton={c.showScrollButton}
           isBubbleEditing={c.isBubbleEditing}
           scrollButtonAnimatedStyle={c.scrollButtonAnimatedStyle}

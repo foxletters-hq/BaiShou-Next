@@ -33,6 +33,11 @@ describe('agent-chat-scroll helper wiring chrome', () => {
   })
 })
 
+const anchorSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'useAgentChatScrollAnchor.ts'),
+  'utf8'
+)
+
 const keyboardInsetsSrc = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '..', 'useAgentChatKeyboardInsets.ts'),
   'utf8'
@@ -55,5 +60,25 @@ describe('useAgentChatKeyboardInsets retraction guard chrome', () => {
     expect(keyboardInsetsSrc).toContain('transitionedToClosed')
     expect(keyboardInsetsSrc).toContain('closingFinished')
     expect(keyboardInsetsSrc).toContain('bottom: composerBottom.value')
+  })
+
+  it('should not treat zero animated height as droppedFromPeak or block onShow when state is closed', () => {
+    expect(keyboardInsetsSrc).toContain(
+      'peak > 0 && height > 0 && height <= peak - 40 && (prev == null || height <= prev.height)'
+    )
+    expect(keyboardInsetsSrc).not.toContain(
+      'keyboard.state.value === 4 && keyboard.height.value <= 0'
+    )
+    expect(keyboardInsetsSrc).not.toContain(
+      'const hideSub = Keyboard.addListener(hideEvent, resetKeyboardInset)'
+    )
+  })
+
+  it('should translate list and dock on UI thread and track keyboard motion direction', () => {
+    expect(keyboardInsetsSrc).toContain('keyboardMotionSv')
+    expect(keyboardInsetsSrc).toContain('listKeyboardAnimatedStyle')
+    expect(keyboardInsetsSrc).toContain('transform: [{ translateY: -composerBottom.value }]')
+    expect(keyboardInsetsSrc).toContain('transform: [{ translateY: -liftOffset }]')
+    expect(anchorSrc).toContain('syncScrollOffsetOnIdleShrink')
   })
 })

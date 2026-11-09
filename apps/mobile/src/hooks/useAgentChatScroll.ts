@@ -10,6 +10,7 @@ import {
   shouldShowScrollToBottomButton
 } from './agent-chat-scroll.decisions'
 import {
+  buildAgentScrollSnapshot,
   isNearBottom,
   isNearContentBottom,
   handleAgentChatListScroll,
@@ -73,25 +74,19 @@ export function useAgentChatScroll({
   const streamingActiveRef = useRef(isStreaming || isStreamBridgeActive)
   streamingActiveRef.current = isStreaming || isStreamBridgeActive
 
-  const snapshotScroll = useCallback((): AgentScrollSnapshot => {
-    const metrics = lastScrollMetricsRef.current
-    const contentH = metrics?.contentSize.height ?? lastContentHeightRef.current
-    const viewportH = metrics?.layoutMeasurement.height ?? 0
-    const offsetY = lastScrollOffsetRef.current
-    const maxOffset = Math.max(0, contentH - viewportH)
-    const anchor = contentAnchorMinHeightRef.current
-    return {
-      offsetY: Math.round(offsetY),
-      contentH: Math.round(contentH),
-      viewportH: Math.round(viewportH),
-      maxOffset: Math.round(maxOffset),
-      nearBottom: metrics ? isNearBottom(metrics) : undefined,
-      lockedAway: userLockedAwayRef.current,
-      followMode: followModeRef.current,
-      anchorMinH: anchor != null ? Math.round(anchor) : 0,
-      peakContentH: Math.round(peakContentHeightRef.current)
-    }
-  }, [])
+  const snapshotScroll = useCallback(
+    (): AgentScrollSnapshot =>
+      buildAgentScrollSnapshot({
+        metrics: lastScrollMetricsRef.current,
+        lastContentHeight: lastContentHeightRef.current,
+        offsetY: lastScrollOffsetRef.current,
+        lockedAway: userLockedAwayRef.current,
+        followMode: followModeRef.current,
+        anchor: contentAnchorMinHeightRef.current,
+        peakContentH: peakContentHeightRef.current
+      }),
+    []
+  )
 
   const inPostStreamWatch = useCallback(() => Date.now() < postStreamWatchUntilRef.current, [])
 
@@ -135,6 +130,8 @@ export function useAgentChatScroll({
   } = useAgentChatScrollAnchor({
     userLockedAwayRef,
     followModeRef,
+    isUserDraggingRef,
+    isMomentumScrollingRef,
     lastScrollMetricsRef,
     lastScrollOffsetRef,
     lastContentHeightRef,
@@ -200,19 +197,11 @@ export function useAgentChatScroll({
   const jumpToBottomInstant = useCallback(
     (scrollViewRef: RefObject<ScrollView | null>, reason = 'jump_instant') => {
       if (!scrollViewRef.current) return
-      if (userLockedAwayRef.current) {
+      if (messages.length === 0 && !streamingActiveRef.current) return
+      if (userLockedAwayRef.current || followModeRef.current !== 'following') {
         logAgentScrollEvent('programmatic_scroll_blocked', {
           reason,
-          by: 'lockedAway',
-          ...snapshotScroll(),
-          postStreamWatch: inPostStreamWatch()
-        })
-        return
-      }
-      if (followModeRef.current !== 'following') {
-        logAgentScrollEvent('programmatic_scroll_blocked', {
-          reason,
-          by: 'notFollowing',
+          by: userLockedAwayRef.current ? 'lockedAway' : 'notFollowing',
           ...snapshotScroll(),
           postStreamWatch: inPostStreamWatch()
         })
@@ -245,7 +234,7 @@ export function useAgentChatScroll({
       suppressInterruptRef.current += 1
       scrollViewRef.current.scrollToEnd({ animated: false })
     },
-    [snapshotScroll, inPostStreamWatch]
+    [messages.length, snapshotScroll, inPostStreamWatch]
   )
 
   jumpToBottomInstantRef.current = jumpToBottomInstant
@@ -285,7 +274,19 @@ export function useAgentChatScroll({
     (scrollViewRef: RefObject<ScrollView | null>) => {
       scrollViewRefHolder.current = scrollViewRef
       const metrics = lastScrollMetricsRef.current
-      if (metrics && !isNearBottom(metrics)) return
+      const liveContentH =
+        lastIntrinsicContentHeightRef.current ||
+        lastContentHeightRef.current ||
+        metrics?.contentSize.height ||
+        0
+      const viewportH = metrics?.layoutMeasurement.height || viewportHeightRef.current || 0
+      const alreadyFollowing = !userLockedAwayRef.current && followModeRef.current === 'following'
+      const nearBottom =
+        alreadyFollowing ||
+        liveContentH <= 0 ||
+        viewportH <= 0 ||
+        isNearContentBottom(lastScrollOffsetRef.current, liveContentH, viewportH)
+      if (!nearBottom) return
       enterFollowing()
       releaseContentHandoff()
       jumpToBottomInstant(scrollViewRef, 'begin_follow_if_at_bottom')
