@@ -15,14 +15,15 @@ import {
   type TextInputKeyPressEventData
 } from 'react-native'
 import { cancelAnimation, Easing, useSharedValue, withTiming } from 'react-native-reanimated'
-import type { MockChatAttachment, PromptShortcut } from '@baishou/shared'
 import {
+  type MockChatAttachment,
+  type PromptShortcut,
   CREATE_SKILL_SLASH_COMMAND,
   getDefaultShortcutLabelsFromT,
   getShortcutCommand,
   localizePromptShortcuts
 } from '@baishou/shared'
-import type { ComposerSendSkillRef } from '../../shared/composer-draft'
+import { useComposerDraft, type ComposerSendSkillRef } from '../../shared/composer-draft'
 import { buildNativeComposerSend, isSkillShortcut } from './composer-send-meta.util'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
@@ -35,7 +36,6 @@ import {
   pickAttachmentsFromPhotoLibrary,
   type PickAttachmentsResult
 } from './attachment-picker.util'
-import { useComposerDraft } from '../../shared/composer-draft'
 import { Camera, FolderOpen, Image as ImageIcon } from 'lucide-react-native'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
@@ -307,14 +307,12 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     if (!choice) return
 
     try {
-      let result: PickAttachmentsResult
-      if (choice === 'camera') {
-        result = await pickAttachmentsFromCamera()
-      } else if (choice === 'album') {
-        result = await pickAttachmentsFromPhotoLibrary()
-      } else {
-        result = await pickAttachmentsFromFileManager()
-      }
+      const result =
+        choice === 'camera'
+          ? await pickAttachmentsFromCamera()
+          : choice === 'album'
+            ? await pickAttachmentsFromPhotoLibrary()
+            : await pickAttachmentsFromFileManager()
       applyPickResult(result)
     } catch (err) {
       console.warn('Attachment picker error:', err)
@@ -327,10 +325,12 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
       setTimeout(() => inputRef.current?.focus?.(), 0)
     },
     setText: (nextText: string) => {
+      textRef.current = nextText
       setText(nextText)
     },
     restoreDraft: (draft) => {
       const nextText = typeof draft.text === 'string' ? draft.text : ''
+      textRef.current = nextText
       setText(nextText)
       if (draft.skillRefs) {
         setSkillRefs(
@@ -355,17 +355,27 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
       applyComposerShortcut(shortcut)
       setTimeout(() => inputRef.current?.focus?.(), 0)
     },
-    focus: () => {
-      inputRef.current?.focus?.()
-    },
-    blur: () => {
-      inputRef.current?.blur?.()
-    }
+    focus: () => inputRef.current?.focus?.(),
+    blur: () => inputRef.current?.blur?.()
   }))
 
   const handleSend = useCallback(async () => {
-    if (shortcutHandlers.shortcutModeActive && text.startsWith('/')) return
-    if (!text.trim() && attachments.length === 0 && skillRefs.length === 0) return
+    if (shortcutHandlers.shortcutModeActive && textRef.current.startsWith('/')) return
+
+    /**
+     * 吞字根治：若输入框处于聚焦态（用户刚打完字或输入法处于 composing 状态），
+     * 先主动失焦促使 Android/iOS 输入法提交组合文字（finishComposingText），
+     * 并微延迟 32ms 让出 JS 宏任务时间片，确保原生事件队列将派发的 onChangeText 消费完毕，
+     * 保证随后读取的 textRef.current 为最新全量文本。
+     */
+    if (inputRef.current?.isFocused?.()) {
+      inputRef.current?.blur?.()
+      await new Promise((resolve) => setTimeout(resolve, 32))
+    }
+
+    const latestText = textRef.current
+    if (shortcutHandlers.shortcutModeActive && latestText.startsWith('/')) return
+    if (!latestText.trim() && attachments.length === 0 && skillRefs.length === 0) return
     if ((isLoading && !allowSendWhileLoading) || isSending) return
 
     if (composerBlocked) {
@@ -373,7 +383,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
       return
     }
 
-    const pendingText = text
+    const pendingText = latestText
     const pendingAttachments = attachments.length > 0 ? [...attachments] : []
     const contentByCommand = new Map<string, string>()
     for (const item of localizedShortcuts ?? []) {
@@ -394,6 +404,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
       attachments: pendingAttachments
     })
 
+    textRef.current = ''
     setText('')
     setAttachments([])
     setSkillRefs([])
@@ -414,6 +425,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
         )
       )
       if (accepted === false) {
+        textRef.current = pendingText
         setText(pendingText)
         setAttachments(pendingAttachments)
         setSkillRefs(pendingSkills)
@@ -436,8 +448,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     onComposerBlocked,
     onSend,
     shortcutHandlers.shortcutModeActive,
-    skillRefs,
-    text
+    skillRefs
   ])
 
   const handleShortcutPress = useCallback(() => {
@@ -462,14 +473,16 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
 
   const handleChangeText = useCallback(
     (nextText: string) => {
+      const prevText = textRef.current
+      textRef.current = nextText
       if (shortcuts?.length) {
-        shortcutHandlers.handleTextChangeForShortcuts(text, nextText)
-      } else if (nextText === '/' && text === '' && onTriggerShortcut) {
+        shortcutHandlers.handleTextChangeForShortcuts(prevText, nextText)
+      } else if (nextText === '/' && prevText === '' && onTriggerShortcut) {
         onTriggerShortcut()
       }
       setText(nextText)
     },
-    [shortcuts, shortcutHandlers, text, onTriggerShortcut]
+    [shortcuts, shortcutHandlers, onTriggerShortcut]
   )
 
   const handleKeyPress = useCallback(
@@ -510,9 +523,6 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     handleShortcutPress,
     handleChangeText,
     handleKeyPress,
-    onRecall: onRecall ? handleRecallPress : undefined,
-    onOpenNotebookMount: onOpenNotebookMount ? handleOpenNotebookMountPress : undefined,
-    onOpenTools: onOpenTools ? handleOpenToolsPress : undefined,
     searchMode,
     onToggleSearchMode,
     ttsMode,
@@ -522,6 +532,9 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     composerEnabled,
     isLoading,
     allowSendWhileLoading,
-    onStop
+    onStop,
+    onRecall: onRecall ? handleRecallPress : undefined,
+    onOpenNotebookMount: onOpenNotebookMount ? handleOpenNotebookMountPress : undefined,
+    onOpenTools: onOpenTools ? handleOpenToolsPress : undefined
   }
 }
