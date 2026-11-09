@@ -1,6 +1,8 @@
 import {
   buildSkillSendText,
   composerExtraPlain,
+  CREATE_SKILL_SLASH_COMMAND,
+  getShortcutCommand,
   type PromptFileRef,
   type PromptShortcut
 } from '@baishou/shared'
@@ -9,6 +11,43 @@ import type { ComposerSendMeta, ComposerSendSkillRef } from '../../shared/compos
 
 export function isSkillShortcut(shortcut: PromptShortcut): boolean {
   return shortcut.source === 'software' || shortcut.source === 'workspace'
+}
+
+export function syncSkillRefsWithShortcuts(
+  skillRefs: ComposerSendSkillRef[],
+  localizedShortcuts?: PromptShortcut[]
+): ComposerSendSkillRef[] {
+  if (!skillRefs.length || !localizedShortcuts?.length) return skillRefs
+  const contentByCommand = new Map<string, string>()
+  for (const item of localizedShortcuts) {
+    const cmd = getShortcutCommand(item).trim().replace(/^\/+/, '').toLowerCase()
+    if (cmd) contentByCommand.set(cmd, item.content ?? '')
+  }
+  let changed = false
+  const next = skillRefs.map((item) => {
+    const cmd = item.command.trim().replace(/^\/+/, '').toLowerCase()
+    if (!cmd || cmd === CREATE_SKILL_SLASH_COMMAND) return item
+    const latestContent = contentByCommand.get(cmd)
+    if (typeof latestContent === 'string' && latestContent !== item.content) {
+      changed = true
+      return { ...item, content: latestContent }
+    }
+    return item
+  })
+  return changed ? next : skillRefs
+}
+
+export function normalizeRestoredSkillRefs(
+  skillRefs: Array<{ command?: unknown; content?: unknown }>
+): ComposerSendSkillRef[] {
+  return skillRefs
+    .map((item) => ({
+      command: String(item.command ?? '')
+        .trim()
+        .replace(/^\//, ''),
+      content: typeof item.content === 'string' ? item.content : ''
+    }))
+    .filter((item) => Boolean(item.command))
 }
 
 export function fileRefsFromAttachments(attachments: MockChatAttachment[]): PromptFileRef[] {

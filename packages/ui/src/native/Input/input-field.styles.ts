@@ -28,19 +28,43 @@ export function getHeroInputFieldStyle(
   }
 }
 
+function flattenTextStyle(style?: StyleProp<TextStyle>): TextStyle | undefined {
+  if (typeof StyleSheet?.flatten === 'function') {
+    return StyleSheet.flatten(style)
+  }
+  if (!style) return undefined
+  if (Array.isArray(style)) {
+    return Object.assign(
+      {},
+      ...style.map((item) => flattenTextStyle(item as StyleProp<TextStyle>) ?? {})
+    )
+  }
+  return typeof style === 'object' ? (style as TextStyle) : undefined
+}
+
 export function isCompactInputStyle(style?: StyleProp<TextStyle>): boolean {
-  const flat = StyleSheet.flatten(style)
+  const flat = flattenTextStyle(style)
   if (!flat) return false
   return flat.width != null || flat.maxWidth != null
 }
 
 export function getCompactTextFieldStyle(style?: StyleProp<TextStyle>): ViewStyle | undefined {
-  const flat = StyleSheet.flatten(style)
-  if (!flat?.width && !flat?.maxWidth) return undefined
-  return {
-    width: flat.width,
-    maxWidth: flat.maxWidth,
-    flexShrink: 0,
-    alignSelf: 'flex-end'
+  const flat = flattenTextStyle(style)
+  if (!flat?.width && !flat?.maxWidth && flat?.height !== '100%' && flat?.flex == null) {
+    return undefined
   }
+  const layout: ViewStyle = {}
+  if (flat.width != null || flat.maxWidth != null) {
+    layout.width = flat.width
+    layout.maxWidth = flat.maxWidth
+    layout.flexShrink = 0
+    layout.alignSelf = 'flex-end'
+  }
+  if (flat.height === '100%') {
+    layout.height = '100%'
+    layout.flex = 1
+  } else if (flat.flex != null) {
+    layout.flex = flat.flex
+  }
+  return layout
 }

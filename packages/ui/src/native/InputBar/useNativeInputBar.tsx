@@ -18,24 +18,22 @@ import { cancelAnimation, Easing, useSharedValue, withTiming } from 'react-nativ
 import {
   type MockChatAttachment,
   type PromptShortcut,
-  CREATE_SKILL_SLASH_COMMAND,
   getDefaultShortcutLabelsFromT,
-  getShortcutCommand,
   localizePromptShortcuts
 } from '@baishou/shared'
 import { useComposerDraft, type ComposerSendSkillRef } from '../../shared/composer-draft'
-import { buildNativeComposerSend, isSkillShortcut } from './composer-send-meta.util'
+import {
+  buildNativeComposerSend,
+  isSkillShortcut,
+  normalizeRestoredSkillRefs,
+  syncSkillRefsWithShortcuts
+} from './composer-send-meta.util'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import { useNativeToast } from '../Toast'
 import { useDialog } from '../Dialog'
 import { useInputBarShortcuts } from '../../hooks/useInputBarShortcuts'
-import {
-  pickAttachmentsFromCamera,
-  pickAttachmentsFromFileManager,
-  pickAttachmentsFromPhotoLibrary,
-  type PickAttachmentsResult
-} from './attachment-picker.util'
+import { pickAttachmentsBySource, type AttachmentSourceChoice } from './attachment-picker.util'
 import { Camera, FolderOpen, Image as ImageIcon } from 'lucide-react-native'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
@@ -121,27 +119,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
   const shortcutHandlers = useInputBarShortcuts(text, setText, localizedShortcuts)
 
   useEffect(() => {
-    if (!localizedShortcuts?.length) return
-    const contentByCommand = new Map<string, string>()
-    for (const item of localizedShortcuts) {
-      const cmd = getShortcutCommand(item).trim().replace(/^\/+/, '').toLowerCase()
-      if (cmd) contentByCommand.set(cmd, item.content ?? '')
-    }
-    setSkillRefs((prev) => {
-      if (!prev.length) return prev
-      let changed = false
-      const next = prev.map((item) => {
-        const cmd = item.command.trim().replace(/^\/+/, '').toLowerCase()
-        if (!cmd || cmd === CREATE_SKILL_SLASH_COMMAND) return item
-        const latestContent = contentByCommand.get(cmd)
-        if (typeof latestContent === 'string' && latestContent !== item.content) {
-          changed = true
-          return { ...item, content: latestContent }
-        }
-        return item
-      })
-      return changed ? next : prev
-    })
+    setSkillRefs((prev) => syncSkillRefsWithShortcuts(prev, localizedShortcuts))
   }, [localizedShortcuts])
 
   /**
@@ -242,9 +220,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     [applyContentHeight]
   )
 
-  const toggleExpand = useCallback(() => {
-    setIsExpanded((prev) => !prev)
-  }, [])
+  const toggleExpand = useCallback(() => setIsExpanded((prev) => !prev), [])
 
   const toggleToolbar = useCallback(() => {
     setShowToolbar((prev) => {
@@ -257,30 +233,61 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     })
   }, [toolbarProgress])
 
-  const applyPickResult = useCallback(
-    (result: PickAttachmentsResult) => {
-      if (!result.ok) {
-        if (result.reason === 'permission_denied') {
-          toast.showError(t('input.attachment_permission_denied', '需要相机或相册权限才能继续'))
-        } else if (result.reason === 'text_too_large') {
-          toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
-        }
-        return
-      }
-      setAttachments((prev) => [...prev, ...result.attachments])
-    },
-    [t, toast]
-  )
-
   const dismissComposerKeyboard = useCallback(() => {
     inputRef.current?.blur?.()
     Keyboard.dismiss()
   }, [])
 
+  const focusRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const focusComposerInput = useCallback(() => {
+    if (!composerEnabled) return
+    const input = inputRef.current
+    if (!input) return
+    if (focusRetryTimerRef.current) {
+      clearTimeout(focusRetryTimerRef.current)
+      focusRetryTimerRef.current = null
+    }
+    const alreadyFocused = Boolean(input.isFocused?.())
+    const keyboardShown = Keyboard.isVisible?.() === true
+    if (alreadyFocused && !keyboardShown) {
+      // Android 系统返回手势或列表滑动收起软键盘后，TextInput 仍残留原生焦点；
+      // 直接调 focus() 会被原生 requestFocus 短路忽略，需先 blur 再重新 focus 以拉起软键盘。
+      input.blur?.()
+      focusRetryTimerRef.current = setTimeout(() => {
+        focusRetryTimerRef.current = null
+        inputRef.current?.focus?.()
+      }, 16)
+      return
+    }
+    input.focus?.()
+  }, [composerEnabled])
+
+  const handleInputPressIn = useCallback(() => {
+    if (!composerEnabled) return
+    onInputFocus?.()
+  }, [composerEnabled, onInputFocus])
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined
+    const sub = Keyboard.addListener('keyboardDidHide', () => {
+      if (Keyboard.isVisible?.() !== true && inputRef.current?.isFocused?.()) {
+        inputRef.current?.blur?.()
+      }
+    })
+    return () => {
+      sub.remove()
+      if (focusRetryTimerRef.current) {
+        clearTimeout(focusRetryTimerRef.current)
+        focusRetryTimerRef.current = null
+      }
+    }
+  }, [])
+
   const handleUploadAttachment = useCallback(async () => {
     dismissComposerKeyboard()
     const iconColor = colors.textSecondary
-    const choice = await dialog.choose(
+    const choice = (await dialog.choose(
       undefined,
       [
         {
@@ -303,26 +310,29 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
         }
       ],
       t('input.attachment_source_title', '选择附件来源')
-    )
+    )) as AttachmentSourceChoice | null
     if (!choice) return
 
     try {
-      const result =
-        choice === 'camera'
-          ? await pickAttachmentsFromCamera()
-          : choice === 'album'
-            ? await pickAttachmentsFromPhotoLibrary()
-            : await pickAttachmentsFromFileManager()
-      applyPickResult(result)
+      const result = await pickAttachmentsBySource(choice)
+      if (!result.ok) {
+        if (result.reason === 'permission_denied') {
+          toast.showError(t('input.attachment_permission_denied', '需要相机或相册权限才能继续'))
+        } else if (result.reason === 'text_too_large') {
+          toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
+        }
+        return
+      }
+      setAttachments((prev) => [...prev, ...result.attachments])
     } catch (err) {
       console.warn('Attachment picker error:', err)
     }
-  }, [applyPickResult, colors.textSecondary, dialog, dismissComposerKeyboard, t])
+  }, [colors.textSecondary, dialog, dismissComposerKeyboard, t, toast])
 
   useImperativeHandle(ref, () => ({
     insertText: (newText: string) => {
       setText((prev) => (prev ? `${prev}\n${newText}` : newText))
-      setTimeout(() => inputRef.current?.focus?.(), 0)
+      setTimeout(() => focusComposerInput(), 0)
     },
     setText: (nextText: string) => {
       textRef.current = nextText
@@ -333,29 +343,20 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
       textRef.current = nextText
       setText(nextText)
       if (draft.skillRefs) {
-        setSkillRefs(
-          draft.skillRefs
-            .map((item) => ({
-              command: String(item.command ?? '')
-                .trim()
-                .replace(/^\//, ''),
-              content: typeof item.content === 'string' ? item.content : ''
-            }))
-            .filter((item) => Boolean(item.command))
-        )
+        setSkillRefs(normalizeRestoredSkillRefs(draft.skillRefs))
       } else if (!nextText) {
         setSkillRefs([])
       }
     },
     insertShortcutContent: (content: string) => {
       shortcutHandlers.insertShortcutContent(content)
-      setTimeout(() => inputRef.current?.focus?.(), 0)
+      setTimeout(() => focusComposerInput(), 0)
     },
     applyShortcut: (shortcut: PromptShortcut) => {
       applyComposerShortcut(shortcut)
-      setTimeout(() => inputRef.current?.focus?.(), 0)
+      setTimeout(() => focusComposerInput(), 0)
     },
-    focus: () => inputRef.current?.focus?.(),
+    focus: () => focusComposerInput(),
     blur: () => inputRef.current?.blur?.()
   }))
 
@@ -385,19 +386,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
 
     const pendingText = latestText
     const pendingAttachments = attachments.length > 0 ? [...attachments] : []
-    const contentByCommand = new Map<string, string>()
-    for (const item of localizedShortcuts ?? []) {
-      const cmd = getShortcutCommand(item).trim().replace(/^\/+/, '').toLowerCase()
-      if (cmd) contentByCommand.set(cmd, item.content ?? '')
-    }
-    const pendingSkills = skillRefs.map((item) => {
-      const cmd = item.command.trim().replace(/^\/+/, '').toLowerCase()
-      const latestContent =
-        cmd && cmd !== CREATE_SKILL_SLASH_COMMAND ? contentByCommand.get(cmd) : undefined
-      return typeof latestContent === 'string' && latestContent !== item.content
-        ? { ...item, content: latestContent }
-        : item
-    })
+    const pendingSkills = syncSkillRefsWithShortcuts(skillRefs, localizedShortcuts)
     const composed = buildNativeComposerSend({
       text: pendingText,
       skillRefs: pendingSkills,
@@ -451,25 +440,21 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     skillRefs
   ])
 
+  const wrapWithDismiss = useCallback(
+    (action?: () => void) =>
+      action
+        ? () => {
+            dismissComposerKeyboard()
+            action()
+          }
+        : undefined,
+    [dismissComposerKeyboard]
+  )
+
   const handleShortcutPress = useCallback(() => {
     dismissComposerKeyboard()
     onManageShortcuts?.()
   }, [dismissComposerKeyboard, onManageShortcuts])
-
-  const handleRecallPress = useCallback(() => {
-    dismissComposerKeyboard()
-    onRecall?.()
-  }, [dismissComposerKeyboard, onRecall])
-
-  const handleOpenNotebookMountPress = useCallback(() => {
-    dismissComposerKeyboard()
-    onOpenNotebookMount?.()
-  }, [dismissComposerKeyboard, onOpenNotebookMount])
-
-  const handleOpenToolsPress = useCallback(() => {
-    dismissComposerKeyboard()
-    onOpenTools?.()
-  }, [dismissComposerKeyboard, onOpenTools])
 
   const handleChangeText = useCallback(
     (nextText: string) => {
@@ -523,6 +508,8 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     handleShortcutPress,
     handleChangeText,
     handleKeyPress,
+    focusComposerInput,
+    handleInputPressIn,
     searchMode,
     onToggleSearchMode,
     ttsMode,
@@ -533,8 +520,8 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     isLoading,
     allowSendWhileLoading,
     onStop,
-    onRecall: onRecall ? handleRecallPress : undefined,
-    onOpenNotebookMount: onOpenNotebookMount ? handleOpenNotebookMountPress : undefined,
-    onOpenTools: onOpenTools ? handleOpenToolsPress : undefined
+    onRecall: wrapWithDismiss(onRecall),
+    onOpenNotebookMount: wrapWithDismiss(onOpenNotebookMount),
+    onOpenTools: wrapWithDismiss(onOpenTools)
   }
 }

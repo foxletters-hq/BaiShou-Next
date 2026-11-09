@@ -43,4 +43,20 @@ describe('native input bar latest text', () => {
     expect(clearIdx).toBeGreaterThan(0)
     expect(onSendIdx).toBeGreaterThan(clearIdx)
   })
+
+  it('should re-focus by blurring first when input retains zombie focus after keyboard dismissal', () => {
+    expect(hook).toContain('const focusComposerInput = useCallback')
+    expect(hook).toContain('if (alreadyFocused && !keyboardShown)')
+    expect(hook).toContain("Keyboard.addListener('keyboardDidHide'")
+    expect(hook).toContain('handleInputPressIn')
+  })
+
+  it('should wire bottom row blank area and input press-in to wake up composer keyboard', () => {
+    const indexSrc = readFileSync(join(here, '../index.tsx'), 'utf8')
+    expect(indexSrc).toContain('bottomRowSpacer')
+    expect(indexSrc).toContain('onPress={bar.focusComposerInput}')
+    expect(indexSrc).toContain(
+      'onPressIn={bar.composerEnabled ? bar.handleInputPressIn : undefined}'
+    )
+  })
 })

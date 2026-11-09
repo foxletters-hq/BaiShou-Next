@@ -112,6 +112,10 @@ export const nativeInputBarStyles = StyleSheet.create({
     height: INPUT_CARD_BOTTOM_ROW,
     flexShrink: 0
   },
+  bottomRowSpacer: {
+    flex: 1,
+    alignSelf: 'stretch'
+  },
   bottomActions: {
     flexDirection: 'row',
     alignItems: 'center',

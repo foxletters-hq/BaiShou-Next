@@ -1,5 +1,13 @@
 import React, { forwardRef, useState } from 'react'
-import { View, TouchableOpacity, Text, Image, ScrollView, StyleSheet } from 'react-native'
+import {
+  View,
+  TouchableOpacity,
+  Pressable,
+  Text,
+  Image,
+  ScrollView,
+  StyleSheet
+} from 'react-native'
 import Animated, { useAnimatedStyle } from 'react-native-reanimated'
 import { LayoutGrid, Maximize2, Menu, Minimize2, Send } from 'lucide-react-native'
 import { Input } from '../Input/Input'
@@ -203,7 +211,8 @@ export const InputBar = React.memo(
                         styles.input,
                         {
                           color: colors.textPrimary,
-                          height: '100%'
+                          height: '100%',
+                          flex: 1
                         }
                       ]}
                       value={bar.text}
@@ -220,6 +229,7 @@ export const InputBar = React.memo(
                           : 'top'
                       }
                       editable={bar.composerEnabled}
+                      onPressIn={bar.composerEnabled ? bar.handleInputPressIn : undefined}
                       onFocus={bar.composerEnabled ? bar.onInputFocus : undefined}
                     />
                   </Animated.View>
@@ -256,6 +266,12 @@ export const InputBar = React.memo(
                       color={colors.textTertiary}
                     />
                   </TouchableOpacity>
+
+                  <Pressable
+                    style={styles.bottomRowSpacer}
+                    onPress={bar.focusComposerInput}
+                    accessible={false}
+                  />
 
                   <View style={styles.bottomActions}>
                     {props.modelSelector ? (

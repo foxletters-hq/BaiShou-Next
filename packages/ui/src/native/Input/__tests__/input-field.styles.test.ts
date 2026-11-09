@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { lightColors } from '../../../theme/light'
 import { mobileControlTokens, sharedTokens } from '../../../theme/tokens'
-import { getHeroInputFieldStyle } from '../input-field.styles'
+import { getCompactTextFieldStyle, getHeroInputFieldStyle } from '../input-field.styles'
 
 describe('native Input field styles', () => {
   it('should stretch the default field to full width and clamp single-line height', () => {
@@ -23,5 +23,13 @@ describe('native Input field styles', () => {
     expect(multiline.minHeight).toBeUndefined()
     expect(multiline.maxHeight).toBeUndefined()
     expect(multiline.paddingVertical).toBe(sharedTokens.spacing.smPlus)
+  })
+
+  it('should forward full-height fill layout to TextField wrapper when input style has height 100%', () => {
+    const layout = getCompactTextFieldStyle({ height: '100%' })
+    expect(layout).toEqual({
+      height: '100%',
+      flex: 1
+    })
   })
 })
