@@ -56,6 +56,16 @@ export type PickAttachmentsResult =
   | { ok: true; attachments: MockChatAttachment[] }
   | { ok: false; reason: 'canceled' | 'permission_denied' | 'text_too_large' | 'error' }
 
+export type AttachmentSourceChoice = 'camera' | 'album' | 'files'
+
+export async function pickAttachmentsBySource(
+  choice: AttachmentSourceChoice
+): Promise<PickAttachmentsResult> {
+  if (choice === 'camera') return pickAttachmentsFromCamera()
+  if (choice === 'album') return pickAttachmentsFromPhotoLibrary()
+  return pickAttachmentsFromFileManager()
+}
+
 export async function pickAttachmentsFromCamera(): Promise<PickAttachmentsResult> {
   const perm = await ImagePicker.requestCameraPermissionsAsync()
   if (!perm.granted) {

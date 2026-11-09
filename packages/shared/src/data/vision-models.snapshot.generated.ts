@@ -4,7 +4,7 @@
  * Source: https://models.dev/api.json + scripts/provider-modelsdev.manifest.json
  */
 export const VISION_MODELS_SNAPSHOT = {
-  syncedAt: '2026-11-08T07:52:37.940Z',
+  syncedAt: '2026-11-09T15:08:26.584Z',
   source: 'https://models.dev/api.json',
   byProvider: {
     openai: [
@@ -442,6 +442,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'kimi-k2.7-code',
       'kimi-k3',
       'kimi-k3.1-pro',
+      'longcat-2.5-free',
       'longcat-2.5-preview-free',
       'mimo-v2.5',
       'mimo-v2.6-flash',
@@ -1053,6 +1054,7 @@ export const VISION_MODELS_SNAPSHOT = {
     'klingai/kling-v3.0-motion-control',
     'labs-devstral-small-2512',
     'labs-leanstral-1-5-1',
+    'longcat-2.5-free',
     'longcat-2.5-preview-free',
     'lyria-3-clip-preview',
     'lyria-3-pro-preview',
