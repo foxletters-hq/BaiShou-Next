@@ -246,8 +246,9 @@ export function AgentChatList(props: AgentChatListProps) {
             onContentSizeChange={p.handleListContentSizeChange}
             scrollEventThrottle={16}
           >
-            <View
+            <Animated.View
               collapsable={false}
+              style={p.listKeyboardAnimatedStyle}
               onLayout={(event) => {
                 const { y, height } = event.nativeEvent.layout
                 const totalHeight = Math.ceil(y + height)
@@ -420,7 +421,7 @@ export function AgentChatList(props: AgentChatListProps) {
               })}
 
               {p.listFooter}
-            </View>
+            </Animated.View>
           </ScrollView>
         </AgentDrawerSwipeZone>
 

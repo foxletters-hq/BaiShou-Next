@@ -5,6 +5,7 @@ import { logAgentScrollEvent, type AgentScrollSnapshot } from '../utils/agent-sc
 import {
   BOTTOM_THRESHOLD_PX,
   isNearContentBottom,
+  syncScrollOffsetOnIdleShrink,
   type ScrollFollowMode
 } from './agent-chat-scroll.helpers'
 
@@ -14,6 +15,8 @@ import {
 export interface UseAgentChatScrollAnchorParams {
   userLockedAwayRef: MutableRefObject<boolean>
   followModeRef: MutableRefObject<ScrollFollowMode>
+  isUserDraggingRef: MutableRefObject<boolean>
+  isMomentumScrollingRef: MutableRefObject<boolean>
   lastScrollMetricsRef: MutableRefObject<NativeScrollEvent | null>
   lastScrollOffsetRef: MutableRefObject<number>
   lastContentHeightRef: MutableRefObject<number>
@@ -43,6 +46,8 @@ export interface UseAgentChatScrollAnchorParams {
 export function useAgentChatScrollAnchor({
   userLockedAwayRef,
   followModeRef,
+  isUserDraggingRef,
+  isMomentumScrollingRef,
   lastScrollMetricsRef,
   lastScrollOffsetRef,
   lastContentHeightRef,
@@ -345,6 +350,32 @@ export function useAgentChatScrollAnchor({
             const effectiveH =
               intrinsic > 0 && intrinsic < contentHeight - 1 ? intrinsic : contentHeight
             reconcileAnchorAfterContentShrink(scrollViewRef, effectiveH, prevHeight)
+            const viewportH =
+              lastScrollMetricsRef.current?.layoutMeasurement.height ||
+              viewportHeightRef.current ||
+              0
+            if (
+              viewportH > 0 &&
+              !isUserDraggingRef.current &&
+              !isMomentumScrollingRef.current &&
+              !isStreaming &&
+              !isStreamBridgeActive &&
+              !revealing &&
+              !watching
+            ) {
+              const clampedOffset = syncScrollOffsetOnIdleShrink({
+                scrollView:
+                  contentAnchorMinHeightRef.current == null ? scrollViewRef.current : null,
+                contentHeight: effectiveH,
+                viewportHeight: viewportH,
+                lastScrollOffsetRef,
+                suppressInterruptRef,
+                forceToMaxOffset: false
+              })
+              if (isNearContentBottom(clampedOffset, effectiveH, viewportH)) {
+                enterFollowingRef.current()
+              }
+            }
           }
           return
         }

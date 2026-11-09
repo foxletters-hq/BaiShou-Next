@@ -10,6 +10,7 @@ export function useAgentListScrollHandlers(deps: {
   layoutReadyRef: RefObject<boolean>
   handleContentSizeChange: (ref: RefObject<ScrollView | null>, height: number) => void
   handleIntrinsicContentHeightChange: (height: number) => void
+  syncListContentHeight?: (height: number) => void
   handleChatListScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   handleScrollEndDrag?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   handleLoadMore?: () => Promise<void> | void
@@ -22,6 +23,7 @@ export function useAgentListScrollHandlers(deps: {
     layoutReadyRef,
     handleContentSizeChange,
     handleIntrinsicContentHeightChange,
+    syncListContentHeight,
     handleChatListScroll,
     handleScrollEndDrag,
     handleLoadMore,
@@ -52,6 +54,7 @@ export function useAgentListScrollHandlers(deps: {
       const pendingAnchor = pendingPrependAnchorRef.current
       if (height > 0) {
         lastContentHeightRef.current = height
+        syncListContentHeight?.(height)
       }
       if (pendingAnchor && height > pendingAnchor.prevHeight + 1) {
         pendingPrependAnchorRef.current = null
@@ -64,14 +67,15 @@ export function useAgentListScrollHandlers(deps: {
       }
       handleContentSizeChange(flatListRef, height)
     },
-    [handleContentSizeChange, flatListRef, scrollOffsetRef]
+    [handleContentSizeChange, syncListContentHeight, flatListRef, scrollOffsetRef]
   )
 
   const handleListIntrinsicContentHeightChange = useCallback(
     (height: number) => {
+      syncListContentHeight?.(height)
       handleIntrinsicContentHeightChange(height)
     },
-    [handleIntrinsicContentHeightChange]
+    [handleIntrinsicContentHeightChange, syncListContentHeight]
   )
 
   const handleListScroll = useCallback(

@@ -100,6 +100,7 @@ export type AgentChatListProps = {
   handleBubbleEditingChange: (editing: boolean, messageId?: string) => void
   isRetryActionBusy: boolean
   listFooter: React.ReactNode
+  listKeyboardAnimatedStyle?: any
   showScrollButton: boolean
   isBubbleEditing: boolean
   scrollButtonAnimatedStyle: any

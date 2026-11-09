@@ -181,18 +181,26 @@ export function useAgentScreenController() {
 
   const composerKeyboardLiftEnabled =
     !drawerOpen && !showShortcutSheet && !showRecallSheet && !showCostDialog
+  const canLiftListContent = isStreaming || isStreamBridgeActive || displayMessages.length > 0
   const {
     keyboardInset,
     inputDockAnimatedStyle,
     scrollButtonAnimatedStyle,
     listSpacerAnimatedStyle,
+    listKeyboardAnimatedStyle,
+    syncListContentHeight,
     handleComposerFocus,
     resetKeyboardInset
   } = useAgentChatKeyboardInsets({
     tabBarHeight,
     inputDockHeight,
     isBubbleEditing,
-    enableComposerKeyboardLift: composerKeyboardLiftEnabled
+    enableComposerKeyboardLift: composerKeyboardLiftEnabled,
+    listViewportHeight,
+    canLiftListContent,
+    onKeyboardShow: () => {
+      requestAnimationFrame(() => beginFollowIfAtBottom(flatListRef))
+    }
   })
 
   useFocusEffect(
@@ -298,6 +306,7 @@ export function useAgentScreenController() {
     layoutReadyRef,
     handleContentSizeChange,
     handleIntrinsicContentHeightChange,
+    syncListContentHeight,
     handleChatListScroll,
     handleScrollEndDrag,
     handleLoadMore,
@@ -371,6 +380,7 @@ export function useAgentScreenController() {
     showScrollButton,
     isBubbleEditing,
     scrollButtonAnimatedStyle,
+    listKeyboardAnimatedStyle,
     scrollToBottom,
     inputDockHeight,
     setInputDockHeight,
