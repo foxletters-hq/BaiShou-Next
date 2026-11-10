@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   DEFAULT_USER_PROFILE,
-  USER_PROFILE_SETTINGS_KEY,
+  getUserProfileFromSettings,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity,
   type UserGender,
@@ -29,6 +29,7 @@ export type AgentUserProfileState = {
 }
 
 let agentUserProfileCache: AgentUserProfileState | null = null
+let snapshotInvalidatedByVaultSwitch = false
 
 export async function readPersistedAgentUserProfileSnapshot(): Promise<AgentUserProfileState | null> {
   try {
@@ -54,14 +55,16 @@ export async function readPersistedAgentUserProfileSnapshot(): Promise<AgentUser
       }
     }
 
-    const onboarding = await readOnboardingProfile().catch(() => null)
-    if (onboarding?.nickname) {
-      return {
-        nickname: onboarding.nickname,
-        birthday: onboarding.birthday,
-        gender: onboarding.gender,
-        customGender: onboarding.customGender,
-        isReady: true
+    if (!snapshotInvalidatedByVaultSwitch) {
+      const onboarding = await readOnboardingProfile().catch(() => null)
+      if (onboarding?.nickname) {
+        return {
+          nickname: onboarding.nickname,
+          birthday: onboarding.birthday,
+          gender: onboarding.gender,
+          customGender: onboarding.customGender,
+          isReady: true
+        }
       }
     }
     return null
@@ -92,11 +95,15 @@ export function peekAgentUserProfileCache(): AgentUserProfileState | null {
 }
 
 export function setAgentUserProfileCache(profile: AgentUserProfileState): void {
+  snapshotInvalidatedByVaultSwitch = false
   agentUserProfileCache = { ...profile, isReady: true }
   void persistAgentUserProfileSnapshot(agentUserProfileCache)
 }
 
-export function invalidateAgentUserProfileCache(): void {
+export function invalidateAgentUserProfileCache(options?: {
+  suppressOnboardingFallback?: boolean
+}): void {
+  snapshotInvalidatedByVaultSwitch = Boolean(options?.suppressOnboardingFallback)
   agentUserProfileCache = null
   void AsyncStorage.removeItem(AGENT_USER_PROFILE_SNAPSHOT_KEY).catch(() => {})
 }
@@ -126,7 +133,7 @@ export async function loadAgentUserProfileFromSettings(
   settingsManager: SettingsManagerService,
   fallbackNickname = DEFAULT_USER_PROFILE.nickname
 ): Promise<AgentUserProfileState> {
-  const profile = await settingsManager.get<Partial<UserProfile>>(USER_PROFILE_SETTINGS_KEY)
+  const profile = await getUserProfileFromSettings(settingsManager)
   const next = mapSettingsToAgentUserProfile(profile, fallbackNickname)
   setAgentUserProfileCache(next)
   return next

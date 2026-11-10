@@ -170,11 +170,24 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       const name = active?.name?.trim() || 'Personal'
       return deriveLegacyVaultId(name)
     }
+    const resolveActiveLegacyVaultId = (): string => {
+      const active = vaultService?.getActiveVault()
+      const name = active?.name?.trim() || 'Personal'
+      return deriveLegacyVaultId(name)
+    }
+    const resolveAllVaultIds = (): readonly string[] => {
+      return vaultService?.getAllVaults().map((v) => v.id) ?? []
+    }
     const sessionRepo = new SessionRepository(drizzleDb)
     const assistantRepo = new AssistantRepository(drizzleDb, () => resolveActiveVaultId())
     const settingsRepo = new SettingsRepository(drizzleDb)
     const summaryRepo = new SummaryRepositoryImpl(drizzleDb, () => resolveActiveVaultId())
-    const profileRepo = new UserProfileRepository(drizzleDb)
+    const profileRepo = new UserProfileRepository(
+      drizzleDb,
+      () => resolveActiveVaultId(),
+      () => resolveActiveLegacyVaultId(),
+      () => resolveAllVaultIds()
+    )
     const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
 
     try {
@@ -277,7 +290,13 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
 
     vaultService = new VaultService(pathService, fileSystem)
     const settingsFileService = new SettingsFileService(pathService, fileSystem)
-    const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
+    const settingsManager = new SettingsManagerService(
+      settingsRepo,
+      settingsFileService,
+      () => resolveActiveVaultId(),
+      () => resolveActiveLegacyVaultId(),
+      () => resolveAllVaultIds()
+    )
     const vaultRuntimeDeps = { pathService, vaultService, fileSystem, settingsManager }
 
     let diaryStack: VaultBoundDiaryStack | null = null
