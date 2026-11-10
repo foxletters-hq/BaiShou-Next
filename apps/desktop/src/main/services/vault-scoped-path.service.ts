@@ -1,6 +1,11 @@
 import { join } from 'path'
 import * as fs from 'fs/promises'
-import type { IStoragePathService } from '@baishou/core-desktop'
+import {
+  resolveJournalsBaseDirectory,
+  resolveSummariesBaseDirectory,
+  type IStoragePathService
+} from '@baishou/core-desktop'
+import { logger } from '@baishou/shared'
 import { DesktopStoragePathService } from './path.service'
 
 /**
@@ -61,13 +66,39 @@ export class VaultScopedStoragePathService implements IStoragePathService {
   }
 
   async getJournalsBaseDirectory(): Promise<string> {
-    const dir = join(await this.vaultDir(), 'Journals')
+    const vaultDir = await this.vaultDir()
+    const external =
+      (await this.base.getExternalJournalsDirectory?.(this.vaultName))?.trim() || null
+    const dir = resolveJournalsBaseDirectory(vaultDir, { journalsDirectory: external })
+    if (external) {
+      const stat = await fs.stat(dir).catch(() => null)
+      if (stat?.isDirectory()) {
+        return dir
+      }
+      logger.warn(`[VaultScopedPathService] 外部日记目录不可用，回退至工作区内 Journals: ${dir}`)
+      const internal = join(vaultDir, 'Journals')
+      await fs.mkdir(internal, { recursive: true })
+      return internal
+    }
     await fs.mkdir(dir, { recursive: true })
     return dir
   }
 
   async getSummariesBaseDirectory(): Promise<string> {
-    const dir = join(await this.vaultDir(), 'Archives')
+    const vaultDir = await this.vaultDir()
+    const external =
+      (await this.base.getExternalSummariesDirectory?.(this.vaultName))?.trim() || null
+    const dir = resolveSummariesBaseDirectory(vaultDir, { summariesDirectory: external })
+    if (external) {
+      const stat = await fs.stat(dir).catch(() => null)
+      if (stat?.isDirectory()) {
+        return dir
+      }
+      logger.warn(`[VaultScopedPathService] 外部总结目录不可用，回退至工作区内 Archives: ${dir}`)
+      const internal = join(vaultDir, 'Archives')
+      await fs.mkdir(internal, { recursive: true })
+      return internal
+    }
     await fs.mkdir(dir, { recursive: true })
     return dir
   }

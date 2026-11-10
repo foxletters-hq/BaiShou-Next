@@ -334,6 +334,82 @@ export function useDiaryEditorPage() {
   /** idle → saving → leaving（退场动画）→ 导航 */
   const [savePhase, setSavePhase] = useState<'idle' | 'saving' | 'leaving'>('idle')
 
+  // 当外部文件监听或 MCP 工具更新了当前正在查看的日记，且编辑器无未保存本地改动时，自动刷新正文与基线
+  useEffect(() => {
+    if (isLoading || savePhase !== 'idle') return
+    const api = typeof window !== 'undefined' ? (window as any).api?.diary : undefined
+    if (!api?.onSyncEvent || !api?.findByDate) return
+
+    let cancelled = false
+    const unsubscribe = api.onSyncEvent(
+      (event: { type?: string; date?: string; entry?: { date?: string | Date } }) => {
+        if (cancelled || event?.type === 'indexing-progress') return
+
+        const snap = stateSnapshotRef.current
+        const init = initialStateRef.current
+        const currentEditorDate = formatLocalDate(snap.selectedDate)
+        const eventDate =
+          typeof event?.date === 'string' && event.date.trim()
+            ? event.date.split('T')[0]!
+            : event?.entry?.date
+              ? formatLocalDate(safeParseDate(String(event.entry.date)))
+              : null
+
+        if (eventDate && eventDate !== currentEditorDate) return
+
+        const isSnapshotDirty =
+          init != null &&
+          (normalizeDiaryContentForCompare(snap.content) !==
+            normalizeDiaryContentForCompare(init.content) ||
+            snap.weather !== init.weather ||
+            snap.mood !== init.mood ||
+            snap.isFavorite !== init.isFavorite ||
+            formatLocalDate(snap.selectedDate) !== formatLocalDate(init.selectedDate) ||
+            [...snap.mediaPaths].sort().join(',') !== [...init.mediaPaths].sort().join(','))
+
+        if (isSnapshotDirty) return
+
+        void (async () => {
+          try {
+            const diary = await api.findByDate(currentEditorDate)
+            if (cancelled || !diary) return
+            const parsedTags = normalizeDiaryTags(diary.tags)
+            const parsedWeather = normalizeWeatherId(diary.weather || '') || ''
+            const parsedMood = normalizeMoodId(diary.mood || '') || ''
+            const nextContent = composeDiaryEditorContent(diary.content || '', parsedTags)
+            const nextFavorite = diary.isFavorite || false
+            const nextMedia = diary.mediaPaths || []
+
+            setDiaryId(diary.id || null)
+            setWeather(parsedWeather)
+            setMood(parsedMood)
+            setIsFavorite(nextFavorite)
+            setMediaPaths(nextMedia)
+            setContent(nextContent)
+            setIsDirty(false)
+            initialStateRef.current = {
+              content: nextContent,
+              selectedDate: snap.selectedDate,
+              weather: parsedWeather,
+              mood: parsedMood,
+              isFavorite: nextFavorite,
+              mediaPaths: [...nextMedia]
+            }
+          } catch (e) {
+            logger.warn('[useDiaryEditorPage] Reload after external sync event failed', {
+              error: e
+            })
+          }
+        })()
+      }
+    )
+
+    return () => {
+      cancelled = true
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [isLoading, savePhase])
+
   const goBackToSidebar = useCallback(() => {
     const lastNav = sessionStorage.getItem('desktop_last_nav')
     if (lastNav && lastNav !== '/diary') {
