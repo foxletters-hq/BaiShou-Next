@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { validateGraphAwakenForm, type UserGender, type UserProfile } from '@baishou/shared'
+import { useUserProfileStore } from '@baishou/store'
 import {
   loadDesktopGraphAwakenSelfName,
   saveDesktopGraphAwakenProfile
@@ -43,6 +44,7 @@ export function useGraphPageAwaken(deps: AwakenDeps) {
     gender?: boolean
   }>({})
   const [profileSectionOpen, setProfileSectionOpen] = useState(false)
+  const storeProfile = useUserProfileStore((s) => s.profile)
   const depsRef = useRef(deps)
   depsRef.current = deps
 
@@ -69,7 +71,12 @@ export function useGraphPageAwaken(deps: AwakenDeps) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [
+    storeProfile?.nickname,
+    storeProfile?.birthday,
+    storeProfile?.gender,
+    storeProfile?.customGender
+  ])
 
   useEffect(() => {
     if (!awakenProfile) return
@@ -85,6 +92,7 @@ export function useGraphPageAwaken(deps: AwakenDeps) {
     setAwakenBusy(true)
     try {
       await saveDesktopGraphAwakenProfile(fields)
+      void useUserProfileStore.getState().loadProfile()
       setSelfNameReady(true)
       const nextCustomGender =
         fields.gender === 'other' ? fields.customGender?.trim() || null : null
@@ -151,6 +159,7 @@ export function useGraphPageAwaken(deps: AwakenDeps) {
         customGender: nextCustomGender
       }
       await saveDesktopGraphAwakenProfile(fields)
+      void useUserProfileStore.getState().loadProfile()
       const synced = await syncSelfPersonNode(oldName, fields.nickname)
       setAwakenProfile((prev) => ({
         ...(prev || ({} as UserProfile)),

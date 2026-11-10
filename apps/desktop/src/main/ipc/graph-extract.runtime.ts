@@ -6,15 +6,16 @@ import {
 import { connectionManager, UserProfileRepository } from '@baishou/database-desktop'
 import {
   GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR,
-  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
   buildGraphExtractEnqueueItems,
+  deriveLegacyVaultId,
+  getVaultGraphSelfNameConfigured,
   resolveGlobalGraphModelIds,
   resolveReasoningEffortForSlot,
   resolveGraphExtractSelfName,
   type GlobalModelsConfig
 } from '@baishou/shared'
-import { fileSystem, pathService } from './vault.ipc'
+import { fileSystem, pathService, resolveVaultNameById, vaultService } from './vault.ipc'
 import { ensureRawDataRuntime, getDerivedFreshness } from '../services/raw-data-source.runtime'
 import { getActiveProvider } from './agent-helpers'
 import { GraphExtractQueueService } from '../services/graph-extract-queue.service'
@@ -129,11 +130,20 @@ export async function resolveExtractSelfName(): Promise<string> {
   }
   const promise = (async () => {
     const { settingsManager } = await import('./settings.ipc')
-    const flag = await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
+    const legacyVaultId = deriveLegacyVaultId(resolveVaultNameById(vaultId))
+    const flag = await getVaultGraphSelfNameConfigured(settingsManager, {
+      vaultId,
+      legacyVaultId
+    })
     if (!connectionManager.isConnected()) {
       throw new Error(GRAPH_SELF_NAME_REQUIRED_ERROR)
     }
-    const profile = await new UserProfileRepository(connectionManager.getDb()).getProfile()
+    const profile = await new UserProfileRepository(
+      connectionManager.getDb(),
+      () => vaultId,
+      () => legacyVaultId,
+      () => vaultService.getAllVaults().map((v) => v.id)
+    ).getProfile(vaultId)
     const selfName = resolveGraphExtractSelfName(flag === true, profile?.nickname)
     if (!selfName) {
       throw new Error(GRAPH_SELF_NAME_REQUIRED_ERROR)

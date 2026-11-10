@@ -18,7 +18,7 @@ import {
   applyModelContextWindowRuntimeOverlay,
   applyVisionModelsRuntimeOverlay
 } from '@baishou/shared'
-import { useSettingsStore, useSyncStore } from '@baishou/store'
+import { useSettingsStore, useSyncStore, useUserProfileStore } from '@baishou/store'
 import { ensureDesktopAgentGateInboxBridge } from './features/agent/agent-gate-inbox-bridge'
 import { ensureDesktopAgentGateNotificationBridge } from './features/agent/agent-gate-notification-bridge'
 import { resolveThemeColor } from '@baishou/ui/theme/preset-theme-colors'
@@ -190,6 +190,7 @@ const AppRoutes = () => {
     const settingsStore = useSettingsStore.getState()
     settingsStore.resetSettingsConfigCache()
     settingsStore.scheduleDeferredConfigWarmup()
+    void useUserProfileStore.getState().loadProfile()
     setSettingsOverlayEpoch((epoch) => epoch + 1)
   }, [vaultScopeRevision])
 
