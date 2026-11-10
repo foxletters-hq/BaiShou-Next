@@ -4,6 +4,7 @@ import {
   AGENT_IDLE_GREETING_FALLBACKS,
   AGENT_IDLE_GREETING_KEYS,
   getUserProfileFromSettings,
+  normalizeGraphAwakenNickname,
   pickAgentIdleGreetingIndex
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -16,7 +17,7 @@ export function useAgentIdleGreeting(enabled: boolean): string {
   const { t } = useTranslation()
   const { services, dbReady, vaultRevision } = useBaishou()
   const [nickname, setNickname] = useState(
-    () => peekAgentUserProfileCache()?.nickname?.trim() || ''
+    () => normalizeGraphAwakenNickname(peekAgentUserProfileCache()?.nickname?.trim() || '') ?? ''
   )
   const [index, setIndex] = useState(() =>
     pickAgentIdleGreetingIndex(AGENT_IDLE_GREETING_KEYS.length)
@@ -26,7 +27,7 @@ export function useAgentIdleGreeting(enabled: boolean): string {
   useEffect(() => {
     if (nickname) return
     void readPersistedAgentUserProfileSnapshot().then((snapshot) => {
-      const cached = snapshot?.nickname?.trim()
+      const cached = normalizeGraphAwakenNickname(snapshot?.nickname)
       if (cached) {
         setNickname(cached)
       }
@@ -36,10 +37,7 @@ export function useAgentIdleGreeting(enabled: boolean): string {
   useEffect(() => {
     if (!dbReady || !services) return
     void getUserProfileFromSettings(services.settingsManager).then((profile) => {
-      const loaded = profile?.nickname?.trim()
-      if (loaded) {
-        setNickname(loaded)
-      }
+      setNickname(normalizeGraphAwakenNickname(profile?.nickname) ?? '')
     })
   }, [dbReady, services, vaultRevision])
 

@@ -21,9 +21,9 @@ import {
 import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import {
   DIARY_EMBED_GROUP_ID,
-  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
   getUserProfileFromSettings,
+  getVaultGraphSelfNameConfigured,
   graphDiaryInstant,
   isDiaryEmbeddingPresent,
   normalizeGraphFilePath,
@@ -126,7 +126,7 @@ export async function mobileExtractDiaries(options: {
   return service.extractDiaries({
     vaultId: options.vaultId,
     vaultName: options.vaultName,
-    selfName: await resolveMobileExtractSelfName(options.settingsManager),
+    selfName: await resolveMobileExtractSelfName(options.settingsManager, options.vaultId),
     filePaths: options.filePaths,
     signal: options.signal,
     onProgress: options.onProgress
@@ -235,7 +235,7 @@ export async function mobileExtractDraft(options: {
   return service.extractDraft({
     vaultId: options.vaultId,
     vaultName: options.vaultName,
-    selfName: await resolveMobileExtractSelfName(options.settingsManager),
+    selfName: await resolveMobileExtractSelfName(options.settingsManager, options.vaultId),
     filePath: options.filePath,
     signal: options.signal,
     onProgress: options.onProgress
@@ -261,10 +261,11 @@ export async function mobileCommitGraphDrafts(
 }
 
 async function resolveMobileExtractSelfName(
-  settingsManager: SettingsManagerService
+  settingsManager: SettingsManagerService,
+  vaultId?: string
 ): Promise<string> {
-  const flag = await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
-  const profile = await getUserProfileFromSettings(settingsManager)
+  const flag = await getVaultGraphSelfNameConfigured(settingsManager, { vaultId })
+  const profile = await getUserProfileFromSettings(settingsManager, vaultId)
   const selfName = resolveGraphExtractSelfName(flag === true, profile?.nickname)
   if (!selfName) {
     throw new Error(GRAPH_SELF_NAME_REQUIRED_ERROR)

@@ -1,8 +1,8 @@
 import {
-  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
   buildGraphExtractEnqueueItems,
   getUserProfileFromSettings,
+  getVaultGraphSelfNameConfigured,
   logger,
   resolveGraphExtractSelfName,
   selectDiaryGraphFollowUpItems
@@ -49,8 +49,8 @@ export async function scheduleMobileDiaryGraphAfterEmbed(input: {
     if (!runtime?.settingsManager || !runtime.pathService || !runtime.drizzleDb) return 0
     if (!shadowConnectionManager.isConnected()) return 0
 
-    const flag = await runtime.settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
-    const profile = await getUserProfileFromSettings(runtime.settingsManager)
+    const flag = await getVaultGraphSelfNameConfigured(runtime.settingsManager, { vaultId })
+    const profile = await getUserProfileFromSettings(runtime.settingsManager, vaultId)
     const selfName = resolveGraphExtractSelfName(flag === true, profile?.nickname)
     if (!selfName) return 0
 

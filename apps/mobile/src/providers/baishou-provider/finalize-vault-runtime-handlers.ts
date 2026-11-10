@@ -8,7 +8,11 @@ import {
   hasStoragePermission,
   isExternalStorageRequiredError
 } from '../../services/storage-permission.service'
-import { warmAgentScreenCaches } from '../../lib/agent-user-profile.util'
+import {
+  invalidateAgentUserProfileCache,
+  warmAgentScreenCaches
+} from '../../lib/agent-user-profile.util'
+import { notifyUserProfileRefresh } from '../../lib/user-profile-refresh-signal'
 import {
   activateVaultRuntime,
   deleteVaultWithShadowCleanup,
@@ -279,11 +283,15 @@ export async function finalizeVaultRuntimeHandlers(
         }))
       }
 
+      invalidateAgentUserProfileCache({ suppressOnboardingFallback: true })
+      notifyUserProfileRefresh()
       emitVaultSwitchMutation(vaultName)
       await refreshMobileAttachmentPathRemapper(() => pathService.getRootDirectory()).catch((e) => {
         logger.warn('[BaishouProvider] Failed to refresh attachment path remapper:', e as Error)
       })
-      void warmAgentScreenCaches(settingsManager, attachmentManager, fileSystem)
+      void warmAgentScreenCaches(settingsManager, attachmentManager, fileSystem).then(() => {
+        notifyUserProfileRefresh()
+      })
     } catch (e) {
       logger.error('[BaishouProvider] switchVault failed:', e as Error)
       throw e

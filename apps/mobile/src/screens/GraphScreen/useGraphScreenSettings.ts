@@ -32,6 +32,11 @@ import {
   loadMobileGraphAwakenSelfName,
   saveMobileGraphAwakenProfile
 } from '../DiaryScreen/ensure-graph-self-name'
+import { loadAgentUserProfileFromSettings } from '@/src/lib/agent-user-profile.util'
+import {
+  notifyUserProfileRefresh,
+  subscribeUserProfileRefresh
+} from '@/src/lib/user-profile-refresh-signal'
 import {
   GRAPH_FILTER_NODE_TYPES,
   isGraphCanvasFilterActive,
@@ -178,20 +183,25 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
   useEffect(() => {
     if (!deps.services || !deps.dbReady) return
     let cancelled = false
-    void (async () => {
-      try {
-        const state = await loadMobileGraphAwakenSelfName(deps.services!.settingsManager as never)
-        if (cancelled) return
-        setAwakenProfile(state.profile)
-        setSelfNameReady(state.ready)
-      } catch {
-        if (!cancelled) setSelfNameReady(false)
-      }
-    })()
+    const reloadAwakenState = () => {
+      void (async () => {
+        try {
+          const state = await loadMobileGraphAwakenSelfName(deps.services!.settingsManager as never)
+          if (cancelled) return
+          setAwakenProfile(state.profile)
+          setSelfNameReady(state.ready)
+        } catch {
+          if (!cancelled) setSelfNameReady(false)
+        }
+      })()
+    }
+    reloadAwakenState()
+    const unsubscribe = subscribeUserProfileRefresh(reloadAwakenState)
     return () => {
       cancelled = true
+      unsubscribe()
     }
-  }, [deps.services, deps.dbReady])
+  }, [deps.services, deps.dbReady, deps.vaultId])
 
   useEffect(() => {
     if (!awakenProfile) return
@@ -270,6 +280,8 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     setAwakenBusy(true)
     try {
       await saveMobileGraphAwakenProfile(deps.services.settingsManager as never, fields)
+      await loadAgentUserProfileFromSettings(deps.services.settingsManager as never)
+      notifyUserProfileRefresh()
       setSelfNameReady(true)
       const nextCustomGender =
         fields.gender === 'other' ? fields.customGender?.trim() || null : null
@@ -347,6 +359,8 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
         customGender: nextCustomGender
       }
       await saveMobileGraphAwakenProfile(deps.services.settingsManager as never, fields)
+      await loadAgentUserProfileFromSettings(deps.services.settingsManager as never)
+      notifyUserProfileRefresh()
       const synced = await syncSelfPersonNode(oldName, fields.nickname)
       setAwakenProfile((prev) =>
         prev

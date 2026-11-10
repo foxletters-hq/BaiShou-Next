@@ -170,10 +170,22 @@ export async function createAgentDbRuntime(
 
   const sessionRepo = new SessionRepository(drizzleDb)
   const resolveVaultId = options.resolveVaultId
+  const resolveVaultIdString = () => resolveVaultId?.() ?? undefined
+  const resolveLegacyVaultIdString = () => {
+    const activeVaultId = resolveVaultId?.()?.trim() || ''
+    const activeName = activeVaultId ? options.resolveVaultName?.(activeVaultId) : undefined
+    return typeof activeName === 'string' && activeName.trim()
+      ? deriveLegacyVaultId(activeName.trim())
+      : undefined
+  }
   const assistantRepo = new AssistantRepository(drizzleDb, resolveVaultId)
   const settingsRepo = new SettingsRepository(drizzleDb)
   const summaryRepo = new SummaryRepositoryImpl(drizzleDb, resolveVaultId)
-  const profileRepo = new UserProfileRepository(drizzleDb)
+  const profileRepo = new UserProfileRepository(
+    drizzleDb,
+    resolveVaultIdString,
+    resolveLegacyVaultIdString
+  )
   const snapshotRepo = new SnapshotRepository(drizzleDb)
 
   const sessionRaw = ensureMobileRawDataRuntime({ pathService, fileSystem }).manager
@@ -208,7 +220,12 @@ export async function createAgentDbRuntime(
   )
 
   const settingsFileService = new SettingsFileService(pathService, fileSystem)
-  const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
+  const settingsManager = new SettingsManagerService(
+    settingsRepo,
+    settingsFileService,
+    resolveVaultIdString,
+    resolveLegacyVaultIdString
+  )
 
   const { summaryManager, summaryGenerator, missingSummaryDetector, summarySyncService } =
     await createSummaryPipelineServices({
