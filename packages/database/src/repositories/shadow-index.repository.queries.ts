@@ -168,6 +168,7 @@ export class ShadowIndexQueryOps {
       .select()
       .from(shadowJournalIndexTable)
       .where(this.ctx.withVault(eq(shadowJournalIndexTable.date, dateIso)))
+      .orderBy(desc(shadowJournalIndexTable.updatedAt), desc(shadowJournalIndexTable.id))
       .limit(1)
     return (rows[0] as ShadowJournalRow) ?? null
   }

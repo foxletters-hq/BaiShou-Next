@@ -43,7 +43,10 @@ export class DiaryService {
 
   async create(input: CreateDiaryInput): Promise<Diary> {
     // 1. 检查物理文件是否存在：以文件系统为唯一真理
-    const existingFile = await this.fileSync.readJournal(input.date)
+    const existingShadow = await this.shadowRepo.findByDate(formatLocalDate(input.date))
+    const existingFile = existingShadow?.filePath
+      ? await this.fileSync.readJournal(input.date, existingShadow.filePath)
+      : await this.fileSync.readJournal(input.date)
     if (existingFile) {
       throw new DiaryDateConflictError(input.date)
     }
@@ -143,14 +146,21 @@ export class DiaryService {
     // 检查日期跳转时的覆盖合并
     let conflictId: number | undefined
     if (inputDate && isDateJumped) {
-      const conflict = await this.fileSync.readJournal(inputDate)
+      const conflictShadow = await this.shadowRepo.findByDate(inputDateStr)
+      const conflict = conflictShadow?.filePath
+        ? await this.fileSync.readJournal(inputDate, conflictShadow.filePath)
+        : await this.fileSync.readJournal(inputDate)
       if (conflict) {
         mergeDiariesOnDateJump(input, conflict)
         conflictId = conflict.id // 保留目标（存量文件）的主键，防止孤儿或者冲撞
       }
 
       try {
-        await this.fileSync.deleteJournalFile(existingDate)
+        if (existingShadow.filePath) {
+          await this.fileSync.deleteJournalFile(existingDate, existingShadow.filePath)
+        } else {
+          await this.fileSync.deleteJournalFile(existingDate)
+        }
       } catch (e) {
         console.warn('Failed to delete old file during update', e)
       }
@@ -228,7 +238,10 @@ export class DiaryService {
       : new Date()
 
     // 检查此日期是否已经存在日记文件
-    const existingDiary = await this.fileSync.readJournal(inputDate)
+    const existingShadow = await this.shadowRepo.findByDate(formatLocalDate(inputDate))
+    const existingDiary = existingShadow?.filePath
+      ? await this.fileSync.readJournal(inputDate, existingShadow.filePath)
+      : await this.fileSync.readJournal(inputDate)
     if (existingDiary) {
       // 若已存在，则合并内容并做更新
       mergeDiariesOnDateJump(input, existingDiary)
@@ -254,7 +267,11 @@ export class DiaryService {
     if (existingShadow) {
       const existingDateStr = String(existingShadow.date).split('T')[0]!
       const existingDate = parseDateStr(existingDateStr)
-      await this.fileSync.deleteJournalFile(existingDate)
+      if (existingShadow.filePath) {
+        await this.fileSync.deleteJournalFile(existingDate, existingShadow.filePath)
+      } else {
+        await this.fileSync.deleteJournalFile(existingDate)
+      }
 
       // 触发脏检测将会使其判定为孤立索引并级联删除向量、重置一切缓存
       await this.shadowSync.syncJournal(existingDateStr)

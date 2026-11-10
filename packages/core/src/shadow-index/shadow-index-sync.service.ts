@@ -29,6 +29,7 @@ import { parseJournalMarkdown } from './shadow-index-sync.utils'
 import {
   buildCanonicalJournalFilePath,
   resolveJournalFilePath,
+  resolveShadowJournalAbsolutePath,
   collectJournalPathsByDateInTree,
   isJournalPathUnderSkippedDir
 } from '../journal/journal-files.util'
@@ -197,6 +198,7 @@ export class ShadowIndexSyncService {
       const parsedDiaries: ParsedJournal[] = []
       const events: JournalSyncEvent[] = []
       const idsToDelete: { id: number; dateStr: string }[] = []
+      const resolvedRelativePathByDate = new Map<string, string>()
       const fileStatUpdates: {
         dateStr: string
         fileMtimeMs: number | null
@@ -207,13 +209,22 @@ export class ShadowIndexSyncService {
 
       await Promise.all(
         chunk.map(async (dateStr) => {
+          const dateKey = dateStr
+          const existing = existingFingerprints.get(dateKey) ?? null
+          const fallbackHintPath =
+            !options?.pathsByDate && existing?.filePath
+              ? resolveShadowJournalAbsolutePath(journalBase, existing.filePath)
+              : undefined
+          const safeFallbackHintPath =
+            fallbackHintPath && !isJournalPathUnderSkippedDir(fallbackHintPath)
+              ? fallbackHintPath
+              : undefined
           const filePath = await resolveJournalFilePath(
             this.fileSystem,
             journalBase,
             dateStr,
-            options?.pathsByDate?.get(dateStr)
+            options?.pathsByDate ? options.pathsByDate.get(dateStr) : safeFallbackHintPath
           )
-          const dateKey = dateStr
 
           // ── 1. 孤立检测 ──
           if (!filePath) {
@@ -236,6 +247,7 @@ export class ShadowIndexSyncService {
           const relFilePath = normalizeShadowFilePath(
             path.relative(path.dirname(journalBase), filePath)
           )
+          resolvedRelativePathByDate.set(dateStr, relFilePath)
 
           // ── 2. Obsidian 风格 mtime/size 快路径（跳过读盘/哈希/解析） ──
           const fileStat = await this.fileSystem.stat(filePath)
@@ -247,7 +259,6 @@ export class ShadowIndexSyncService {
             fileStat.size != null && Number.isFinite(fileStat.size)
               ? Math.round(fileStat.size)
               : null
-          const existing = existingFingerprints.get(dateKey) ?? null
           const existingPathNormalized =
             existing?.filePath != null ? normalizeShadowFilePath(existing.filePath) : null
           const pathNeedsUpdate =
@@ -401,6 +412,34 @@ export class ShadowIndexSyncService {
             } catch (e: any) {
               logger.warn(`[ShadowSync] pending-reextract hook failed for ${p.filePath}:`, e)
             }
+          }
+        }
+      }
+
+      // ── 6b. 清理同一日期遗留的重复影子索引行（如旧版双路径落盘或扁平/嵌套切换残留） ──
+      if (!options?.pathsByDate) {
+        for (const [dateStr, targetRelPath] of resolvedRelativePathByDate) {
+          try {
+            const sameDateRows = await this.shadowRepo.findByDatePrefix(dateStr)
+            const journalRows = sameDateRows.filter(
+              (r) => !isJournalPathUnderSkippedDir(r.filePath)
+            )
+            if (journalRows.length > 1) {
+              const matchedRow = journalRows.find(
+                (r) => normalizeShadowFilePath(r.filePath) === targetRelPath
+              )
+              const keepId = matchedRow?.id ?? journalRows[journalRows.length - 1]!.id
+              for (const row of journalRows) {
+                if (row.id !== keepId) {
+                  await this.shadowRepo.deleteById(row.id)
+                  logger.info(
+                    `[ShadowSync] 已清理同日期重复影子索引: date=${dateStr}, staleId=${row.id}, keepId=${keepId}`
+                  )
+                }
+              }
+            }
+          } catch (e: any) {
+            logger.warn(`[ShadowSync] 清理同日期重复索引失败 (${dateStr}):`, e?.message ?? e)
           }
         }
       }

@@ -1,3 +1,4 @@
+import { isJournalPathUnderSkippedDir } from '@baishou/shared'
 import { eq, sql, and, or, like } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
@@ -49,7 +50,7 @@ function buildMapsFromRows(
     const normalized = normalizeShadowFilePath(row.filePath)
     idByPath.set(normalized, numId)
     pathById.set(numId, normalized)
-    if (row.date) {
+    if (row.date && !isJournalPathUnderSkippedDir(normalized)) {
       const dayKey = normalizeDayKey(row.date)
       idByDate.set(dayKey, numId)
       dateById.set(numId, dayKey)
@@ -66,6 +67,9 @@ function trackAssignedId(maps: IdPathMaps, filePath: string, dateStr: string, ro
   }
   maps.idByPath.set(normalizedPath, rowId)
   maps.pathById.set(rowId, normalizedPath)
+  if (isJournalPathUnderSkippedDir(normalizedPath)) {
+    return
+  }
   const dayKey = normalizeDayKey(dateStr)
   const previousDay = maps.dateById.get(rowId)
   if (previousDay != null && previousDay !== dayKey) {
@@ -208,8 +212,10 @@ async function upsertOne(
 
   const serializedTagColors = tagColors ?? null
   const dayKey = normalizeDayKey(indexData.date)
+  const isSummaryPath = isJournalPathUnderSkippedDir(filePath)
 
-  const existingId = maps.idByPath.get(filePath)
+  const existingId =
+    maps.idByPath.get(filePath) ?? (!isSummaryPath ? maps.idByDate.get(dayKey) : undefined)
   if (existingId != null) {
     await db
       .update(shadowJournalIndexTable)
@@ -294,8 +300,10 @@ function upsertOneSync(
 
   const serializedTagColors = tagColors ?? null
   const dayKey = normalizeDayKey(indexData.date)
+  const isSummaryPath = isJournalPathUnderSkippedDir(filePath)
 
-  const existingId = maps.idByPath.get(filePath)
+  const existingId =
+    maps.idByPath.get(filePath) ?? (!isSummaryPath ? maps.idByDate.get(dayKey) : undefined)
   if (existingId != null) {
     tx.update(shadowJournalIndexTable)
       .set(buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors))
@@ -497,6 +505,48 @@ export class ShadowIndexUpsertOps {
         patch.filePath = normalizeShadowFilePath(filePath)
       }
       if (Object.keys(patch).length === 0) return
+
+      if (patch.filePath) {
+        const existingRows = await this.database
+          .select({
+            id: shadowJournalIndexTable.id,
+            filePath: shadowJournalIndexTable.filePath,
+            updatedAt: shadowJournalIndexTable.updatedAt
+          })
+          .from(shadowJournalIndexTable)
+          .where(
+            and(
+              eq(shadowJournalIndexTable.vaultId, this.vaultId),
+              like(shadowJournalIndexTable.date, `${dateStr}%`)
+            )
+          )
+        const journalRows = existingRows.filter((r) => !isJournalPathUnderSkippedDir(r.filePath))
+        if (journalRows.length > 1) {
+          const matchingTarget = journalRows.find(
+            (r) => normalizeShadowFilePath(r.filePath) === patch.filePath
+          )
+          const sorted = [...journalRows].sort((a, b) =>
+            String(b.updatedAt).localeCompare(String(a.updatedAt)) || b.id - a.id
+          )
+          const keepId = matchingTarget?.id ?? sorted[0]!.id
+          for (const row of journalRows) {
+            if (row.id !== keepId) {
+              await this.deleteById(row.id)
+            }
+          }
+          await this.database
+            .update(shadowJournalIndexTable)
+            .set(patch)
+            .where(
+              and(
+                eq(shadowJournalIndexTable.vaultId, this.vaultId),
+                eq(shadowJournalIndexTable.id, keepId)
+              )
+            )
+          return
+        }
+      }
+
       await this.database
         .update(shadowJournalIndexTable)
         .set(patch)
