@@ -525,8 +525,8 @@ export class ShadowIndexUpsertOps {
           const matchingTarget = journalRows.find(
             (r) => normalizeShadowFilePath(r.filePath) === patch.filePath
           )
-          const sorted = [...journalRows].sort((a, b) =>
-            String(b.updatedAt).localeCompare(String(a.updatedAt)) || b.id - a.id
+          const sorted = [...journalRows].sort(
+            (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)) || b.id - a.id
           )
           const keepId = matchingTarget?.id ?? sorted[0]!.id
           for (const row of journalRows) {

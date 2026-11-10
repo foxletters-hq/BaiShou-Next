@@ -1,8 +1,8 @@
 /**
- * 个人资料主模型
+ * 单个小窝（Vault）独立的个人身份与图谱唤醒信息
  */
-export interface UserProfile {
-  nickname: string // 昵称
+export interface VaultIdentityProfile {
+  nickname: string // 该小窝内的昵称 / 图谱自称
   /** 生日 YYYY-MM-DD；图谱唤醒时收集 */
   birthday?: string | null
   /** 性别；图谱唤醒时收集 */
@@ -13,6 +13,27 @@ export interface UserProfile {
   showIdentityInProfile?: boolean
   /** 是否向 AI 伙伴发送生日与性别等个人信息（默认为 true） */
   shareIdentityWithCompanion?: boolean
+  /** 该小窝是否已确认过图谱自称（唤醒状态） */
+  graphSelfNameConfigured?: boolean
+}
+
+/**
+ * 个人资料主模型
+ */
+export interface UserProfile {
+  nickname: string // 昵称（当前小窝解析值，兼容旧字段）
+  /** 生日 YYYY-MM-DD；图谱唤醒时收集 */
+  birthday?: string | null
+  /** 性别；图谱唤醒时收集 */
+  gender?: UserGender | null
+  /** 自定义性别文本（当 gender === 'other' 时选填或必填） */
+  customGender?: string | null
+  /** 是否在个人资料卡中展示生日和性别（默认为 true） */
+  showIdentityInProfile?: boolean
+  /** 是否向 AI 伙伴发送生日与性别等个人信息（默认为 true） */
+  shareIdentityWithCompanion?: boolean
+  /** 按小窝（vaultId）独立存储的个人身份与图谱唤醒信息 */
+  vaultProfiles?: Record<string, VaultIdentityProfile>
   avatarPath: string | null // 头像文件绝对或相对路径
   avatarFileMissing?: boolean // 头像文件不存在标记（运行时检测，不持久化）
   chatBackgroundPath?: string | null // 聊天背景图相对路径（如 backgrounds/xxx.jpg）
