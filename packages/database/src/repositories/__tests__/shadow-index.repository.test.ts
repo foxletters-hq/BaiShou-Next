@@ -145,6 +145,29 @@ describe('ShadowIndexRepository', () => {
       expect((await repo.findByDate(dateIso))?.rawContent).toBe('updated content')
     })
 
+    it('upsert and batchUpsert reuse existing row for the same date when file_path changes (e.g. flat vs nested or external directory switch)', async () => {
+      const dateIso = '2026-11-10T00:00:00.000Z'
+      const indexedId = await repo.upsert({
+        ...generateDummyPayload(dateIso, '写给自己：五点，天刚亮'),
+        filePath: 'Journals/2026/11/2026-11-10.md'
+      })
+
+      const [updatedId] = await repo.batchUpsert([
+        {
+          ...generateDummyPayload(dateIso, '和主人一起过的这一天'),
+          id: 1794282923691,
+          filePath: 'external-diary/2026-11-10.md'
+        }
+      ])
+
+      expect(updatedId).toBe(indexedId)
+      expect(await repo.count()).toBe(1)
+      const rows = await repo.listFiltered({ year: 2026, month: 11 })
+      expect(rows).toHaveLength(1)
+      expect(rows[0]?.filePath).toBe('external-diary/2026-11-10.md')
+      expect(rows[0]?.rawContent).toBe('和主人一起过的这一天')
+    })
+
     it('count excludes shadow rows under Archives summary directories', async () => {
       await repo.upsert({
         ...generateDummyPayload('2026-04-01T00:00:00.000Z', 'diary'),

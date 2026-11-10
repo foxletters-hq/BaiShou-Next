@@ -447,6 +447,28 @@ describe('ShadowIndexSyncService', () => {
     expect(mockRepo._getRecord('2026-10-19')?.filePath).toBe('Journals/2026/10/2026-10-19.md')
   })
 
+  it('should preserve custom nested journal path when single syncJournal runs without pathsByDate', async () => {
+    const customDir = path.join(journalsDir, 'CustomSubdir', '2026', '11')
+    await fsp.mkdir(customDir, { recursive: true })
+    await fsp.writeFile(
+      path.join(customDir, '2026-11-09.md'),
+      ['---', 'id: 1009', 'date: 2026-11-09', '---', '', '自定义子目录中的外部日记'].join('\n'),
+      'utf8'
+    )
+
+    await service.fullScanVault(true)
+    expect(mockRepo._getRecordCount()).toBe(1)
+    expect(mockRepo._getRecord('2026-11-09')?.filePath).toBe(
+      'Journals/CustomSubdir/2026/11/2026-11-09.md'
+    )
+
+    // 模拟 DiaryService.findByDate 触发的单篇惰性自愈（不带 pathsByDate）
+    await service.syncJournal('2026-11-09', true)
+
+    expect(mockRepo._getRecordCount()).toBe(1)
+    expect(mockRepo._getRecord('2026-11-09')?.rawContent).toContain('自定义子目录中的外部日记')
+  })
+
   // ── 8. 同步禁用 ──
   it('禁用同步后 syncJournal 和 fullScanVault 应提早返回', async () => {
     await writeJournal('2026-05-01', '不会被索引的日记')
