@@ -24,9 +24,11 @@ import {
   prepareProviderConfigForRuntime,
   type ResolvedDialogueModel,
   clampRagSimilarityThreshold,
-  clampRagTopK
+  clampRagTopK,
+  deriveLegacyVaultId
 } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
+import { resolveActiveVault, resolveActiveVaultId, vaultService } from './vault.ipc'
 import { getAgentManagers } from './agent-managers'
 import { webSearchConfigToUserConfig } from '@baishou/ai'
 
@@ -111,7 +113,12 @@ export async function buildAgentUserConfigFromSettings(options?: {
   let userCard: string | undefined
   try {
     const db = connectionManager.getDb()
-    const profileRepo = new UserProfileRepository(db)
+    const profileRepo = new UserProfileRepository(
+      db,
+      () => resolveActiveVaultId(),
+      () => deriveLegacyVaultId(resolveActiveVault().name),
+      () => vaultService.getAllVaults().map((v) => v.id)
+    )
     const profile = await profileRepo.getProfile()
     userCard = formatUserCardFromProfile(profile)
   } catch (e: any) {

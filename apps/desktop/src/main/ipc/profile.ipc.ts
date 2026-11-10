@@ -1,8 +1,9 @@
 import { ipcMain } from 'electron'
 import type { GraphNodeRawRecord } from '@baishou/core-desktop'
-import { SettingsRepository, UserProfileRepository } from '@baishou/database-desktop'
+import { UserProfileRepository } from '@baishou/database-desktop'
 import {
   buildGraphSelfPersonAliases,
+  deriveLegacyVaultId,
   findGraphSelfPersonHit,
   GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   graphDiaryInstant,
@@ -19,7 +20,21 @@ import {
   writeVaultId
 } from './graph-ipc.context'
 import { settingsManager } from './settings.ipc'
-import { resolveVaultNameById } from './vault.ipc'
+import {
+  resolveActiveVault,
+  resolveActiveVaultId,
+  resolveVaultNameById,
+  vaultService
+} from './vault.ipc'
+
+function createDesktopUserProfileRepo(): UserProfileRepository {
+  return new UserProfileRepository(
+    getAppDb(),
+    () => resolveActiveVaultId(),
+    () => deriveLegacyVaultId(resolveActiveVault().name),
+    () => vaultService.getAllVaults().map((v) => v.id)
+  )
+}
 
 export async function syncDesktopSelfPersonNodeOnRename(
   oldNickname: string | null | undefined,
@@ -76,25 +91,24 @@ export async function syncDesktopSelfPersonNodeOnRename(
 }
 
 async function applyProfileSaveAndSync(diff: any) {
-  const db = getAppDb()
-  const repo = new UserProfileRepository(db)
+  const repo = createDesktopUserProfileRepo()
   const current = await repo.getProfile()
   const oldNickname = current?.nickname
   const updated = { ...current, ...diff }
   await profileService.processProfileInput(updated)
   await repo.saveProfile(updated)
   if (normalizeGraphAwakenNickname(updated?.nickname)) {
-    const settingsRepo = new SettingsRepository(db)
-    await settingsRepo.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, true)
+    await settingsManager.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, true)
   }
   await settingsManager.flushToDisk()
   await syncDesktopSelfPersonNodeOnRename(oldNickname, updated?.nickname)
-  return await profileService.mapProfileOutput(updated)
+  const saved = await repo.getProfile()
+  return await profileService.mapProfileOutput(saved)
 }
 
 export function registerProfileIPC() {
   ipcMain.handle('profile:get-all', async () => {
-    const repo = new UserProfileRepository(getAppDb())
+    const repo = createDesktopUserProfileRepo()
     const raw = await repo.getProfile()
     return await profileService.mapProfileOutput(raw)
   })

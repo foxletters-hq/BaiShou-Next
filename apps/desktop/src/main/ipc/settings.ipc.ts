@@ -1,7 +1,8 @@
 import { SettingsRepository } from '@baishou/database-desktop'
 import { SettingsFileService, SettingsManagerService } from '@baishou/core-desktop'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { getAppDb, onAppDbReset } from '../db'
-import { pathService } from './vault.ipc'
+import { pathService, resolveActiveVault, resolveActiveVaultId, vaultService } from './vault.ipc'
 import { fileSystem } from '../services/node-file-system'
 import type { HotkeyService } from '../services/hotkey.service'
 import { registerSettingsAppIPC } from './settings-app.ipc'
@@ -14,7 +15,13 @@ export const settingsManager = new Proxy({} as SettingsManagerService, {
     if (!_settingsManager) {
       const settingsRepo = new SettingsRepository(getAppDb())
       const settingsFileService = new SettingsFileService(pathService, fileSystem)
-      _settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
+      _settingsManager = new SettingsManagerService(
+        settingsRepo,
+        settingsFileService,
+        () => resolveActiveVaultId(),
+        () => deriveLegacyVaultId(resolveActiveVault().name),
+        () => vaultService.getAllVaults().map((v) => v.id)
+      )
     }
     const value = Reflect.get(_settingsManager, prop)
     return typeof value === 'function' ? value.bind(_settingsManager) : value

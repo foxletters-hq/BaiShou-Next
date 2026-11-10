@@ -1,13 +1,14 @@
 import {
-  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
   buildGraphExtractEnqueueItems,
+  deriveLegacyVaultId,
+  getVaultGraphSelfNameConfigured,
   logger,
   resolveGraphExtractSelfName,
   selectDiaryGraphFollowUpItems
 } from '@baishou/shared'
 import { connectionManager, UserProfileRepository } from '@baishou/database-desktop'
-import { getActiveVaultShadowRepo } from '../ipc/vault.ipc'
+import { getActiveVaultShadowRepo, resolveVaultNameById, vaultService } from '../ipc/vault.ipc'
 import { getDerivedFreshness } from './raw-data-source.runtime'
 import { GraphExtractQueueService } from './graph-extract-queue.service'
 import { resolveDesktopGraphExtractAlignDeps } from './graph-extract-embed-gate'
@@ -40,9 +41,18 @@ export async function scheduleDiaryGraphAfterEmbed(input: {
 
   try {
     const { settingsManager } = await import('../ipc/settings.ipc')
-    const flag = await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
+    const legacyVaultId = deriveLegacyVaultId(resolveVaultNameById(vaultId))
+    const flag = await getVaultGraphSelfNameConfigured(settingsManager, {
+      vaultId,
+      legacyVaultId
+    })
     if (!connectionManager.isConnected()) return 0
-    const profile = await new UserProfileRepository(connectionManager.getDb()).getProfile()
+    const profile = await new UserProfileRepository(
+      connectionManager.getDb(),
+      () => vaultId,
+      () => legacyVaultId,
+      () => vaultService.getAllVaults().map((v) => v.id)
+    ).getProfile(vaultId)
     const selfName = resolveGraphExtractSelfName(flag === true, profile?.nickname)
     if (!selfName) return 0
 
