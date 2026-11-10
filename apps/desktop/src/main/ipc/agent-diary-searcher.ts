@@ -1,14 +1,52 @@
+import { BrowserWindow } from 'electron'
 import {
   formatDiaryPreviewText,
+  normalizeDiaryPreviewMarkdown,
   parseDateStr,
   prepareDiarySearcherEdit,
   prepareDiarySearcherWrite,
-  logger
+  resolveDiaryTagsFromSources,
+  logger,
+  type Diary
 } from '@baishou/shared'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
 import { getActiveVaultShadowRepo, resolveVaultIdByName, vaultService } from './vault.ipc'
 import { getDiaryManager } from './diary.ipc'
 import { getDiaryManagerForVault } from '../services/diary-vault.factory'
+
+function broadcastAgentDiarySyncEvent(
+  type: 'saved' | 'deleted',
+  dateStr: string,
+  saved?: Diary
+): void {
+  try {
+    const windows = BrowserWindow.getAllWindows?.() ?? []
+    for (const win of windows) {
+      if (win.isDestroyed?.()) continue
+      win.webContents.send('diary:sync-event', {
+        type,
+        date: dateStr,
+        source: 'agent-mcp',
+        entry: saved
+          ? {
+              id: saved.id,
+              date: saved.date,
+              preview: normalizeDiaryPreviewMarkdown(saved.content?.substring(0, 500) ?? ''),
+              tags: resolveDiaryTagsFromSources(saved.tags, saved.content ?? ''),
+              weather: saved.weather ?? undefined,
+              mood: saved.mood ?? undefined,
+              location: saved.location ?? undefined,
+              isFavorite: saved.isFavorite ?? false,
+              hasMedia: (saved.mediaPaths?.length ?? 0) > 0,
+              updatedAt: saved.updatedAt
+            }
+          : undefined
+      })
+    }
+  } catch (e) {
+    logger.warn('[Agent] broadcastAgentDiarySyncEvent failed:', e as Error)
+  }
+}
 
 function previewDiaryRow(raw: string | null | undefined): string {
   const cleaned = formatDiaryPreviewText(raw)
@@ -31,7 +69,12 @@ export function createDiarySearcher(target?: { vaultId?: string; vaultName?: str
         )
       : getActiveVaultShadowRepo()
     const resolveDiaryService = async () => {
-      if (targetVaultName && vaultService.getActiveVault()?.name !== targetVaultName) {
+      const activeName = vaultService.getActiveVault()?.name?.trim()
+      if (
+        targetVaultName &&
+        activeName &&
+        activeName.toLowerCase() !== targetVaultName.toLowerCase()
+      ) {
         return getDiaryManagerForVault(targetVaultName)
       }
       return getDiaryManager()
@@ -70,10 +113,11 @@ export function createDiarySearcher(target?: { vaultId?: string; vaultName?: str
       async writeEntry(date: string, content: string) {
         try {
           const diaryService = await resolveDiaryService()
-          await diaryService.create({
+          const saved = await diaryService.create({
             date: parseDateStr(date),
             ...prepareDiarySearcherWrite(content)
           })
+          broadcastAgentDiarySyncEvent('saved', date, saved)
           return { ok: true as const }
         } catch (e) {
           if (e instanceof Error && e.name === 'DiaryDateConflictError') {
@@ -99,10 +143,11 @@ export function createDiarySearcher(target?: { vaultId?: string; vaultName?: str
             }
           }
 
-          await diaryService.update(
+          const saved = await diaryService.update(
             existing.id,
             prepareDiarySearcherEdit(existing.content, content, mode)
           )
+          broadcastAgentDiarySyncEvent('saved', date, saved)
           return { ok: true as const }
         } catch (e) {
           return {
@@ -122,6 +167,7 @@ export function createDiarySearcher(target?: { vaultId?: string; vaultName?: str
             }
           }
           await diaryService.delete(existing.id)
+          broadcastAgentDiarySyncEvent('deleted', date)
           return { ok: true as const }
         } catch (e) {
           return {
