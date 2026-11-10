@@ -5,7 +5,10 @@ import {
   migrateUserProfileSettingsKey,
   migrateSummaryConfigLegacyTemplates,
   stripLegacyDefaultSummaryTemplates,
+  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   USER_PROFILE_SETTINGS_KEY,
+  getVaultGraphSelfNameConfigured,
+  setVaultGraphSelfNameConfigured,
   normalizePersistedAvatarPath,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   type UserProfile,
@@ -36,11 +39,36 @@ export class SettingsManagerService {
 
   constructor(
     private readonly repo: SettingsRepository,
-    private readonly fileService: SettingsFileService
+    private readonly fileService: SettingsFileService,
+    private readonly resolveVaultId?: () => string | undefined,
+    private readonly resolveLegacyVaultId?: () => string | undefined,
+    private readonly resolveAllVaultIds?: () => readonly string[] | undefined
   ) {}
+
+  getActiveVaultId(): string | undefined {
+    return this.resolveVaultId?.()
+  }
+
+  getActiveLegacyVaultId(): string | undefined {
+    return this.resolveLegacyVaultId?.()
+  }
+
+  getAllVaultIds(): readonly string[] | undefined {
+    return this.resolveAllVaultIds?.()
+  }
 
   async get<T>(key: string): Promise<T | null> {
     const read = async (): Promise<T | null> => {
+      if (
+        key === GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY &&
+        Boolean(this.getActiveVaultId()?.trim())
+      ) {
+        const legacyFlag = await this.repo.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
+        const configured = await getVaultGraphSelfNameConfigured(this, {
+          legacyGraphConfiguredFlag: legacyFlag
+        })
+        return configured as unknown as T
+      }
       const value = await this.repo.get<T>(key)
       if (key === 'summary_config' && value && typeof value === 'object') {
         return stripLegacyDefaultSummaryTemplates(value as SummaryConfig).config as T
@@ -57,6 +85,17 @@ export class SettingsManagerService {
   }
 
   async set<T>(key: string, value: T): Promise<void> {
+    if (
+      key === GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY &&
+      Boolean(this.getActiveVaultId()?.trim())
+    ) {
+      const legacyFlag = await this.repo.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
+      await setVaultGraphSelfNameConfigured(this, Boolean(value), {
+        legacyGraphConfiguredFlag: legacyFlag
+      })
+      emitDomainMutation({ domain: 'settings', action: 'update', meta: { key } })
+      return
+    }
     if (!shouldTraceSettingsKey(key)) {
       await this.repo.set(key, value)
       await this.flushToDisk()
