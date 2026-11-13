@@ -1,0 +1,148 @@
+/* ========================================
+   看板娘独立板块：Latte（拉提）
+   ======================================== */
+
+.mascot-card {
+  margin-top: 32px;
+  padding: 28px 48px 34px 32px;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 36px;
+  align-items: flex-end;
+  overflow: hidden;
+  position: relative;
+}
+
+.mascot-visual {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  align-self: stretch;
+  margin-top: -14px;
+  margin-bottom: -34px;
+}
+
+.mascot-avatar {
+  width: 316px;
+  height: auto;
+  max-height: 396px;
+  object-fit: contain;
+  object-position: bottom center;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 10px 24px rgba(15, 23, 42, 0.1));
+}
+
+[data-theme='dark'] .mascot-avatar {
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.36));
+}
+
+.mascot-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding-top: 8px;
+  padding-bottom: 4px;
+}
+
+.mascot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+}
+
+.mascot-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.mascot-role {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.mascot-quote {
+  padding-left: 16px;
+  border-left: 3px solid var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-heading);
+  line-height: 1.7;
+}
+
+.mascot-prose {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mascot-prose p {
+  font-size: 15.5px;
+  line-height: 1.84;
+  color: var(--text-secondary);
+}
+
+.mascot-footer {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mascot-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mascot-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+}
+
+.mascot-link {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .mascot-card {
+    margin-top: 24px;
+    padding: 24px 24px;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .mascot-visual {
+    justify-content: center;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .mascot-content {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .mascot-avatar {
+    width: 196px;
+    max-height: 230px;
+    -webkit-mask-image: linear-gradient(180deg, #000 84%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 84%, transparent 100%);
+  }
+}

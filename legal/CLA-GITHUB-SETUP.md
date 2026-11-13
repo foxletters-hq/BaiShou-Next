@@ -11,10 +11,9 @@
 
 **覆盖仓库（当前）**：
 
-| 仓库                            | PR 目标分支（参考） |
-| ------------------------------- | ------------------- |
-| `foxletters-hq/BaiShou-Next`    | `main`              |
-| `foxletters-hq/BaiShou-website` | `main`              |
+| 仓库                         | PR 目标分支（参考） | 说明                                                                         |
+| ---------------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `foxletters-hq/BaiShou-Next` | `main`              | 含客户端、核心包与合并后的官网目录 `website/`（原 `BaiShou-website` 已并入） |
 
 ---
 
@@ -37,15 +36,15 @@
 
 对每个仓库执行 **Configure CLA**：
 
-| 字段                 | 填写                                                                              |
-| -------------------- | --------------------------------------------------------------------------------- |
-| Repository           | `foxletters-hq/BaiShou-Next`，然后对 `foxletters-hq/BaiShou-website` 再 Link 一次 |
-| CLA document         | **同一个 Gist URL**（上一步复制的链接）                                           |
-| Minimum file changes | `1`                                                                               |
+| 字段                 | 填写                                                                        |
+| -------------------- | --------------------------------------------------------------------------- |
+| Repository           | `foxletters-hq/BaiShou-Next`（如未来新增其他独立仓库，按相同方式逐个 Link） |
+| CLA document         | **同一个 Gist URL**（上一步复制的链接）                                     |
+| Minimum file changes | `1`                                                                         |
 
 点 **Link** → **Yes, let's do this!** → 授权 Gist + Webhook。
 
-两个仓库可共用**同一份签署记录 Gist**（cla-assistant 按 GitHub 用户维度记录，跨仓生效）。
+后续若新增覆盖仓库，可共用**同一份签署记录 Gist**（cla-assistant 按 GitHub 用户维度记录，跨仓生效）。
 
 ### 第 4 步：白名单（可选）
 
@@ -53,7 +52,7 @@
 
 ### 第 5 步：验证
 
-分别向 `BaiShou-Next` 与 `BaiShou-website`（均 → `main`）提测试 PR，确认 CLA 评论与签署流程。
+向 `BaiShou-Next`（`main`）提测试 PR，确认 CLA 评论与签署流程。
 
 ---
 
@@ -63,7 +62,7 @@
 https://github.com/foxletters-hq/BaiShou-Next/blob/main/legal/CLA-organization.md
 ```
 
-官网仓库无 `legal/` 目录时，**建议统一用 Gist 或始终指向 BaiShou-Next 上的协议文件**（两个仓库填同一 URL 即可）。
+新增不含 `legal/` 目录的独立仓库时，**建议统一用 Gist 或始终指向 BaiShou-Next 上的协议文件**（所有覆盖仓库填同一 URL 即可）。
 
 ---
 

@@ -1,0 +1,5 @@
+raindrop-fx — WebGL2 玻璃雨滴特效
+来源: https://github.com/SardineFish/raindrop-fx
+协议: MIT (Copyright (c) 2021 SardineFish)
+本文件为预编译 bundle（原仓库 bundle/index.js），未做修改。
+仅在用户选中「雨滴」背景特效时懒加载。

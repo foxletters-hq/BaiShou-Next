@@ -10,6 +10,8 @@ on:
       - 'legal/**'
       - 'Latte/**'
       - 'releases/notes/**'
+      - 'website/**'
+      - '.github/workflows/website-ci.yml'
       - 'README.md'
       - 'CHANGELOG.md'
       - 'CONTRIBUTING.md'

@@ -188,6 +188,7 @@ pnpm ci:check
 本项目采用 **AGPLv3**（GNU Affero General Public License v3.0）协议开源。
 
 - 客户端代码完全开源，鼓励社区参与改进。
+- **官网子目录（`website/`）**：白守官网与文档中心源代码独立在 **MIT** 协议下发布，见 [website/LICENSE](./website/LICENSE) 与 [website/COPYRIGHT](./website/COPYRIGHT)。
 - 请遵守 AGPLv3 协议：若您修改了本项目的代码并在网络上提供服务，您的修改版本也必须开源。
 - 向本项目提交**代码 PR** 须签署 [组织级 CLA](./legal/CLA-organization.md)（CLA Assistant，多仓通用）。
 - **美术与角色资产**：官方立绘、三视图及看板娘 Latte 相关资产不属于 AGPL 代码开源范畴，社区非商用二次创作与商用授权指引详见 [legal/LICENSE-ASSETS.md](./legal/LICENSE-ASSETS.md)。

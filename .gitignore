@@ -155,6 +155,17 @@ code-review-worktree/
 # 本地设计稿（仅本机，不入库）
 docs/设计稿/
 
+# ─── 官网（website/ 独立工程）─────────────────────────────
+!website/**/*.txt
+website/node_modules/
+website/dist/
+website/dist-ssr/
+website/src/generated/
+website/deploy/keys/
+website/.env.production
+website/.env.development
+website/.kilo/
+
 # ─── Secret / Key ─────────────────────────────────────────
 *.pem
 *.key

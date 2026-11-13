@@ -1,0 +1,215 @@
+/* ========================================
+   顶部导航栏、多语言切换与主题按钮
+   ======================================== */
+
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  height: calc(var(--nav-height) + var(--safe-top));
+  padding-top: var(--safe-top);
+  border-bottom: 1px solid var(--accent-border);
+  background: var(--header-bg);
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+}
+
+.site-header-shell {
+  display: flex;
+  flex-direction: column;
+  height: var(--nav-height);
+  min-width: 0;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 var(--nav-bar-height);
+  height: var(--nav-bar-height);
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-heading);
+  flex-shrink: 0;
+}
+
+.brand-text {
+  white-space: nowrap;
+}
+
+.brand-suffix {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.brand:hover {
+  color: var(--accent);
+}
+
+.brand-icon {
+  border-radius: 10px;
+  box-shadow: 0 4px 12px var(--hero-glow);
+  flex-shrink: 0;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-left: auto;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.header-nav--desktop {
+  display: flex;
+}
+
+.header-nav a {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.header-nav a:hover,
+.header-nav a.is-active {
+  color: var(--accent);
+}
+
+.header-faq-link {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  transition: color var(--duration-normal) var(--ease-out);
+  white-space: nowrap;
+}
+
+.header-faq-link:hover {
+  color: var(--accent);
+}
+
+.header-dl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 16px;
+  font-size: 14px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.header-dl-icon {
+  display: none;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --nav-bar-height: 52px;
+    --nav-height: var(--nav-bar-height);
+  }
+  body {
+    font-size: 16px;
+    line-height: 1.72;
+  }
+  .brand {
+    font-size: 16px;
+    gap: 8px;
+  }
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .brand-suffix {
+    display: none;
+  }
+  .header-nav {
+    gap: 14px;
+    margin-right: 8px;
+  }
+  .header-nav a {
+    font-size: 13.5px;
+  }
+  .header-faq-link,
+  .header-dl-btn {
+    font-size: 12px;
+  }
+  .header-faq-link {
+    height: 32px;
+    padding: 0 10px;
+  }
+  .header-dl-btn {
+    height: 32px;
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .site-header-shell {
+    padding-left: max(14px, env(safe-area-inset-left, 0px));
+    padding-right: max(14px, env(safe-area-inset-right, 0px));
+  }
+  .header-inner {
+    gap: 8px;
+  }
+  .brand {
+    font-size: 15px;
+    gap: 7px;
+  }
+  .brand-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+  .header-nav {
+    gap: 12px;
+    margin-right: 4px;
+  }
+  .header-nav a {
+    font-size: 13px;
+  }
+  .header-dl-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+  }
+  .header-dl-text {
+    display: none;
+  }
+  .header-dl-icon {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-actions {
+    gap: 6px;
+  }
+  .header-faq-link {
+    height: 30px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .header-dl-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+  }
+}

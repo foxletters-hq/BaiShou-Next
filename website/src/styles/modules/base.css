@@ -1,0 +1,225 @@
+/* ========================================
+   基础重置、毛玻璃卡片与通用按钮
+   ======================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  scroll-behavior: auto;
+  scroll-padding-top: calc(var(--nav-height) + var(--safe-top) + 36px);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+html.lenis {
+  scrollbar-width: none;
+}
+
+@media (max-width: 768px) {
+  html:not(.lenis) {
+    scrollbar-width: none;
+  }
+  html:not(.lenis)::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+html.lenis::-webkit-scrollbar,
+html:has([data-docs-root])::-webkit-scrollbar {
+  display: none;
+}
+
+html:has([data-docs-root]) {
+  scrollbar-width: none;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 1.78;
+  color: var(--text-primary);
+  background-color: var(--void);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color var(--duration-normal) var(--ease-out),
+    color var(--duration-normal) var(--ease-out);
+}
+
+[data-theme='dark'] body {
+  background-color: var(--void);
+}
+
+[data-theme='light'] body {
+  background-image: none;
+}
+
+body.plain-bg {
+  background-color: #ffffff;
+  background-image: none;
+}
+
+[data-theme='dark'] body.plain-bg {
+  background-color: #0a0f1e;
+  background-image: none;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+a:hover {
+  color: var(--link-hover);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  color: var(--text-heading);
+  font-weight: 700;
+  font-synthesis: style;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+h3,
+h4 {
+  font-weight: 600;
+}
+
+/* ---------- 清透毛玻璃卡片 ---------- */
+.card {
+  background-color: var(--surface-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 0 var(--glass-highlight);
+  transition: background-color 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme='light'] .card {
+  box-shadow: 0 12px 32px -10px rgba(24, 58, 94, 0.07),
+    inset 0 1px 0 0 var(--glass-highlight);
+}
+
+.card:hover {
+  background-color: var(--surface-bg-hover);
+  border-color: var(--accent-border-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 38px -12px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 0 var(--glass-highlight);
+}
+
+[data-theme='light'] .card:hover {
+  box-shadow: 0 16px 38px -12px rgba(24, 58, 94, 0.11),
+    inset 0 1px 0 0 var(--glass-highlight);
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 24px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  line-height: 1;
+  transition: background var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out),
+    color var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--btn-primary-text);
+  border: 1px solid var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--btn-primary-hover);
+  color: var(--btn-primary-text);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-deep);
+}
+
+.btn-outline:hover {
+  background: var(--btn-outline-hover-bg);
+  color: var(--btn-outline-hover-text);
+  border-color: var(--accent);
+}
+
+.btn-bilibili:hover {
+  border-color: #00a1d6;
+}

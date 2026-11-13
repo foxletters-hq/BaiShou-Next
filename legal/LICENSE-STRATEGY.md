@@ -7,12 +7,12 @@
 
 ## 1. 当前状态
 
-| 项目       | 说明                                                                                                                                |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 开源许可   | **AGPL-3.0-or-later**（见根目录 [LICENSE](../LICENSE)）                                                                             |
-| 版权归属   | 托管方 **郑州市金水区狐信网络科技工作室**（GitHub：Anson-Trio / foxletters-hq）及经 CLA 授权的贡献者（见 [COPYRIGHT](./COPYRIGHT)） |
-| 美术资产   | 不在 AGPL 范围内，单独许可（见 [LICENSE-ASSETS.md](./LICENSE-ASSETS.md)）                                                           |
-| 贡献者协议 | 代码类 PR 须签署 [组织级 CLA](./CLA-organization.md) 或 [企业 CLA](./CLA-corporate.md)                                              |
+| 项目       | 说明                                                                                                                                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 开源许可   | 主项目为 **AGPL-3.0-or-later**（见根目录 [LICENSE](../LICENSE)）；官网子目录 `website/` 源代码独立采用 **MIT**（见 [website/LICENSE](../website/LICENSE) 与 [website/COPYRIGHT](../website/COPYRIGHT)） |
+| 版权归属   | 托管方 **郑州市金水区狐信网络科技工作室**（GitHub：Anson-Trio / foxletters-hq）及经 CLA 授权的贡献者（见 [COPYRIGHT](./COPYRIGHT)）                                                                     |
+| 美术资产   | 不在 AGPL / MIT 范围内，单独保留所有权利（见 [LICENSE-ASSETS.md](./LICENSE-ASSETS.md) 与 [website/COPYRIGHT](../website/COPYRIGHT)）                                                                    |
+| 贡献者协议 | 代码类 PR 须签署 [组织级 CLA](./CLA-organization.md) 或 [企业 CLA](./CLA-corporate.md)                                                                                                                  |
 
 ### 为什么选择 AGPLv3？
 

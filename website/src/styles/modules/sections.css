@@ -1,0 +1,163 @@
+/* ========================================
+   核心能力与产品理念模块
+   ======================================== */
+
+.principles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.principle-card {
+  padding: 28px 30px;
+}
+
+.principle-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.principle-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.principle-card h3 {
+  font-size: 18.5px;
+  margin-bottom: 0;
+}
+
+.principle-card-head .feature-badge {
+  margin-left: auto;
+}
+
+.principle-card p {
+  font-size: 15.5px;
+  line-height: 1.78;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 720px) {
+  .principles-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .principle-card {
+    padding: 20px 22px;
+  }
+
+  .principle-card h3 {
+    font-size: 17px;
+  }
+
+  .principle-card p {
+    font-size: 14.5px;
+  }
+}
+
+/* ---------- 核心能力网格 ---------- */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 26px;
+  height: 100%;
+}
+
+.feature-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feature-badge,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 11px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  white-space: nowrap;
+}
+
+.heading-with-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.heading-with-badge h2 {
+  margin: 0;
+}
+
+.feature-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.38;
+  color: var(--text-heading);
+}
+
+.feature-card-desc {
+  font-size: 15.5px;
+  line-height: 1.76;
+  color: var(--text-secondary);
+}
+
+.feature-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  width: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .feature-card {
+    padding: 20px 22px;
+    gap: 10px;
+  }
+
+  .feature-card-title {
+    font-size: 16.5px;
+  }
+
+  .feature-card-desc {
+    font-size: 14.5px;
+    line-height: 1.65;
+  }
+
+  .feature-icon {
+    height: 38px;
+    width: 38px;
+  }
+}

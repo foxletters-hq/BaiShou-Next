@@ -1,0 +1,127 @@
+/* ========================================
+   浅色「初雪静湖」壁纸 + 深色「模糊夜景与雨滴」效果
+   ======================================== */
+
+.theme-scene {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  overflow: hidden;
+  background-color: var(--void);
+  transition: background-color 0.5s var(--ease-out);
+}
+
+.theme-wallpaper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.theme-wallpaper--light {
+  z-index: 0;
+  opacity: 1;
+}
+
+.theme-dark-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  will-change: opacity;
+  transition: opacity 0.5s var(--ease-out);
+}
+
+[data-theme='dark'] .theme-dark-layer {
+  opacity: 1;
+}
+
+.theme-wallpaper--dark-fallback {
+  z-index: 0;
+  opacity: 1;
+  filter: blur(14px);
+  transform: scale(1.06);
+}
+
+.theme-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease-out);
+}
+
+.theme-canvas.is-ready {
+  opacity: 1;
+}
+
+.bg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--wallpaper-veil);
+  transition: background-color 0.5s var(--ease-out);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out),
+    background-color 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card.reveal.is-visible {
+  transition: opacity var(--duration-slow) var(--ease-out),
+    transform 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card.reveal.is-visible:hover {
+  transform: translateY(-2px);
+}
+
+.animate-in {
+  animation: fadeInUp 0.55s var(--ease-out) both;
+}
+
+.animate-in-delay-1 {
+  animation-delay: 0.06s;
+}
+.animate-in-delay-2 {
+  animation-delay: 0.12s;
+}
+.animate-in-delay-3 {
+  animation-delay: 0.18s;
+}
+.animate-in-delay-4 {
+  animation-delay: 0.24s;
+}

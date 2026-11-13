@@ -1,7 +1,7 @@
 BaiShou-Next（白守 Next）
 Copyright (C) 2026 郑州市金水区狐信网络科技工作室 (Foxletters) and contributors.
 
-本仓库源代码（不含下文「第三方组件」与「项目自有美术与角色资产」）在
+本仓库源代码（不含下文「独立许可子目录」「第三方组件」与「项目自有美术与角色资产」）在
 GNU Affero General Public License v3.0 或更高版本（AGPL-3.0-or-later）下发布。
 完整许可条文见仓库根目录 LICENSE。
 
@@ -42,6 +42,16 @@ TypeScript / JavaScript 示例：
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 ```
+
+---
+
+## 独立许可子目录
+
+以下目录沿用其独立的开源许可证，不受主仓库 AGPL-3.0-or-later 约束：
+
+| 路径 | 许可 | 说明 |
+| --- | --- | --- |
+| `website/` | MIT（见 [website/LICENSE](../website/LICENSE)） | 白守官网与文档中心源代码；其中的官方美术、商标与角色资产仍保留所有权利（见 [website/COPYRIGHT](../website/COPYRIGHT)） |
 
 ---
 
