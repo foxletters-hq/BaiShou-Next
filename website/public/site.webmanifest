@@ -1,0 +1,25 @@
+{
+  "name": "白守 BaiShou",
+  "short_name": "白守",
+  "description": "本地优先、向量数据库与图数据库驱动的 AI 长期记忆、人生关系图谱与智能体系统。支持日记沉淀、Hybrid Graph RAG 检索、MCP 生态与多端端到端加密同步。",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0f1e",
+  "theme_color": "#0a0f1e",
+  "lang": "zh-CN",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

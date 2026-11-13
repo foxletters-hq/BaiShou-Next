@@ -1,0 +1,104 @@
+/* ========================================
+   BaiShou-Next — 浅色 / 深色双主题变量
+   ======================================== */
+
+/* ---------- Dark theme (default) ---------- */
+:root,
+[data-theme='dark'] {
+  --void: #080d1a;
+  --void-light: #101728;
+  --void-lighter: #1a2138;
+
+  --accent: #9ad4ea;
+  --accent-deep: #6fb4d0;
+  --accent-soft: rgba(154, 212, 234, 0.14);
+  --accent-border: rgba(154, 212, 234, 0.22);
+  --accent-border-hover: rgba(154, 212, 234, 0.42);
+
+  --surface-bg: rgba(12, 19, 36, 0.52);
+  --surface-bg-hover: rgba(16, 26, 48, 0.66);
+  --glass-highlight: rgba(255, 255, 255, 0.16);
+
+  --wallpaper-veil: rgba(10, 15, 30, 0.42);
+  --grid-dot: rgba(154, 212, 234, 0.08);
+
+  --text-primary: #edf1f7;
+  --text-secondary: #b8c2d4;
+  --text-muted: #7e8ba3;
+  --text-heading: #ffffff;
+
+  --header-bg: rgba(8, 13, 26, 0.62);
+  --hero-glow: rgba(0, 0, 0, 0.24);
+  --overlay: rgba(8, 13, 26, 0.18);
+  --btn-primary-text: #0a1620;
+  --btn-primary-hover: #b3e2f2;
+  --btn-outline-hover-bg: rgba(154, 212, 234, 0.12);
+  --btn-outline-hover-text: #bfe6f5;
+  --link-hover: #bfe6f5;
+  --selection-bg: rgba(154, 212, 234, 0.28);
+  --selection-text: #fff;
+  --scrollbar-thumb: rgba(154, 212, 234, 0.18);
+  --scrollbar-thumb-hover: rgba(154, 212, 234, 0.32);
+  --icon-frame-bg: rgba(14, 22, 42, 0.48);
+  --icon-shadow: 0 20px 48px rgba(0, 0, 0, 0.36);
+}
+
+/* ---------- Light theme ---------- */
+[data-theme='light'] {
+  --void: #edf4fb;
+  --void-light: #ffffff;
+  --void-lighter: #e2ecf8;
+
+  --accent: #2378ab;
+  --accent-deep: #1b638f;
+  --accent-soft: rgba(35, 120, 171, 0.11);
+  --accent-border: rgba(35, 120, 171, 0.22);
+  --accent-border-hover: rgba(35, 120, 171, 0.42);
+
+  --surface-bg: rgba(255, 255, 255, 0.56);
+  --surface-bg-hover: rgba(255, 255, 255, 0.72);
+  --glass-highlight: rgba(255, 255, 255, 0.92);
+
+  --wallpaper-veil: rgba(244, 249, 255, 0.34);
+  --grid-dot: rgba(35, 120, 171, 0.08);
+
+  --text-primary: #142030;
+  --text-secondary: #334459;
+  --text-muted: #64758b;
+  --text-heading: #0a1320;
+
+  --header-bg: rgba(244, 249, 254, 0.66);
+  --hero-glow: rgba(15, 23, 42, 0.08);
+  --overlay: rgba(237, 244, 251, 0.15);
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #2d8bc2;
+  --btn-outline-hover-bg: rgba(35, 120, 171, 0.1);
+  --btn-outline-hover-text: #16557d;
+  --link-hover: #16557d;
+  --selection-bg: rgba(35, 120, 171, 0.2);
+  --selection-text: #0d1520;
+  --scrollbar-thumb: rgba(35, 120, 171, 0.22);
+  --scrollbar-thumb-hover: rgba(35, 120, 171, 0.36);
+  --icon-frame-bg: rgba(255, 255, 255, 0.56);
+  --icon-shadow: 0 16px 40px rgba(20, 50, 84, 0.1);
+}
+
+:root {
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --font-sans: 'Noto Sans SC', 'PingFang SC', 'HarmonyOS Sans SC', 'MiSans',
+    'Microsoft YaHei UI', 'Microsoft YaHei', 'Source Han Sans SC', sans-serif;
+  --font-display: var(--font-sans);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 260ms;
+  --duration-slow: 600ms;
+  --max-width: 1120px;
+  --page-gutter: 28px;
+  --nav-bar-height: 64px;
+  --nav-height: var(--nav-bar-height);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --footer-height: 60px;
+}

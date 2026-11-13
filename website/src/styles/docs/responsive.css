@@ -1,0 +1,191 @@
+/* ========================================
+   文档移动端抽屉导航与响应式适配
+   ======================================== */
+
+.docs-backdrop,
+.docs-mobile-toggle,
+.docs-fab {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .docs-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-toc {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .docs-shell {
+    grid-template-columns: 1fr;
+    padding-inline: 0;
+  }
+
+  .docs-sidebar {
+    grid-column: 1;
+    grid-row: 1;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(84vw, 300px);
+    z-index: 100;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    padding: max(14px, var(--safe-top, env(safe-area-inset-top, 14px))) 14px
+      max(24px, var(--safe-bottom, env(safe-area-inset-bottom, 24px)));
+    align-self: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    background: #ffffff;
+    border-inline-end: 1px solid var(--docs-border);
+    box-shadow: 16px 0 36px rgba(15, 23, 42, 0.2);
+    transform: translateX(-105%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 200ms var(--ease-out), visibility 200ms var(--ease-out);
+  }
+
+  [data-theme='dark'] .docs-sidebar {
+    background: #0a0f1e;
+    box-shadow: 16px 0 36px rgba(0, 0, 0, 0.6);
+  }
+
+  .docs-shell[data-nav-open='true'] .docs-sidebar {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .docs-sidebar__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .docs-sidebar__top .docs-sidebar__home {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .docs-sidebar__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid var(--docs-border);
+    background: var(--surface-bg);
+    color: var(--docs-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 150ms var(--ease-out), color 150ms var(--ease-out);
+  }
+
+  .docs-sidebar__close:hover,
+  .docs-sidebar__close:active {
+    background: var(--docs-hover);
+    color: var(--text-heading);
+  }
+
+  .docs-nav__link {
+    padding: 9px 10px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .docs-nav__link.docs-sidebar__home {
+    font-size: 16px;
+  }
+
+  .docs-nav__label {
+    padding-inline: 10px;
+    font-size: 13px;
+  }
+
+  .docs-nav__list {
+    gap: 4px;
+  }
+
+  .docs-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    overscroll-behavior: contain;
+    touch-action: none;
+  }
+
+  .docs-shell[data-nav-open='true'] .docs-backdrop {
+    display: block;
+  }
+
+  body:has([data-docs-root][data-nav-open='true']) {
+    overflow: hidden;
+  }
+
+  .docs-main {
+    grid-column: 1;
+    grid-row: 1;
+    padding: 12px max(var(--page-gutter), 16px) 48px;
+  }
+
+  .docs-mobile-toggle {
+    display: none;
+  }
+
+  .docs-fab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left, 0px));
+    bottom: calc(var(--footer-height) + var(--safe-bottom) + 14px);
+    z-index: 45;
+    height: 40px;
+    min-width: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--docs-border);
+    background: var(--header-bg);
+    color: var(--text-heading);
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .docs-fab__icon {
+    display: block;
+    width: 16px;
+    height: 12px;
+    flex-shrink: 0;
+    background:
+      linear-gradient(currentColor, currentColor) 0 0 / 100% 2px no-repeat,
+      linear-gradient(currentColor, currentColor) 0 5px / 100% 2px no-repeat,
+      linear-gradient(currentColor, currentColor) 0 10px / 100% 2px no-repeat;
+  }
+
+  .docs-shell[data-nav-open='true'] .docs-fab {
+    opacity: 0;
+    pointer-events: none;
+  }
+}

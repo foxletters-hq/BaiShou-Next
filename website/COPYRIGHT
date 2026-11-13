@@ -1,0 +1,51 @@
+BaiShou-Next / website（白守官网与文档中心）
+Copyright (C) 2026 郑州市金水区狐信网络科技工作室 (Foxletters) and contributors.
+
+本目录（`website/`）源代码在 MIT 许可证（MIT License）下发布，独立于主项目其余代码（`AGPL-3.0-or-later`，见根目录 `../LICENSE` 与 `../legal/COPYRIGHT`）。
+完整许可条文见本目录 [LICENSE](./LICENSE)。
+
+---
+
+## 项目托管方（Project Steward）
+
+| 项目             | 内容                                                                     |
+| ---------------- | ------------------------------------------------------------------------ |
+| 法律主体         | 郑州市金水区狐信网络科技工作室（个体工商户）及其经营者                   |
+| 统一社会信用代码 | 92410105MAKMWQ1PX9                                                       |
+| 品牌与简称       | 狐信科技、狐信、Foxletters                                               |
+| GitHub           | 组织 [foxletters-hq](https://github.com/foxletters-hq)；维护者账号 [Anson-Trio](https://github.com/Anson-Trio) |
+| 联系邮箱         | foxletters@163.com                                                       |
+| 仓库地址         | https://github.com/foxletters-hq/BaiShou-Next（`website/` 子目录）       |
+
+本文件中的「托管方」「项目方」「权利人」，均指上表中的法律主体。
+「狐信科技」「狐信」「Foxletters」是托管方（郑州市金水区狐信网络科技工作室）对外使用的简称与品牌名称；`Anson-Trio`、`foxletters-hq` 是托管方在 GitHub 上使用的账号与组织名称。上述名称均非独立的法律主体，均指代「郑州市金水区狐信网络科技工作室」。
+
+---
+
+## 项目自有美术、品牌与角色资产
+
+以下路径中的官方美术资产、品牌 Logo、App 图标及视觉背景，著作权归托管方所有，**保留所有权利（All Rights Reserved），不在 MIT 许可范围内**：
+
+| 路径 | 内容 |
+|------|------|
+| `public/assets/images/app-icon.png` | 白守官方应用图标 |
+| `public/favicon*` / `public/apple-touch-icon.png` / `public/site.webmanifest` | 网站 Favicon 图标与清单资产 |
+| `public/assets/images/bg/day-snowlake.jpg` / `public/assets/images/dark-city-bg.jpg` | 官网浅色与深色主题专属背景图像 |
+| `public/assets/images/sakura-avatar.jpg` / `public/assets/images/akatsuki-avatar.jpg` | 霞雨樱与天光晓角色头像资产 |
+| 网站内包含的看板娘 Latte 形象与美术原案 | 见主项目 [LICENSE-ASSETS.md](../legal/LICENSE-ASSETS.md) |
+
+未经权利人明确书面授权，不得将上述官方美术与品牌资产用于任何商业目的、二次包装分发或容易引起公众混淆的产品上。
+
+---
+
+## 商标
+
+「白守」「狐信」已由托管方向国家知识产权局提交商标注册申请；
+「BaiShou」及项目标识为托管方在先使用的未注册商标。
+MIT 许可仅授予网站源代码的使用权，不授予任何商标使用权。详见主项目 [TRADEMARK.md](../legal/TRADEMARK.md)。
+
+---
+
+## 贡献者许可协议（CLA）
+
+向本仓库提交包含代码变更的 Pull Request 前，须签署 [foxletters-hq 组织级 CLA v1.1](../legal/CLA-organization.md)（多仓通用，通过 [CLA Assistant](https://cla-assistant.io/) 签署）。详见 [../.github/CLA.md](../.github/CLA.md)。

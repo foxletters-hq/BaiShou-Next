@@ -155,6 +155,7 @@ pnpm ci:check
 本專案採用 **AGPLv3**（GNU Affero General Public License v3.0）協議開源。
 
 - 客戶端程式碼完全開源，鼓勵社群參與改進。
+- **官網子目錄（`website/`）**：白守官網與文件中心原始碼獨立在 **MIT** 協議下發佈，見 [website/LICENSE](../../website/LICENSE) 與 [website/COPYRIGHT](../../website/COPYRIGHT)。
 - 請遵守 AGPLv3 協議：若您修改了本專案的程式碼並在網路上提供服務，您的修改版本也必須開源。
 - 提交**程式碼 PR** 須簽署 [組織級 CLA](../../legal/CLA-organization.md)。
 - **美術與角色資產**：官方美術與看板娘 Latte **不在** AGPL 範圍內，歡迎非商業二創，詳見 [legal/LICENSE-ASSETS.md](../../legal/LICENSE-ASSETS.md)。

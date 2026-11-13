@@ -1,0 +1,7 @@
+/**
+ * 自研文档布局 — 模块化样式入口
+ */
+@import './docs/shell.css';
+@import './docs/prose.css';
+@import './docs/home.css';
+@import './docs/responsive.css';

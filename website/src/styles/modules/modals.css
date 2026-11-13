@@ -1,0 +1,260 @@
+/* ========================================
+   社群弹窗与下载液态玻璃弹窗
+   ======================================== */
+
+.community-modal,
+.dl-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: calc(var(--nav-height) + var(--safe-top) + 16px);
+  padding-bottom: calc(var(--footer-height) + var(--safe-bottom) + 16px);
+  padding-left: max(var(--page-gutter), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--page-gutter), env(safe-area-inset-right, 0px));
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.community-modal[hidden],
+.dl-popup[hidden] {
+  display: none;
+}
+
+.community-modal.is-open,
+.dl-popup.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.community-modal-backdrop,
+.dl-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 15, 30, 0.58);
+  opacity: 0;
+  transition: opacity 0.38s var(--ease-out);
+}
+
+[data-theme='light'] .community-modal-backdrop,
+[data-theme='light'] .dl-popup-backdrop {
+  background: rgba(244, 247, 251, 0.78);
+}
+
+.community-modal.is-open .community-modal-backdrop,
+.dl-popup.is-open .dl-popup-backdrop {
+  opacity: 1;
+}
+
+.community-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(720px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px 24px 24px;
+  margin: 0;
+  background: var(--void-lighter);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px var(--hero-glow);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  transform: scale(0.92) translateY(16px);
+  transition: transform 0.38s var(--ease-out);
+}
+
+.community-modal-panel::-webkit-scrollbar,
+.dl-popup-panel::-webkit-scrollbar {
+  display: none;
+}
+
+.community-modal.is-open .community-modal-panel {
+  transform: scale(1) translateY(0);
+}
+
+.community-modal-close,
+.dl-popup-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--accent-border);
+  border-radius: 9999px;
+  background: var(--surface-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out);
+}
+
+.community-modal-close:hover,
+.dl-popup-close:hover {
+  color: var(--accent);
+  border-color: var(--accent-border-hover);
+  background: var(--surface-bg-hover);
+}
+
+.community-modal-header,
+.dl-popup-header {
+  text-align: center;
+  padding-right: 32px;
+}
+
+.community-modal-header h2,
+.dl-popup-header h2 {
+  margin-top: 8px;
+  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+}
+
+.community-modal-lead,
+.dl-popup-lead {
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.community-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.community-modal-card {
+  margin: 0;
+  text-align: center;
+}
+
+.community-modal-qr {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  border-radius: var(--radius-md);
+  margin: 0 auto;
+  display: block;
+}
+
+/* ---- Liquid glass download panel ---- */
+.dl-popup-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 32px 28px 28px;
+  margin: 0;
+  background: rgba(154, 212, 234, 0.06);
+  border: 1px solid rgba(154, 212, 234, 0.2);
+  border-radius: 20px;
+  backdrop-filter: blur(40px) saturate(1.6);
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 0 rgba(255, 255, 255, 0.12) inset;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  transform: scale(0.88) translateY(20px);
+  opacity: 0;
+  transition: transform 0.42s var(--ease-out), opacity 0.32s var(--ease-out);
+}
+
+[data-theme='light'] .dl-popup-panel {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(94, 184, 229, 0.25);
+  box-shadow: 0 24px 64px rgba(94, 184, 229, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset,
+    0 1px 0 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+.dl-popup.is-open .dl-popup-panel {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.dl-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.dl-popup-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 16px 20px;
+  border-radius: 16px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text-primary);
+  background: rgba(154, 212, 234, 0.04);
+  border: 1px solid var(--accent-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out);
+}
+
+[data-theme='light'] .dl-popup-card {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dl-popup-card:hover {
+  background: rgba(154, 212, 234, 0.12);
+  border-color: var(--accent-border-hover);
+  box-shadow: 0 8px 28px var(--hero-glow);
+  transform: translateY(-2px);
+  color: var(--text-heading);
+}
+
+[data-theme='light'] .dl-popup-card:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.dl-popup-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  font-size: 28px;
+}
+
+.dl-popup-label {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.dl-popup-size {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .community-modal-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    max-width: 240px;
+    margin-inline: auto;
+  }
+}

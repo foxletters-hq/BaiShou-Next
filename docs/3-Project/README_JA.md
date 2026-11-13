@@ -155,6 +155,7 @@ Anson、桜、暁の三人の約束。今、オープンソースにし、あな
 本プロジェクトは **AGPLv3**（GNU Affero General Public License v3.0）で公開しています。
 
 - クライアントコードは完全オープンソース。コミュニティの改善を歓迎します。
+- **Webサイトディレクトリ（`website/`）**：公式サイトおよびドキュメントセンターのソースコードは個別に **MIT** ライセンスで公開されています（[website/LICENSE](../../website/LICENSE) および [website/COPYRIGHT](../../website/COPYRIGHT) を参照）。
 - 改変してネットワークサービスとして提供する場合、改変版も AGPLv3 で公開してください。
 - **コードの PR** には [組織 CLA](../../legal/CLA-organization.md) への署名が必要です。
 - **アートとキャラクター**：公式アートと看板娘 Latte は AGPL の**対象外**です。非営利の二次創作は歓迎します。詳細は [legal/LICENSE-ASSETS.md](../../legal/LICENSE-ASSETS.md)（中国語）。

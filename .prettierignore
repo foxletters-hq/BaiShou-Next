@@ -21,5 +21,8 @@ coverage/**
 .lint-count-*.json
 # 图标元数据：438 KB 纯数据，重排会产生上万行无意义 diff
 packages/ui/src/desktop/DeveloperOptionsView/lucide-icon-meta.json
+# 官网为独立 MIT 子工程，使用其自身的 ESLint / EditorConfig 规则，不由根 Prettier 统一改写
+website/**
+
 # 思考强度快照：pnpm sync 生成，避免和 Prettier 互相覆盖
 packages/shared/src/data/reasoning-models.snapshot.generated.ts

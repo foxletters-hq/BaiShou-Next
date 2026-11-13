@@ -1,0 +1,173 @@
+/* ========================================
+   首屏 Hero 布局与呼吸动画
+   ======================================== */
+
+.hero {
+  display: flex;
+  align-items: center;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 52px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1.02fr 0.98fr;
+    gap: 64px;
+  }
+}
+
+.hero-eyebrow {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hero-title {
+  margin-top: 14px;
+  font-size: clamp(3rem, 8vw, 4.5rem);
+  line-height: 1.06;
+}
+
+.hero-tagline {
+  margin-top: 14px;
+  font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  color: var(--text-secondary);
+}
+
+.hero-positioning {
+  margin-top: 12px;
+  font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1.52;
+}
+
+.hero-desc {
+  margin-top: 18px;
+  max-width: 36rem;
+  font-size: 17px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.hero-visual {
+  display: flex;
+  justify-content: center;
+}
+
+.app-icon-frame {
+  padding: 26px;
+  border-radius: 38px;
+  background: var(--icon-frame-bg);
+  border: 1px solid var(--accent-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--icon-shadow);
+}
+
+.app-icon-hero {
+  width: min(410px, 72vw);
+  height: auto;
+  border-radius: 32px;
+}
+
+@media (max-width: 768px) {
+  .hero-grid {
+    gap: 24px;
+  }
+
+  .hero-eyebrow {
+    font-size: 13px;
+  }
+
+  .hero-title {
+    margin-top: 8px;
+    font-size: clamp(2.1rem, 9.5vw, 2.75rem);
+  }
+
+  .hero-tagline {
+    margin-top: 8px;
+    font-size: 1.05rem;
+  }
+
+  .hero-positioning {
+    font-size: 1rem;
+  }
+
+  .hero-desc {
+    margin-top: 12px;
+    font-size: 15px;
+    line-height: 1.68;
+  }
+
+  .hero-actions {
+    margin-top: 18px;
+    gap: 10px;
+  }
+
+  .hero-actions .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 42px;
+    padding: 0 18px;
+    font-size: 15px;
+  }
+
+  .app-icon-frame {
+    padding: 16px;
+    border-radius: 26px;
+  }
+
+  .app-icon-hero {
+    width: min(260px, 62vw);
+    border-radius: 22px;
+  }
+
+  .section-eyebrow {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .section-heading h2 {
+    font-size: clamp(1.5rem, 6.2vw, 1.875rem);
+  }
+
+  .section-lead {
+    margin-top: 10px;
+    font-size: 15px;
+    line-height: 1.68;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+  }
+
+  .hero-visual {
+    order: -1;
+  }
+
+  .app-icon-hero {
+    width: min(210px, 56vw);
+  }
+}
