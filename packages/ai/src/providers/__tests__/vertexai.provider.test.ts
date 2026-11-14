@@ -88,10 +88,10 @@ describe('VertexAIAdaptedProvider', () => {
       expect(sdkInstance).toHaveBeenCalledWith('gemini-2.5-pro')
     })
 
-    it('should normalize embedding model id', () => {
-      provider.getEmbeddingModel('models/text-embedding-004')
-      const sdkInstance = vi.mocked(createGoogleGenerativeAI).mock.results[0]?.value
-      expect(sdkInstance.textEmbeddingModel).toHaveBeenCalledWith('text-embedding-004')
+    it('should return VertexAIEmbeddingModel with normalized model id', () => {
+      const embedModel = provider.getEmbeddingModel('publishers/google/models/gemini-embedding-001')
+      expect((embedModel as unknown as { modelId: string }).modelId).toBe('gemini-embedding-001')
+      expect((embedModel as unknown as { provider: string }).provider).toBe('vertexai')
     })
   })
 
@@ -109,27 +109,52 @@ describe('VertexAIAdaptedProvider', () => {
       expect(fetch).not.toHaveBeenCalled()
     })
 
-    it('should parse publisherModels with x-goog-api-key header', async () => {
+    it('should parse publisherModels with x-goog-api-key header and pageSize=1000', async () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           publisherModels: [
-            { name: 'publishers/google/models/gemini-2.5-pro' },
-            { name: 'publishers/google/models/gemini-2.5-flash' }
+            { name: 'publishers/google/models/gemini-2.5-flash' },
+            { name: 'publishers/google/models/gemini-3.5-flash' }
           ]
         })
       } as Response)
 
       const models = await provider.fetchAvailableModels()
       expect(fetch).toHaveBeenCalledWith(
-        'https://aiplatform.googleapis.com/v1/publishers/google/models',
+        'https://aiplatform.googleapis.com/v1/publishers/google/models?pageSize=1000',
         expect.objectContaining({
           headers: expect.any(Headers)
         })
       )
       const headers = vi.mocked(fetch).mock.calls[0]?.[1]?.headers as Headers
       expect(headers.get('x-goog-api-key')).toBe('test-vertex-key')
-      expect(models).toEqual(['gemini-2.5-pro', 'gemini-2.5-flash'])
+      expect(models).toEqual(['gemini-3.5-flash', 'gemini-2.5-flash'])
+    })
+
+    it('should follow nextPageToken to collect newer models on later pages', async () => {
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            publisherModels: [{ name: 'publishers/google/models/gemini-1.5-pro' }],
+            nextPageToken: 'page-2'
+          })
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            publisherModels: [{ name: 'publishers/google/models/gemini-3.5-flash' }]
+          })
+        } as Response)
+
+      const models = await provider.fetchAvailableModels()
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        'https://aiplatform.googleapis.com/v1/publishers/google/models?pageSize=1000&pageToken=page-2',
+        expect.anything()
+      )
+      expect(models).toEqual(['gemini-3.5-flash', 'gemini-1.5-pro'])
     })
 
     it('should try v1beta1 when v1 returns 404', async () => {
@@ -143,25 +168,25 @@ describe('VertexAIAdaptedProvider', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
-            models: [{ name: 'models/gemini-2.5-flash' }]
+            models: [{ name: 'models/gemini-3.5-flash' }]
           })
         } as Response)
 
       const models = await provider.fetchAvailableModels()
       expect(fetch).toHaveBeenNthCalledWith(
         1,
-        'https://aiplatform.googleapis.com/v1/publishers/google/models',
+        'https://aiplatform.googleapis.com/v1/publishers/google/models?pageSize=1000',
         expect.anything()
       )
       expect(fetch).toHaveBeenNthCalledWith(
         2,
-        'https://aiplatform.googleapis.com/v1beta1/publishers/google/models',
+        'https://aiplatform.googleapis.com/v1beta1/publishers/google/models?pageSize=1000',
         expect.anything()
       )
-      expect(models).toEqual(['gemini-2.5-flash'])
+      expect(models).toEqual(['gemini-3.5-flash'])
     })
 
-    it('should fallback to built-in Vertex AI models when endpoints return 404 or 403', async () => {
+    it('should fallback to dynamic models.dev + snapshot catalog when endpoints return 404 or 403', async () => {
       vi.mocked(fetch)
         .mockResolvedValueOnce({
           ok: false,
@@ -175,9 +200,11 @@ describe('VertexAIAdaptedProvider', () => {
           statusText: 'Forbidden',
           json: async () => ({ error: { message: 'Permission denied' } })
         } as Response)
+        .mockRejectedValueOnce(new Error('offline models.dev'))
 
       const models = await provider.fetchAvailableModels()
       expect(models).toEqual([...VERTEX_AI_DEFAULT_MODELS])
+      expect(models).toContain('gemini-3.5-flash')
     })
 
     it('should throw when API key is explicitly invalid (400)', async () => {

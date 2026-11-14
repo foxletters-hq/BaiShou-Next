@@ -11,23 +11,24 @@ import {
 } from './fetch-header.util'
 import { wrapGoogleLanguageModelWithSafetySettings } from './google-safety-settings.util'
 import { probeProviderConnection, wrapConnectionTestError } from './provider-connection-test.util'
+import { VertexAIEmbeddingModel } from './vertexai-embedding.model'
+import {
+  buildSnapshotVertexAIModels,
+  resolveFallbackVertexAIModels,
+  sortVertexModelIdsNewestFirst
+} from './vertexai-model-catalog.util'
 
 const VERTEX_AI_DEFAULT_BASE_URL =
   PROVIDER_DEFAULT_BASE_URLS.vertexai || 'https://aiplatform.googleapis.com/v1'
 
+const VERTEX_MODEL_LIST_PAGE_SIZE = 1000
+const VERTEX_MODEL_LIST_MAX_PAGES = 4
+
 /**
- * Vertex AI Express Mode（仅 API Key 鉴权）下，官方 Model Garden 列表端点通常不对 API Key 开放；
- * 当远端列表接口不可用时，回退到此常用 Gemini 模型列表，保证用户可直接选用并测试连接。
+ * Vertex AI Express Mode（仅 API Key 鉴权）离线兜底模型列表：
+ * 由 `@baishou/shared` 中随 `pnpm sync` 自动更新的快照与基础集合生成，包含最新代次模型。
  */
-export const VERTEX_AI_DEFAULT_MODELS: readonly string[] = [
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-pro',
-  'gemini-1.5-flash'
-]
+export const VERTEX_AI_DEFAULT_MODELS: readonly string[] = buildSnapshotVertexAIModels()
 
 /**
  * 将用户配置的基础地址规范化为 Vertex AI Google Publisher 根路径，
@@ -71,8 +72,17 @@ function buildVertexAIModelListEndpoints(publisherBaseUrl: string): string[] {
   return endpoints
 }
 
-function extractVertexAIModelIds(payload: unknown): string[] {
-  if (!payload || typeof payload !== 'object') return []
+function appendPaginationParams(endpoint: string, pageToken?: string): string {
+  const separator = endpoint.includes('?') ? '&' : '?'
+  const baseWithSize = `${endpoint}${separator}pageSize=${VERTEX_MODEL_LIST_PAGE_SIZE}`
+  return pageToken ? `${baseWithSize}&pageToken=${encodeURIComponent(pageToken)}` : baseWithSize
+}
+
+function extractVertexAIModelIds(payload: unknown): {
+  models: string[]
+  nextPageToken?: string
+} {
+  if (!payload || typeof payload !== 'object') return { models: [] }
   const record = payload as Record<string, unknown>
   const rawList = Array.isArray(record.publisherModels)
     ? record.publisherModels
@@ -94,7 +104,13 @@ function extractVertexAIModelIds(payload: unknown): string[] {
     seen.add(normalized)
     result.push(normalized)
   }
-  return result
+
+  const nextPageToken =
+    typeof record.nextPageToken === 'string' && record.nextPageToken.trim()
+      ? record.nextPageToken.trim()
+      : undefined
+
+  return { models: result, nextPageToken }
 }
 
 function parseErrorMessage(body: unknown, fallback: string): string {
@@ -141,9 +157,15 @@ export class VertexAIAdaptedProvider implements IAIProvider {
   }
 
   getEmbeddingModel(modelId?: string): EmbeddingModel {
-    const rawModel = modelId || 'text-embedding-004'
+    const rawModel = modelId || 'gemini-embedding-001'
     const targetModel = normalizeVertexAIModelId(rawModel)
-    return this._getSdk().textEmbeddingModel(targetModel) as unknown as EmbeddingModel
+    const apiKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
+    return new VertexAIEmbeddingModel(targetModel, {
+      provider: 'vertexai',
+      baseURL: resolveVertexAIPublisherBaseUrl(this.config.baseUrl),
+      apiKey,
+      fetch: createSanitizedFetch()
+    }) as unknown as EmbeddingModel
   }
 
   async fetchAvailableModels(): Promise<string[]> {
@@ -156,37 +178,50 @@ export class VertexAIAdaptedProvider implements IAIProvider {
     const headers = sanitizeRequestHeaders({ 'x-goog-api-key': apiKey })
 
     for (const endpoint of endpoints) {
-      const res = await sanitizedFetch(endpoint, { headers })
-      if (res.ok) {
-        const data = await res.json()
-        const models = extractVertexAIModelIds(data)
-        if (models.length > 0) {
-          return models
+      const collected: string[] = []
+      let pageToken: string | undefined
+      let endpointUnsupported = false
+
+      for (let page = 0; page < VERTEX_MODEL_LIST_MAX_PAGES; page++) {
+        const res = await sanitizedFetch(appendPaginationParams(endpoint, pageToken), { headers })
+        if (res.ok) {
+          const data = await res.json()
+          const { models, nextPageToken } = extractVertexAIModelIds(data)
+          collected.push(...models)
+          if (!nextPageToken || models.length === 0) {
+            break
+          }
+          pageToken = nextPageToken
+          continue
         }
-        continue
-      }
 
-      let errMessage = res.statusText || `HTTP ${res.status}`
-      try {
-        const errBody = await res.json()
-        errMessage = parseErrorMessage(errBody, errMessage)
-      } catch {
-        // 忽略非 JSON 错误体
-      }
+        let errMessage = res.statusText || `HTTP ${res.status}`
+        try {
+          const errBody = await res.json()
+          errMessage = parseErrorMessage(errBody, errMessage)
+        } catch {
+          // 忽略非 JSON 错误体
+        }
 
-      if (isExplicitInvalidApiKeyError(res.status, errMessage)) {
+        if (isExplicitInvalidApiKeyError(res.status, errMessage)) {
+          throw new Error(`Failed to fetch Vertex AI models: ${res.status} ${errMessage}`)
+        }
+
+        // Express Mode 下 404/401/403 属于列表端点未对 API Key 开放的正常情况，继续尝试或回退动态目录
+        if (res.status === 404 || res.status === 401 || res.status === 403) {
+          endpointUnsupported = true
+          break
+        }
+
         throw new Error(`Failed to fetch Vertex AI models: ${res.status} ${errMessage}`)
       }
 
-      // Express Mode 下 404/401/403 属于列表端点未对 API Key 开放的正常情况，继续尝试或回退内置列表
-      if (res.status === 404 || res.status === 401 || res.status === 403) {
-        continue
+      if (!endpointUnsupported && collected.length > 0) {
+        return sortVertexModelIdsNewestFirst(collected)
       }
-
-      throw new Error(`Failed to fetch Vertex AI models: ${res.status} ${errMessage}`)
     }
 
-    return [...VERTEX_AI_DEFAULT_MODELS]
+    return resolveFallbackVertexAIModels(sanitizedFetch)
   }
 
   async testConnection(testModelId?: string): Promise<void> {
