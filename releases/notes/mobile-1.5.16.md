@@ -1,0 +1,2 @@
+- 新增 Google Vertex AI 专用模型协议适配，修复使用 Google Cloud API Key 获取模型列表报 404 的问题并支持原生对话调用
+- 统一关闭 Google Gemini 与 Vertex AI 请求的默认安全过滤拦截（设置为 `BLOCK_NONE`），避免正常对话内容被误判拦截
