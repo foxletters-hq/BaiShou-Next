@@ -4,6 +4,7 @@ import { AiProviderModel, normalizeModelId } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
 import { assertAsciiApiKey, createSanitizedFetch, sanitizeApiKeyForHttp } from './fetch-header.util'
+import { wrapGoogleLanguageModelWithSafetySettings } from './google-safety-settings.util'
 import { probeProviderConnection, wrapConnectionTestError } from './provider-connection-test.util'
 
 export class GeminiAdaptedProvider implements IAIProvider {
@@ -24,7 +25,9 @@ export class GeminiAdaptedProvider implements IAIProvider {
   getLanguageModel(modelId?: string): LanguageModel {
     const rawModel = modelId || this.config.defaultDialogueModel || 'gemini-1.5-pro'
     const targetModel = normalizeModelId(rawModel)
-    return this._getSdk()(targetModel) as unknown as LanguageModel
+    return wrapGoogleLanguageModelWithSafetySettings(
+      this._getSdk()(targetModel) as unknown as LanguageModel
+    )
   }
 
   getEmbeddingModel(modelId?: string): EmbeddingModel {

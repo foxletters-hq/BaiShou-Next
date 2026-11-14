@@ -5,7 +5,8 @@ import { GeminiAdaptedProvider } from '../gemini.provider'
 globalThis.fetch = vi.fn()
 
 vi.mock('ai', () => ({
-  generateText: vi.fn()
+  generateText: vi.fn(),
+  wrapLanguageModel: vi.fn(({ model }) => model)
 }))
 
 vi.mock('@ai-sdk/google', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { ProviderFactory } from '../provider.factory'
 import { OpenAIAdaptedProvider } from '../openai.provider'
 import { GeminiAdaptedProvider } from '../gemini.provider'
+import { VertexAIAdaptedProvider } from '../vertexai.provider'
 import { AnthropicAdaptedProvider } from '../anthropic.provider'
 
 describe('ProviderFactory', () => {
@@ -42,6 +43,25 @@ describe('ProviderFactory', () => {
     }
     const provider = ProviderFactory.createProviderFromConfig(config as any)
     expect(provider).toBeInstanceOf(GeminiAdaptedProvider)
+  })
+
+  it('should instantiate VertexAIAdaptedProvider when config type is vertexai', () => {
+    const config = {
+      id: 'vertexai',
+      type: 'vertexai',
+      name: 'Google Vertex AI',
+      apiKey: 'test-key',
+      baseUrl: 'https://aiplatform.googleapis.com/v1',
+      models: [],
+      isSystem: true,
+      isEnabled: true,
+      sortOrder: 0,
+      enabledModels: [],
+      defaultDialogueModel: '',
+      defaultNamingModel: ''
+    }
+    const provider = ProviderFactory.createProviderFromConfig(config as any)
+    expect(provider).toBeInstanceOf(VertexAIAdaptedProvider)
   })
 
   it('should instantiate AnthropicAdaptedProvider when config type is anthropic', () => {
