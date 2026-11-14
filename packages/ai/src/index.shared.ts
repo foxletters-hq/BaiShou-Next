@@ -27,6 +27,7 @@ export * from './rag/knowledge-embedding.storage'
 
 // Providers
 export * from './providers/openai.provider'
+export * from './providers/vertexai.provider'
 export * from './providers/opencodego/opencodego.model-protocol'
 export * from './providers/opencodego/opencodego.provider'
 export * from './providers/reasoning'
