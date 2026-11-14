@@ -1,0 +1,2 @@
+- 新增 Google Vertex AI 原生 `:predict` 向量接口支持，可使用 `gemini-embedding-001` 等模型进行知识库与日记检索
+- 优化 Google Vertex AI 模型列表获取，自动同步最新发布的 Gemini 系列模型并按新版本优先排序
