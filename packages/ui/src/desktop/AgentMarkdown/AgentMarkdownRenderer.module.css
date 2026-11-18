@@ -2,12 +2,47 @@
 .root:global(.x-markdown),
 .ancillary:global(.x-markdown) {
   --font-size: var(--ui-fs-lg);
+  --text-color: var(--text-primary);
+  --heading-color: var(--text-primary);
+  --margin-block: 0 0 var(--spacing-sm-plus) 0;
+  --margin-ul-ol: 0 0 var(--spacing-sm-plus) var(--spacing-md-plus);
+  --margin-li: 0 0 var(--spacing-xs-plus) 0;
+  --padding-ul-ol: 0 0 0 var(--spacing-md);
   width: fit-content !important;
   max-width: 100%;
   font-family: var(--font-family) !important;
   font-size: var(--ui-fs-lg);
-  line-height: 1.6;
+  line-height: 1.75;
   color: var(--text-primary);
+}
+
+.root:global(.x-markdown) + .root:global(.x-markdown) {
+  margin-top: var(--spacing-sm-plus);
+}
+
+/* 恢复段落与列表项的自然行段间距（含含自定义思考标签时退化为直接子级 div 的段落） */
+.root:global(.x-markdown) p,
+.ancillary:global(.x-markdown) p,
+.root:global(.x-markdown) > div,
+.ancillary:global(.x-markdown) > div {
+  margin: 0 0 var(--spacing-sm-plus) 0;
+}
+
+.root:global(.x-markdown) p:last-child,
+.ancillary:global(.x-markdown) p:last-child,
+.root:global(.x-markdown) > div:last-child,
+.ancillary:global(.x-markdown) > div:last-child {
+  margin-bottom: 0;
+}
+
+.root:global(.x-markdown) li,
+.ancillary:global(.x-markdown) li {
+  margin: 0 0 var(--spacing-xs-plus) 0;
+}
+
+.root:global(.x-markdown) li:last-child,
+.ancillary:global(.x-markdown) li:last-child {
+  margin-bottom: 0;
 }
 
 /* 标题 UA 默认 700，未加载该字重时中文会落到系统黑体 */
@@ -15,6 +50,19 @@
 .ancillary:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6) {
   font-family: inherit !important;
   font-weight: 600;
+  line-height: 1.5;
+  margin-top: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-sm);
+}
+
+.root:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6):first-child,
+.ancillary:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+.root:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6):last-child,
+.ancillary:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6):last-child {
+  margin-bottom: 0;
 }
 
 .root:global(.x-markdown) :is(p, div, span, li, ul, ol, strong, em, a, td, th),
@@ -30,8 +78,10 @@
 }
 
 .ancillary:global(.x-markdown) {
+  --text-color: var(--text-secondary);
+  --heading-color: var(--text-secondary);
   font-size: var(--ui-fs-lg);
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--text-secondary) !important;
 }
 
@@ -82,7 +132,7 @@
   word-break: break-word;
   font-family: var(--font-family);
   font-size: var(--ui-fs-lg);
-  line-height: 1.6;
+  line-height: 1.75;
   color: var(--text-primary);
 }
 

@@ -15,7 +15,11 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Check, ChevronUp, Settings, Sparkles } from 'lucide-react-native'
-import { formatReasoningEffortLabel, type ReasoningEffortSetting } from '@baishou/shared'
+import {
+  formatReasoningEffortLabel,
+  listSessionReasoningEffortSettings,
+  type ReasoningEffortSetting
+} from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { ProviderBrandIcon } from '../ProviderBrandIcon'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
@@ -210,7 +214,10 @@ export function ModelReasoningControl({
                       <TouchableOpacity
                         key={opt}
                         activeOpacity={0.7}
-                        onPress={() => reasoningEffort?.onChange(opt)}
+                        onPress={() => {
+                          reasoningEffort?.onChange(opt)
+                          close()
+                        }}
                         style={[
                           styles.effortChip,
                           isSelected
@@ -302,7 +309,15 @@ export function ModelReasoningControl({
                             activeOpacity={0.7}
                             onPress={() => {
                               onSelectModel?.(provider.id, modelId)
-                              close()
+                              const nextEffortOptions = reasoningEffort
+                                ? listSessionReasoningEffortSettings(
+                                    modelId,
+                                    provider.type || provider.id || undefined
+                                  )
+                                : []
+                              if (nextEffortOptions.length === 0) {
+                                close()
+                              }
                             }}
                             style={[
                               styles.modelRow,

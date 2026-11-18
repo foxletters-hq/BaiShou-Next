@@ -4,6 +4,10 @@
   color: var(--text-secondary);
 }
 
+.afterText {
+  margin-top: var(--spacing-xs-plus);
+}
+
 .root:last-child {
   margin-bottom: 0;
 }

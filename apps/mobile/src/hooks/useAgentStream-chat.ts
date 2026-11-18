@@ -237,15 +237,20 @@ export function useAgentStreamChat({
     ]
   )
 
+  const latestModelSelectionRef = useRef({ currentProviderId, currentModelId })
+  latestModelSelectionRef.current = { currentProviderId, currentModelId }
+
   const streamFromExistingUserMessage = useCallback(
     async (
       sessionId: string,
       userMessage: { id: string; content: string; attachments?: unknown[] },
       options?: { retryReleaseEpoch?: number }
     ) => {
+      const { currentProviderId: activeProviderId, currentModelId: activeModelId } =
+        latestModelSelectionRef.current
       if (
-        !isConfiguredProviderId(currentProviderId) ||
-        !isConfiguredDialogueModelId(currentModelId)
+        !isConfiguredProviderId(activeProviderId) ||
+        !isConfiguredDialogueModelId(activeModelId)
       ) {
         toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         if (options?.retryReleaseEpoch !== undefined) {
@@ -287,8 +292,8 @@ export function useAgentStreamChat({
           sessionId,
           userMessage.content,
           {
-            providerId: currentProviderId || undefined,
-            modelId: currentModelId || undefined,
+            providerId: activeProviderId || undefined,
+            modelId: activeModelId || undefined,
             searchMode: searchModeRef.current,
             abortSignal: claim.signal,
             userMessageId: userMessage.id,
@@ -331,8 +336,6 @@ export function useAgentStreamChat({
       }
     },
     [
-      currentProviderId,
-      currentModelId,
       toast,
       t,
       finishStream,

@@ -158,7 +158,9 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     }
 
     await Promise.resolve(onChange(newConfig))
-    setActiveSelector(null)
+    if (!selectorReasoningSlot(activeSelector)) {
+      setActiveSelector(null)
+    }
   }
 
   const handleEffortChange = async (value: ReasoningEffortSetting) => {

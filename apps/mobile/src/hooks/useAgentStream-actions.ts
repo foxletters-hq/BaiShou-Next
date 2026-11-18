@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
@@ -79,6 +79,28 @@ export function useAgentStreamActions({
   const { services } = useBaishou()
 
   const [isRetryActionBusy, setIsRetryActionBusy] = useState(false)
+  const latestActionsStateRef = useRef({
+    currentSessionId,
+    currentProviderId,
+    currentModelId,
+    messages,
+    services,
+    streamFromExistingUserMessage,
+    truncateSessionAndSyncUi,
+    reloadMessagesFromDb,
+    bumpReloadEpoch
+  })
+  latestActionsStateRef.current = {
+    currentSessionId,
+    currentProviderId,
+    currentModelId,
+    messages,
+    services,
+    streamFromExistingUserMessage,
+    truncateSessionAndSyncUi,
+    reloadMessagesFromDb,
+    bumpReloadEpoch
+  }
 
   const {
     retryEpochRef,
@@ -200,14 +222,29 @@ export function useAgentStreamActions({
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {
-      if (!currentSessionId || !services) return
+      if (
+        !latestActionsStateRef.current.currentSessionId ||
+        !latestActionsStateRef.current.services
+      )
+        return
 
       const confirmed = await confirmMessageRetry()
       if (!confirmed) return
 
+      const {
+        currentSessionId: activeSessionId,
+        currentProviderId: activeProviderId,
+        currentModelId: activeModelId,
+        messages: activeMessages,
+        services: activeServices,
+        streamFromExistingUserMessage: activeStreamFromExisting,
+        truncateSessionAndSyncUi: activeTruncate
+      } = latestActionsStateRef.current
+      if (!activeSessionId || !activeServices) return
+
       if (
-        !isConfiguredProviderId(currentProviderId) ||
-        !isConfiguredDialogueModelId(currentModelId)
+        !isConfiguredProviderId(activeProviderId) ||
+        !isConfiguredDialogueModelId(activeModelId)
       ) {
         toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         return
@@ -223,33 +260,33 @@ export function useAgentStreamActions({
       }
 
       try {
-        const msgIndex = messages.findIndex((m) => m.id === messageId)
+        const msgIndex = activeMessages.findIndex((m) => m.id === messageId)
         if (msgIndex <= 0) {
           releaseRetryActionIfSetupFailed(epoch)
           return
         }
-        const userMessage = messages[msgIndex - 1]
+        const userMessage = activeMessages[msgIndex - 1]
         if (userMessage.role !== 'user') {
           releaseRetryActionIfSetupFailed(epoch)
           return
         }
 
-        const dbUser = await services.sessionRepo.getMessageById(userMessage.id)
-        if (!dbUser || !services.snapshotRepo) {
+        const dbUser = await activeServices.sessionRepo.getMessageById(userMessage.id)
+        if (!dbUser || !activeServices.snapshotRepo) {
           releaseRetryActionIfSetupFailed(epoch)
           return
         }
         if (epoch !== retryEpochRef.current) return
 
-        const synced = await truncateSessionAndSyncUi(currentSessionId, dbUser.orderIndex, epoch)
+        const synced = await activeTruncate(activeSessionId, dbUser.orderIndex, epoch)
         if (!synced) {
           releaseRetryActionIfSetupFailed(epoch)
           toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
           return
         }
 
-        await streamFromExistingUserMessage(
-          currentSessionId,
+        await activeStreamFromExisting(
+          activeSessionId,
           {
             id: userMessage.id,
             content: userMessage.content,
@@ -269,18 +306,11 @@ export function useAgentStreamActions({
       }
     },
     [
-      currentSessionId,
-      services,
-      messages,
-      currentProviderId,
-      currentModelId,
       toast,
       t,
       confirmMessageRetry,
       acquireRetryAction,
       releaseRetryActionIfSetupFailed,
-      streamFromExistingUserMessage,
-      truncateSessionAndSyncUi,
       retryEpochRef,
       userStoppedStreamRef,
       setStreamError
@@ -289,33 +319,55 @@ export function useAgentStreamActions({
 
   const handleResend = useCallback(
     async (messageId: string) => {
-      if (!currentSessionId || !services?.snapshotRepo) return
-      const storeMsg = messages.find((m) => m.id === messageId)
-      if (!storeMsg || storeMsg.role !== 'user') return
+      const initial = latestActionsStateRef.current
+      if (!initial.currentSessionId || !initial.services?.snapshotRepo) return
+      const initialStoreMsg = initial.messages.find((m) => m.id === messageId)
+      if (!initialStoreMsg || initialStoreMsg.role !== 'user') return
 
       const confirmed = await confirmMessageRetry()
       if (!confirmed) return
+
+      const {
+        currentSessionId: activeSessionId,
+        currentProviderId: activeProviderId,
+        currentModelId: activeModelId,
+        messages: activeMessages,
+        services: activeServices,
+        streamFromExistingUserMessage: activeStreamFromExisting,
+        truncateSessionAndSyncUi: activeTruncate
+      } = latestActionsStateRef.current
+      if (!activeSessionId || !activeServices?.snapshotRepo) return
+      const storeMsg = activeMessages.find((m) => m.id === messageId) ?? initialStoreMsg
+      if (!storeMsg || storeMsg.role !== 'user') return
+
+      if (
+        !isConfiguredProviderId(activeProviderId) ||
+        !isConfiguredDialogueModelId(activeModelId)
+      ) {
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
+        return
+      }
 
       const epoch = acquireRetryAction()
       if (epoch === null) return
 
       try {
-        const dbMsg = await services.sessionRepo.getMessageById(messageId)
+        const dbMsg = await activeServices.sessionRepo.getMessageById(messageId)
         if (!dbMsg) {
           releaseRetryActionIfSetupFailed(epoch)
           return
         }
         if (epoch !== retryEpochRef.current) return
 
-        const synced = await truncateSessionAndSyncUi(currentSessionId, dbMsg.orderIndex, epoch)
+        const synced = await activeTruncate(activeSessionId, dbMsg.orderIndex, epoch)
         if (!synced) {
           releaseRetryActionIfSetupFailed(epoch)
           toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
           return
         }
 
-        await streamFromExistingUserMessage(
-          currentSessionId,
+        await activeStreamFromExisting(
+          activeSessionId,
           {
             id: messageId,
             content: storeMsg.content,
@@ -331,13 +383,8 @@ export function useAgentStreamActions({
       }
     },
     [
-      currentSessionId,
-      services,
-      messages,
       acquireRetryAction,
       releaseRetryActionIfSetupFailed,
-      streamFromExistingUserMessage,
-      truncateSessionAndSyncUi,
       toast,
       t,
       confirmMessageRetry,
@@ -347,32 +394,49 @@ export function useAgentStreamActions({
 
   const handleEditMessage = useCallback(
     async (messageId: string, newContent: string) => {
-      if (!currentSessionId || !services?.snapshotRepo || !newContent.trim()) return
+      const {
+        currentSessionId: activeSessionId,
+        currentProviderId: activeProviderId,
+        currentModelId: activeModelId,
+        messages: activeMessages,
+        services: activeServices,
+        streamFromExistingUserMessage: activeStreamFromExisting,
+        truncateSessionAndSyncUi: activeTruncate
+      } = latestActionsStateRef.current
+      if (!activeSessionId || !activeServices?.snapshotRepo || !newContent.trim()) return
+
+      if (
+        !isConfiguredProviderId(activeProviderId) ||
+        !isConfiguredDialogueModelId(activeModelId)
+      ) {
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
+        return
+      }
 
       const epoch = acquireRetryAction()
       if (epoch === null) return
 
       try {
-        const dbMsg = await services.sessionRepo.getMessageById(messageId)
+        const dbMsg = await activeServices.sessionRepo.getMessageById(messageId)
         if (!dbMsg || dbMsg.role !== 'user') {
           releaseRetryActionIfSetupFailed(epoch)
           return
         }
         if (epoch !== retryEpochRef.current) return
 
-        await services.sessionRepo.updateMessageTextPart(messageId, newContent.trim())
+        await activeServices.sessionRepo.updateMessageTextPart(messageId, newContent.trim())
         if (epoch !== retryEpochRef.current) return
 
-        const synced = await truncateSessionAndSyncUi(currentSessionId, dbMsg.orderIndex, epoch)
+        const synced = await activeTruncate(activeSessionId, dbMsg.orderIndex, epoch)
         if (!synced) {
           releaseRetryActionIfSetupFailed(epoch)
           toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
           return
         }
 
-        const storeMsg = messages.find((m) => m.id === messageId)
-        await streamFromExistingUserMessage(
-          currentSessionId,
+        const storeMsg = activeMessages.find((m) => m.id === messageId)
+        await activeStreamFromExisting(
+          activeSessionId,
           {
             id: messageId,
             content: newContent.trim(),
@@ -387,18 +451,7 @@ export function useAgentStreamActions({
         releaseRetryActionIfSetupFailed(epoch)
       }
     },
-    [
-      currentSessionId,
-      services,
-      messages,
-      acquireRetryAction,
-      releaseRetryActionIfSetupFailed,
-      streamFromExistingUserMessage,
-      truncateSessionAndSyncUi,
-      toast,
-      t,
-      retryEpochRef
-    ]
+    [acquireRetryAction, releaseRetryActionIfSetupFailed, toast, t, retryEpochRef]
   )
 
   const handleSaveAssistantEdit = useCallback(

@@ -40,6 +40,7 @@ export const AgentProcessSection: React.FC<AgentProcessSectionProps> = ({
   activeToolArgs,
   isStreaming = false,
   hasAnswerText = false,
+  hasPrecedingText = false,
   defaultExpanded,
   children
 }) => {
@@ -137,7 +138,7 @@ export const AgentProcessSection: React.FC<AgentProcessSectionProps> = ({
   return (
     <XProvider theme={xProviderTheme}>
       <Think
-        className={styles.root}
+        className={`${styles.root}${hasPrecedingText ? ` ${styles.afterText}` : ''}`}
         title={title}
         loading={loading}
         expanded={expanded}

@@ -275,7 +275,9 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
                           disabled={closing}
                           onClick={() => {
                             onSelect(provider.id, modelId)
-                            requestClose()
+                            if (!showReasoningPanel) {
+                              requestClose()
+                            }
                           }}
                         >
                           <span className={styles.modelIdText}>
@@ -331,7 +333,10 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
                   type="button"
                   className={`${styles.row} ${selected ? styles.rowActive : ''}`}
                   disabled={closing}
-                  onClick={() => onReasoningEffortChange?.(opt)}
+                  onClick={() => {
+                    onReasoningEffortChange?.(opt)
+                    requestClose()
+                  }}
                 >
                   <span className={styles.rowLabel}>{effortLabel(opt)}</span>
                   {selected ? (

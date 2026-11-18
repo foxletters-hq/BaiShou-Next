@@ -159,88 +159,93 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     loadSessions
   })
 
-  const handleShowContext = useCallback(
-    async (bubbleMessage: any, sourceMsg: any) => {
-      if (!sessionId) return
-      try {
-        const result = await window.electron.ipcRenderer.invoke(
-          'agent:get-context-at-message',
-          sessionId,
-          sourceMsg.id,
-          searchMode
-        )
-        const vm = result?.viewModel
-        const flatEntries = (vm?.flatEntries ?? []).map((entry: any, i: number) => {
-          if (entry.kind === 'round-header') {
-            return { kind: 'round-header' as const, roundIndex: entry.roundIndex }
-          }
-          if (entry.kind === 'compression-summary') {
-            return {
-              kind: 'compression-summary' as const,
-              summaryText: entry.summaryText ?? result?.compressedContent ?? '',
-              reasoningText: entry.reasoningText ?? result?.viewModel?.compressionReasoning ?? ''
-            }
-          }
-          if (entry.kind === 'system-prompt') {
-            return {
-              kind: 'system-prompt' as const,
-              item: {
-                id: `ctx-sys-${sourceMsg.id}`,
-                sessionId,
-                role: 'system',
-                content: entry.item?.content ?? result?.systemPrompt,
-                label: i18n.t(
-                  'auto.apps.desktop.src.renderer.src.features.agent.components.AgentMessageList.L142',
-                  '系统提示词'
-                ),
-                timestamp: sourceMsg.createdAt || new Date()
-              }
-            }
-          }
+  const latestContextParamsRef = useRef({ sessionId, searchMode, setContextDialogState })
+  latestContextParamsRef.current = { sessionId, searchMode, setContextDialogState }
+
+  const handleShowContext = useCallback(async (bubbleMessage: any, sourceMsg: any) => {
+    const {
+      sessionId: currentSessionId,
+      searchMode: currentSearchMode,
+      setContextDialogState: updateContextDialogState
+    } = latestContextParamsRef.current
+    if (!currentSessionId) return
+    try {
+      const result = await window.electron.ipcRenderer.invoke(
+        'agent:get-context-at-message',
+        currentSessionId,
+        sourceMsg.id,
+        currentSearchMode
+      )
+      const vm = result?.viewModel
+      const flatEntries = (vm?.flatEntries ?? []).map((entry: any, i: number) => {
+        if (entry.kind === 'round-header') {
+          return { kind: 'round-header' as const, roundIndex: entry.roundIndex }
+        }
+        if (entry.kind === 'compression-summary') {
           return {
-            kind: 'message' as const,
-            roundIndex: entry.roundIndex,
+            kind: 'compression-summary' as const,
+            summaryText: entry.summaryText ?? result?.compressedContent ?? '',
+            reasoningText: entry.reasoningText ?? result?.viewModel?.compressionReasoning ?? ''
+          }
+        }
+        if (entry.kind === 'system-prompt') {
+          return {
+            kind: 'system-prompt' as const,
             item: {
-              id: `ctx-${sourceMsg.id}-${i}`,
-              sessionId,
-              role: entry.item?.role ?? 'user',
-              content: entry.item?.content,
-              label: entry.item?.label,
-              attachments: entry.item?.attachments,
+              id: `ctx-sys-${sourceMsg.id}`,
+              sessionId: currentSessionId,
+              role: 'system',
+              content: entry.item?.content ?? result?.systemPrompt,
+              label: i18n.t(
+                'auto.apps.desktop.src.renderer.src.features.agent.components.AgentMessageList.L142',
+                '系统提示词'
+              ),
               timestamp: sourceMsg.createdAt || new Date()
             }
           }
-        })
+        }
+        return {
+          kind: 'message' as const,
+          roundIndex: entry.roundIndex,
+          item: {
+            id: `ctx-${sourceMsg.id}-${i}`,
+            sessionId: currentSessionId,
+            role: entry.item?.role ?? 'user',
+            content: entry.item?.content,
+            label: entry.item?.label,
+            attachments: entry.item?.attachments,
+            timestamp: sourceMsg.createdAt || new Date()
+          }
+        }
+      })
 
-        setContextDialogState({
-          isOpen: true,
-          sessionId,
-          sourceMessageId: sourceMsg.id,
-          message: {
-            ...bubbleMessage,
-            inputTokens: sourceMsg.inputTokens ?? bubbleMessage.inputTokens,
-            outputTokens: sourceMsg.outputTokens ?? bubbleMessage.outputTokens,
-            cacheReadInputTokens:
-              sourceMsg.cacheReadInputTokens ?? bubbleMessage.cacheReadInputTokens,
-            cacheWriteInputTokens:
-              sourceMsg.cacheWriteInputTokens ?? bubbleMessage.cacheWriteInputTokens,
-            costMicros: sourceMsg.costMicros ?? bubbleMessage.costMicros
-          },
-          flatEntries,
-          meta: {
-            nextRequest: vm?.nextRequest,
-            roundUsage: vm?.roundUsage,
-            activeRoundIndex: vm?.activeRoundIndex
-          },
-          systemPrompt: result?.systemPrompt,
-          compressedContent: result?.compressedContent
-        })
-      } catch (e) {
-        console.error('[AgentMessageList] Failed to load context at message:', e)
-      }
-    },
-    [sessionId, searchMode, setContextDialogState]
-  )
+      updateContextDialogState({
+        isOpen: true,
+        sessionId: currentSessionId,
+        sourceMessageId: sourceMsg.id,
+        message: {
+          ...bubbleMessage,
+          inputTokens: sourceMsg.inputTokens ?? bubbleMessage.inputTokens,
+          outputTokens: sourceMsg.outputTokens ?? bubbleMessage.outputTokens,
+          cacheReadInputTokens:
+            sourceMsg.cacheReadInputTokens ?? bubbleMessage.cacheReadInputTokens,
+          cacheWriteInputTokens:
+            sourceMsg.cacheWriteInputTokens ?? bubbleMessage.cacheWriteInputTokens,
+          costMicros: sourceMsg.costMicros ?? bubbleMessage.costMicros
+        },
+        flatEntries,
+        meta: {
+          nextRequest: vm?.nextRequest,
+          roundUsage: vm?.roundUsage,
+          activeRoundIndex: vm?.activeRoundIndex
+        },
+        systemPrompt: result?.systemPrompt,
+        compressedContent: result?.compressedContent
+      })
+    } catch (e) {
+      console.error('[AgentMessageList] Failed to load context at message:', e)
+    }
+  }, [])
 
   const loadMoreLockRef = useRef(false)
   const [showLoadMoreButton, setShowLoadMoreButton] = useState(false)

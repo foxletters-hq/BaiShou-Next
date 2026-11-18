@@ -195,7 +195,7 @@
   color: var(--text-primary);
   /* 与 AgentMarkdown 正文字号一致 */
   font-size: var(--ui-fs-lg);
-  line-height: 1.6;
+  line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
   max-width: 100%;

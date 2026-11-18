@@ -69,7 +69,7 @@ export const AgentMarkdownRenderer: React.FC<AgentMarkdownRendererProps> = ({
       escapeRawHtml={escapeRawHtml}
       openLinksInNewTab
       protectCustomTagNewlines
-      paragraphTag="div"
+      paragraphTag={escapeRawHtml ? undefined : 'div'}
       streaming={streaming}
       components={components}
     />

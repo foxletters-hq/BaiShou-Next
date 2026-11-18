@@ -6,6 +6,7 @@ type StreamingOption = NonNullable<ComponentProps<typeof XMarkdown>['streaming']
 
 export const agentMarkedConfig = {
   gfm: true,
+  breaks: true,
   extensions: Latex()
 }
 
