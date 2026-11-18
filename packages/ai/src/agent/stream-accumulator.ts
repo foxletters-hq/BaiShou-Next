@@ -108,6 +108,10 @@ export class StreamAccumulator {
   private _outputTokens: number = 0
   private _cacheReadInputTokens: number = 0
   private _cacheWriteInputTokens: number = 0
+  private _finishReason: string | null = null
+  private _rawFinishReason: string | null = null
+  private _providerFinishMessage: string | null = null
+  private _promptBlockReason: string | null = null
 
   get timeline(): readonly StreamTimelineItem[] {
     return this._timeline
@@ -171,6 +175,22 @@ export class StreamAccumulator {
     }
   }
 
+  get finishReason(): string | null {
+    return this._finishReason
+  }
+
+  get rawFinishReason(): string | null {
+    return this._rawFinishReason
+  }
+
+  get providerFinishMessage(): string | null {
+    return this._providerFinishMessage
+  }
+
+  get promptBlockReason(): string | null {
+    return this._promptBlockReason
+  }
+
   add(part: unknown): void {
     const p = part as Record<string, unknown>
     switch (p.type) {
@@ -228,6 +248,7 @@ export class StreamAccumulator {
       }
 
       case 'finish-step': {
+        this.ingestFinishMetadata(p)
         this.ingestUsage(
           p.usage as Record<string, unknown> | undefined,
           p.providerMetadata as Record<string, unknown> | undefined,
@@ -237,6 +258,7 @@ export class StreamAccumulator {
       }
 
       case 'finish': {
+        this.ingestFinishMetadata(p)
         // finish 事件的 totalUsage 为全部步骤累计；usage 仅为最后一步，不能用于整轮计费
         const usage = (p.totalUsage ?? p.usage) as Record<string, unknown> | undefined
         this.ingestUsage(usage, p.providerMetadata as Record<string, unknown> | undefined, false)
@@ -246,6 +268,7 @@ export class StreamAccumulator {
       default: {
         const partType = String(p.type)
         if (partType === 'finish-step') {
+          this.ingestFinishMetadata(p)
           this.ingestUsage(
             p.usage as Record<string, unknown> | undefined,
             p.providerMetadata as Record<string, unknown> | undefined,
@@ -253,7 +276,20 @@ export class StreamAccumulator {
           )
           break
         }
-        if (p.usage || p.usageMetadata || p.providerMetadata) {
+        const isSilentLifecycleChunk =
+          partType === 'text-start' ||
+          partType === 'text-end' ||
+          partType === 'reasoning-start' ||
+          partType === 'reasoning-end' ||
+          partType === 'tool-input-delta' ||
+          partType === 'tool-input-end' ||
+          partType === 'tool-input-available' ||
+          partType === 'tool-output-available' ||
+          partType === 'start-step' ||
+          partType === 'start' ||
+          partType === 'stream-start' ||
+          partType === 'response-metadata'
+        if (p.usage || p.usageMetadata || (!isSilentLifecycleChunk && p.providerMetadata)) {
           logger.info(
             '[StreamAccumulator] Unknown chunk with potential usage metadata:',
             JSON.stringify(part)
@@ -326,6 +362,38 @@ export class StreamAccumulator {
       return
     }
     this._timeline.push({ kind: 'text', text: delta })
+  }
+
+  private ingestFinishMetadata(part: Record<string, unknown>): void {
+    const finishReason = part.finishReason
+    if (typeof finishReason === 'string' && finishReason.trim()) {
+      this._finishReason = finishReason.trim()
+    } else if (finishReason && typeof finishReason === 'object') {
+      const unified = (finishReason as { unified?: unknown; raw?: unknown }).unified
+      const raw = (finishReason as { unified?: unknown; raw?: unknown }).raw
+      if (typeof unified === 'string' && unified.trim()) {
+        this._finishReason = unified.trim()
+      }
+      if (typeof raw === 'string' && raw.trim()) {
+        this._rawFinishReason = raw.trim()
+      }
+    }
+
+    if (typeof part.rawFinishReason === 'string' && part.rawFinishReason.trim()) {
+      this._rawFinishReason = part.rawFinishReason.trim()
+    }
+
+    const metadata = asRecord(part.providerMetadata)
+    const googleMeta = asRecord(metadata?.google) ?? asRecord(metadata?.vertex)
+    if (!googleMeta) return
+
+    if (typeof googleMeta.finishMessage === 'string' && googleMeta.finishMessage.trim()) {
+      this._providerFinishMessage = googleMeta.finishMessage.trim()
+    }
+    const promptFeedback = asRecord(googleMeta.promptFeedback)
+    if (typeof promptFeedback?.blockReason === 'string' && promptFeedback.blockReason.trim()) {
+      this._promptBlockReason = promptFeedback.blockReason.trim()
+    }
   }
 
   private ingestUsage(

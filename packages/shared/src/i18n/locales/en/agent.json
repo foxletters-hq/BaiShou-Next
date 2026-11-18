@@ -306,6 +306,7 @@
       "unknown": "An error occurred: {{msg}}",
       "create_session": "Failed to create session due to system error: {{msg}}",
       "vision_not_supported": "This model doesn't support image recognition — try switching to a vision model~",
+      "content_filter": "Your companion was blocked by the provider's safety filter~ It's not BaiShou's fault!",
       "no_model": "Please select a model in the input bar first"
     },
     "generation_failed": "Reply generation failed",

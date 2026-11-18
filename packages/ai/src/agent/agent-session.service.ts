@@ -3,8 +3,10 @@ import {
   isVisionModel,
   logger,
   normalizeReasoningEffortSetting,
+  readProviderContentFilterDetail,
   type ReasoningEffortSetting
 } from '@baishou/shared'
+import { normalizeApiErrorObject } from '../providers/provider-api-error.util'
 import { buildDefaultReasoningOptions } from '../providers/reasoning'
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { messageHasImageAttachments } from './attachment-content.builder'
@@ -232,7 +234,8 @@ export class AgentSessionService {
         recordRuntimeInterrupted
       })
     } catch (e: unknown) {
-      const err = e instanceof Error ? e : new Error(String(e))
+      const normalized = normalizeApiErrorObject(e)
+      const err = normalized instanceof Error ? normalized : new Error(String(e))
       const aborted = !isAgentFirstOutputTimeoutError(err) && abortSignal?.aborted === true
       if (!aborted) {
         runtimeRecorder.record({
@@ -244,7 +247,11 @@ export class AgentSessionService {
         })
       }
       if (!aborted) {
-        logger.error('[AgentSessionService] Error in streamChat:', err.message)
+        const filterDetail = readProviderContentFilterDetail(err)
+        logger.error(
+          '[AgentSessionService] Error in streamChat:',
+          filterDetail ? `${err.message} (${filterDetail})` : err.message
+        )
         if (err.stack) {
           logger.error('[AgentSessionService] Stack:', err.stack)
         }

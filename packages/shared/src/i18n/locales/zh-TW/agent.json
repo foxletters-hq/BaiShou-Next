@@ -306,6 +306,7 @@
       "unknown": "出錯了：{{msg}}",
       "create_session": "由於系統原因創建會話失敗: {{msg}}",
       "vision_not_supported": "當前模型不支持圖片識別哦，可以換成視覺模型再試試呢~",
+      "content_filter": "夥伴被服務商安全機制攔截了呀~不是白守的錯哦",
       "no_model": "請先在輸入欄選擇一個模型"
     },
     "generation_failed": "回覆生成失敗",

@@ -1,8 +1,11 @@
 import {
   createAgentStreamAbortError,
+  createProviderContentFilterError,
   isAgentStreamAbortError,
   isAgentGateRejectedError,
-  logger
+  isContentFilterFinishReason,
+  logger,
+  readProviderContentFilterDetail
 } from '@baishou/shared'
 import { isAgentFirstOutputTimeoutError, isAgentStreamUserAborted } from './agent-stream-timeout'
 import {
@@ -88,12 +91,40 @@ export async function finishAgentSessionStream(input: {
     gateSessionBuffer.buildPartDataList().length > 0 ||
     workspaceSessionBuffer.buildPartDataList().length > 0
 
+  const accumulatorMeta = accumulator as StreamAccumulator & {
+    finishReason?: string | null
+    rawFinishReason?: string | null
+    providerFinishMessage?: string | null
+    promptBlockReason?: string | null
+  }
+  const blockedByContentFilter =
+    isContentFilterFinishReason(accumulatorMeta.finishReason, accumulatorMeta.rawFinishReason) ||
+    Boolean(accumulatorMeta.promptBlockReason)
+
   if (userAborted) {
     streamError = isAgentStreamAbortError(streamError) ? streamError : createAgentStreamAbortError()
-  } else if (!streamError && !hasModelOutput) {
-    streamError = new Error('模型未返回任何内容，请检查附件格式或稍后重试')
   } else if (streamError && !isAgentStreamAbortError(streamError)) {
     streamError = normalizeApiErrorObject(streamError)
+  } else if (!streamError && blockedByContentFilter) {
+    const filterDetail = [
+      accumulatorMeta.promptBlockReason
+        ? `promptBlockReason=${accumulatorMeta.promptBlockReason}`
+        : '',
+      accumulatorMeta.finishReason ? `finishReason=${accumulatorMeta.finishReason}` : '',
+      accumulatorMeta.rawFinishReason ? `rawFinishReason=${accumulatorMeta.rawFinishReason}` : '',
+      accumulatorMeta.providerFinishMessage
+        ? `finishMessage=${accumulatorMeta.providerFinishMessage}`
+        : ''
+    ]
+      .filter(Boolean)
+      .join(', ')
+    streamError = createProviderContentFilterError(filterDetail)
+  } else if (!streamError && !hasModelOutput) {
+    streamError = new Error(
+      options.attachments?.length
+        ? '模型未返回任何内容，请检查附件格式或稍后重试'
+        : '模型未返回任何内容，可能是服务商暂时无响应或内容被过滤，请稍后重试'
+    )
   }
 
   if (isAgentGateRejectedError(streamError) || userAborted) {
@@ -112,9 +143,11 @@ export async function finishAgentSessionStream(input: {
   }
 
   if (streamError && !userAborted && shouldReportAgentStreamAsError(streamError, { userAborted })) {
+    const detail = readProviderContentFilterDetail(streamError)
+    const msg = streamError instanceof Error ? streamError.message : String(streamError)
     logger.warn(
       '[AgentSessionService] Stream encountered a fatal error:',
-      streamError instanceof Error ? streamError.message : String(streamError)
+      detail ? `${msg} (${detail})` : msg
     )
   }
 

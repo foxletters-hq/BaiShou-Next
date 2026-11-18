@@ -66,4 +66,15 @@ describe('localizeAiApiErrorMessage', () => {
     expect(localizeAiApiErrorMessage(err, t)).toBe('模型服务商提示账号额度不足。')
     expect(localizeAiApiErrorMessage(err, t)).not.toContain('未配置')
   })
+
+  it('should classify and gently localize provider content filter errors even with HTTP 403', () => {
+    const err = {
+      message: 'Forbidden',
+      statusCode: 403,
+      responseBody:
+        '{"error":{"message":"Output blocked by content filtering policy","type":"content_filter"}}'
+    }
+    expect(classifyAiApiCallError(err)).toBe('content_filter')
+    expect(localizeAiApiErrorMessage(err, t)).toBe('伙伴被服务商安全机制拦截了呀~不是白守的错哦')
+  })
 })

@@ -171,6 +171,19 @@ describe('appendFileAttachmentToContentParts', () => {
     expect((parts[0] as { text: string }).text).toContain('pdf text')
   })
 
+  it('falls back to text hint instead of sending empty base64 file part when native pdf read fails', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      { fileName: 'missing.pdf', filePath: '', isPdf: true },
+      { modelId: 'gemini-2.5-pro', providerType: 'gemini' }
+    )
+
+    expect(parts).toHaveLength(1)
+    expect((parts[0] as { type: string }).type).toBe('text')
+    expect((parts[0] as { text: string }).text).toContain('missing.pdf')
+  })
+
   it('should convert .docx files via readLocalDocumentText when textContent is absent', async () => {
     const parts: unknown[] = []
     await appendFileAttachmentToContentParts(

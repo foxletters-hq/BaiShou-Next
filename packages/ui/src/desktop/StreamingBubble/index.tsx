@@ -4,6 +4,7 @@ import {
   assistantStreamTimelineSignature,
   collectKnowledgeCitationsFromInvocations,
   groupStreamTimelineForDisplay,
+  localizeStreamDisplayError,
   type AgentGatePartData,
   type AgentStreamTimelineItem,
   type MockChatAttachment
@@ -178,7 +179,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = React.memo(
 
           {error ? (
             <div className={styles.errorBox} role="alert">
-              <span className={styles.errorText}>⚠ {error}</span>
+              <span className={styles.errorText}>⚠ {localizeStreamDisplayError(error, t)}</span>
               {onRetry && (
                 <button className={styles.retryBtn} onClick={onRetry}>
                   {t('common.retry', '重试')}

@@ -2,8 +2,19 @@
  * Normalize Vercel AI SDK / provider HTTP errors into user-facing text.
  * Used by desktop IPC (main) and settings UI (renderer).
  */
+import {
+  PROVIDER_CONTENT_FILTER_I18N_KEY,
+  PROVIDER_CONTENT_FILTER_MESSAGE,
+  isProviderContentFilterError
+} from './provider-content-filter.util'
 
-export type AiApiErrorKind = 'balance' | 'auth' | 'rate_limit' | 'network' | 'unknown'
+export type AiApiErrorKind =
+  | 'content_filter'
+  | 'balance'
+  | 'auth'
+  | 'rate_limit'
+  | 'network'
+  | 'unknown'
 
 function readProviderErrorMessage(value: unknown): string | undefined {
   if (typeof value === 'string' && value.trim()) return value.trim()
@@ -50,6 +61,9 @@ export function formatAiApiCallError(error: unknown): string {
 }
 
 export function classifyAiApiCallError(error: unknown): AiApiErrorKind {
+  if (isProviderContentFilterError(error)) {
+    return 'content_filter'
+  }
   const e = error as Record<string, unknown>
   const text = `${formatAiApiCallError(error)} ${readResponseBody(e) ?? ''}`.toLowerCase()
   const status = typeof e.statusCode === 'number' ? e.statusCode : 0
@@ -131,6 +145,8 @@ export function localizeAiApiErrorMessage(error: unknown, t: LocalizeFn): string
   const classified = typeof error === 'string' ? { message: error, responseBody: error } : error
   const kind = classifyAiApiCallError(classified)
   switch (kind) {
+    case 'content_filter':
+      return t(PROVIDER_CONTENT_FILTER_I18N_KEY, PROVIDER_CONTENT_FILTER_MESSAGE)
     case 'balance':
       return t('agent.error.quota', '模型服务商提示账号额度不足。')
     case 'auth':

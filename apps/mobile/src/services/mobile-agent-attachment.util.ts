@@ -171,7 +171,8 @@ export async function processAgentAttachments(
               }
             }
           }
-        } catch {
+        } catch (e) {
+          logger.warn('[AgentAttachment] Import attachment failed:', e as Error)
           if (att.filePath) out.url = att.filePath
         }
       } else if (att.data && !att.url) {

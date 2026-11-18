@@ -1,3 +1,10 @@
+import {
+  PROVIDER_CONTENT_FILTER_ERROR_CODE,
+  createProviderContentFilterError,
+  isProviderContentFilterError,
+  readProviderContentFilterDetail
+} from '@baishou/shared'
+
 function extractMessageFromParsedBody(parsed: unknown): string | null {
   if (!parsed || typeof parsed !== 'object') return null
   const record = parsed as {
@@ -84,6 +91,17 @@ export function extractApiErrorMessage(error: unknown): string {
 }
 
 export function normalizeApiErrorObject(error: unknown): Error {
+  if (isProviderContentFilterError(error)) {
+    const existingDetail = readProviderContentFilterDetail(error)
+    const detail = existingDetail || extractApiErrorMessage(error)
+    if (
+      error instanceof Error &&
+      (error as { code?: unknown }).code === PROVIDER_CONTENT_FILTER_ERROR_CODE
+    ) {
+      return error
+    }
+    return createProviderContentFilterError(detail)
+  }
   if (error instanceof Error) {
     if (!error.message.trim()) {
       const resolved = extractApiErrorMessage(error)

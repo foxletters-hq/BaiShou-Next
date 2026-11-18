@@ -245,12 +245,15 @@ export async function appendFileAttachmentToContentParts(
         // fallback below
       }
 
-      contentParts.push({
-        type: 'file',
-        mediaType: 'application/pdf',
-        data: fileData || att.data || ''
-      })
-      return
+      const resolvedData = fileData || att.data || ''
+      if (resolvedData) {
+        contentParts.push({
+          type: 'file',
+          mediaType: 'application/pdf',
+          data: resolvedData
+        })
+        return
+      }
     }
 
     let textContent = att.textContent || ''
@@ -264,6 +267,14 @@ export async function appendFileAttachmentToContentParts(
       } catch {
         // keep empty
       }
+    }
+
+    if (!textContent.trim()) {
+      contentParts.push({
+        type: 'text',
+        text: formatPromptDocumentExtractFailedHint(displayPath || displayName)
+      })
+      return
     }
 
     contentParts.push({

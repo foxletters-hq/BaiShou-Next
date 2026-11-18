@@ -5,6 +5,7 @@ import {
   assistantStreamTimelineSignature,
   collectKnowledgeCitationsFromInvocations,
   groupStreamTimelineForDisplay,
+  localizeStreamDisplayError,
   type AgentStreamTimelineItem
 } from '@baishou/shared'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
@@ -228,7 +229,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
         )}
         {error ? (
           <View style={auxStyles.errorBox}>
-            <Text style={auxStyles.errorText}>⚠ {error}</Text>
+            <Text style={auxStyles.errorText}>⚠ {localizeStreamDisplayError(error, t)}</Text>
             {onRetry && (
               <Pressable
                 onPress={onRetry}

@@ -4,6 +4,7 @@ import { AiProviderModel, normalizeModelId } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
 import { assertAsciiApiKey, createSanitizedFetch, sanitizeApiKeyForHttp } from './fetch-header.util'
+import { wrapGoogleStreamErrorFetch } from './google-stream-error-fetch.util'
 import { wrapGoogleLanguageModelWithSafetySettings } from './google-safety-settings.util'
 import { probeProviderConnection, wrapConnectionTestError } from './provider-connection-test.util'
 
@@ -18,7 +19,7 @@ export class GeminiAdaptedProvider implements IAIProvider {
     return createGoogleGenerativeAI({
       apiKey: rotatedKey,
       baseURL: this.config.baseUrl || undefined,
-      fetch: createSanitizedFetch()
+      fetch: wrapGoogleStreamErrorFetch(createSanitizedFetch())
     })
   }
 

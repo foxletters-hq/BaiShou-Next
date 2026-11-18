@@ -319,6 +319,7 @@
       "unknown": "出错了：{{msg}}",
       "create_session": "由于系统原因创建会话失败: {{msg}}",
       "vision_not_supported": "当前模型不支持图片识别哦，可以换成视觉模型再试试呢~",
+      "content_filter": "伙伴被服务商安全机制拦截了呀~不是白守的错哦",
       "no_model": "请先在输入栏选择一个模型"
     },
     "generation_failed": "回复生成失败",

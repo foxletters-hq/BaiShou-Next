@@ -3,6 +3,7 @@ import {
   buildAssistantDisplayTimelineFromParts,
   collectKnowledgeCitationsFromInvocations,
   decorateKnowledgeCitedTexts,
+  localizeStreamDisplayError,
   type AgentGateSurface,
   type MockChatMessage
 } from '@baishou/shared'
@@ -168,7 +169,7 @@ const ChatBubbleAiRowInner: React.FC<
           </div>
           {error ? (
             <div className={styles.errorBox} role="alert">
-              <span className={styles.errorText}>⚠ {error}</span>
+              <span className={styles.errorText}>⚠ {localizeStreamDisplayError(error, t)}</span>
             </div>
           ) : null}
 

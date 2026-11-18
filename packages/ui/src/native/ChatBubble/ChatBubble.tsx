@@ -13,6 +13,7 @@ import {
   collectKnowledgeCitationsFromInvocations,
   decorateKnowledgeCitedTexts,
   composerExtraPlain,
+  localizeStreamDisplayError,
   type AgentStreamTimelineItem,
   type MockChatAttachment
 } from '@baishou/shared'
@@ -408,7 +409,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 alignSelf: 'stretch'
               }}
             >
-              <Text style={{ color: colors.error }}>⚠ {displayError}</Text>
+              <Text style={{ color: colors.error }}>
+                ⚠ {localizeStreamDisplayError(displayError, t)}
+              </Text>
             </View>
           ) : null}
 

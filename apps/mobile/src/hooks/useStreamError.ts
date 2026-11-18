@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
-import { isAgentStreamAbortError } from '@baishou/shared'
+import { isAgentStreamAbortError, isProviderContentFilterError } from '@baishou/shared'
 
 /**
  * 流式错误处理 Hook
@@ -15,6 +15,9 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
 
   const getLocalizedError = useCallback(
     (rawErr: string): string => {
+      if (isProviderContentFilterError(rawErr)) {
+        return t('agent.error.content_filter', '伙伴被服务商安全机制拦截了呀~不是白守的错哦')
+      }
       const lower = rawErr.toLowerCase()
       if (
         lower.includes('api key expired') ||

@@ -9,6 +9,7 @@ import {
   sanitizeApiKeyForHttp,
   sanitizeRequestHeaders
 } from './fetch-header.util'
+import { wrapGoogleStreamErrorFetch } from './google-stream-error-fetch.util'
 import { wrapGoogleLanguageModelWithSafetySettings } from './google-safety-settings.util'
 import { probeProviderConnection, wrapConnectionTestError } from './provider-connection-test.util'
 import { VertexAIEmbeddingModel } from './vertexai-embedding.model'
@@ -144,7 +145,7 @@ export class VertexAIAdaptedProvider implements IAIProvider {
     return createGoogleGenerativeAI({
       apiKey: rotatedKey,
       baseURL: resolveVertexAIPublisherBaseUrl(this.config.baseUrl),
-      fetch: createSanitizedFetch()
+      fetch: wrapGoogleStreamErrorFetch(createSanitizedFetch())
     })
   }
 

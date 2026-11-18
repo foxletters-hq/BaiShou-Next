@@ -54,4 +54,19 @@ describe('provider-api-error.util', () => {
     ).toBe(true)
     expect(isBenignConnectionTestLimitError('Unauthorized')).toBe(false)
   })
+
+  it('normalizes provider safety filter errors to a gentle message while keeping rawDetail', () => {
+    const err = Object.assign(new Error('Forbidden'), {
+      statusCode: 403,
+      responseBody:
+        '{"error":{"message":"Response blocked due to PROHIBITED_CONTENT","status":"PERMISSION_DENIED"}}'
+    })
+    const normalized = normalizeApiErrorObject(err) as Error & {
+      code?: string
+      rawDetail?: string
+    }
+    expect(normalized.code).toBe('PROVIDER_CONTENT_FILTER')
+    expect(normalized.message).toBe('伙伴被服务商安全机制拦截了呀~不是白守的错哦')
+    expect(normalized.rawDetail).toContain('PROHIBITED_CONTENT')
+  })
 })
