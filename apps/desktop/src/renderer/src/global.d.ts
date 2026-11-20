@@ -261,6 +261,7 @@ interface AppAPI {
   git: GitAPI
   incrementalSync: IncrementalSyncAPI
   legacyMigration: LegacyMigrationAPI
+  deepseekImport: DeepSeekImportAPI
   updater: UpdaterAPI
   settings: SettingsAPI
   vault: VaultAPI
@@ -383,6 +384,23 @@ interface LegacyMigrationAPI {
   cancel(): Promise<{ success: boolean }>
   onProgress(
     callback: (event: import('@baishou/shared').LegacyMigrationProgressEvent) => void
+  ): () => void
+}
+
+interface DeepSeekImportAPI {
+  pickAndScan(locale?: string): Promise<{
+    scanToken: string
+    fileName: string
+    scanResult: Omit<import('@baishou/shared').DeepSeekArchiveScanResult, 'payloadDir'>
+  } | null>
+  execute(input: {
+    scanToken: string
+    selectedSessionIds: string[]
+    target: import('@baishou/shared').DeepSeekTargetAssistantInput
+  }): Promise<import('@baishou/shared').DeepSeekImportResult>
+  cleanup(scanToken?: string | null): Promise<{ success: boolean }>
+  onProgress(
+    callback: (progress: import('@baishou/shared').DeepSeekImportProgress) => void
   ): () => void
 }
 

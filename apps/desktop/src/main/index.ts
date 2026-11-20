@@ -19,6 +19,7 @@ import { registerCloudSyncIPC } from './ipc/cloud-sync.ipc'
 import { registerGitSyncIPC } from './ipc/git-sync.ipc'
 import { registerIncrementalSyncIPC } from './ipc/incremental-sync.ipc'
 import { registerLegacyMigrationIPC } from './ipc/legacy-migration.ipc'
+import { registerDeepSeekImportIPC } from './ipc/deepseek-import.ipc'
 import { registerDiaryIPC } from './ipc/diary.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
@@ -548,6 +549,7 @@ app.whenReady().then(async () => {
     registerGitSyncIPC()
     registerIncrementalSyncIPC()
     registerLegacyMigrationIPC()
+    registerDeepSeekImportIPC()
     registerDiaryIPC()
     registerProfileIPC()
     registerSummaryIPC()

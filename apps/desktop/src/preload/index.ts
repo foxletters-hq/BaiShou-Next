@@ -7,6 +7,7 @@ import { agentApi } from './agent.api'
 import { systemApi } from './system.api'
 import { shortcutsApi, skillsApi } from './skills.api'
 import { legacyMigrationApi } from './legacy-migration.api'
+import { deepSeekImportApi } from './deepseek-import.api'
 import { cacheApi } from './cache.api'
 import { agentWorkspaceApi } from './agent-workspace.api'
 import { graphApi } from './graph.api'
@@ -52,6 +53,7 @@ export const api = {
   ...syncApi,
   ...systemApi,
   ...legacyMigrationApi,
+  ...deepSeekImportApi,
   ...cacheApi,
   ...graphApi,
   ...knowledgeApi,
