@@ -126,6 +126,10 @@ export function isProviderContentFilterError(error: unknown): boolean {
     ) {
       return true
     }
+    // 客户端本地 schema/prompt 校验错误尚未发出远端请求，不应误判为服务商安全拦截
+    if (record.name === 'AI_InvalidPromptError' || record.name === 'AI_TypeValidationError') {
+      return false
+    }
     if (isContentFilterFinishReason(record.finishReason, record.rawFinishReason)) {
       return true
     }

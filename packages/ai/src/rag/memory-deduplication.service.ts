@@ -18,6 +18,7 @@ import type {
 } from '../tools/agent.tool'
 import {
   AI_FIRST_OUTPUT_TIMEOUT_MS,
+  createAbortTimeoutSignal,
   logger,
   formatLocalDateTime,
   resolveTemperatureForModel
@@ -220,7 +221,7 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
 
       const { text } = await generateText({
         model,
-        abortSignal: AbortSignal.timeout(AI_FIRST_OUTPUT_TIMEOUT_MS),
+        abortSignal: createAbortTimeoutSignal(AI_FIRST_OUTPUT_TIMEOUT_MS),
         system: '你是AI记忆管理器。请严格按照要求输出JSON，不要添加任何额外解释。',
         messages: [
           {

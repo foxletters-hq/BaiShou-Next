@@ -17,6 +17,20 @@ export interface MessageWithParts extends AgentMessage {
   parts: AgentPart[]
 }
 
+/**
+ * AI SDK 的 tool-result（output.type === 'text'）严格要求 value 为 string；
+ * 历史/外部导入工具记录若存储了对象或非字符串结果，统一序列化为字符串避免触发 InvalidPromptError。
+ */
+function normalizeToolResultText(result: unknown, toolName: string): string {
+  if (typeof result === 'string') return result
+  if (result == null) return `[工具执行失败: ${toolName}]`
+  try {
+    return JSON.stringify(result)
+  } catch {
+    return String(result)
+  }
+}
+
 export class MessageAdapter {
   /**
    * 将白守数据库结构的 Message 列表转换为 Vercel AI SDK (ModelMessage[]) 所能理解的格式。
@@ -120,7 +134,7 @@ export class MessageAdapter {
                 toolName: data.name,
                 output: {
                   type: 'text',
-                  value: data.result ?? `[工具执行失败: ${data.name}]`
+                  value: normalizeToolResultText(data.result, data.name)
                 }
               })
             }
@@ -159,7 +173,7 @@ export class MessageAdapter {
                 type: 'tool-result',
                 toolCallId: data.callId,
                 toolName: data.name,
-                output: { type: 'text', value: data.result }
+                output: { type: 'text', value: normalizeToolResultText(data.result, data.name) }
               })
             }
           } else if (p.type === 'text') {

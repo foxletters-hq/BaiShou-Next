@@ -18,4 +18,10 @@ describe('memory dedup language model', () => {
     expect(resolver).toContain('new MemoryDeduplicationServiceImpl(')
     expect(resolver).toContain('params.provider,\n      params.modelId')
   })
+
+  it('should use Hermes-safe createAbortTimeoutSignal instead of AbortSignal.timeout in memory dedup', () => {
+    const dedup = readFileSync(join(here, '../../rag/memory-deduplication.service.ts'), 'utf8')
+    expect(dedup).toContain('createAbortTimeoutSignal(AI_FIRST_OUTPUT_TIMEOUT_MS)')
+    expect(dedup).not.toContain('AbortSignal.timeout(')
+  })
 })

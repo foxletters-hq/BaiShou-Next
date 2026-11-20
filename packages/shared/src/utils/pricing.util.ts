@@ -1,3 +1,4 @@
+import { createAbortTimeoutSignal } from './abort-signal-timeout.util'
 import { applyDeepSeekPeakCost } from './deepseek-peak-pricing'
 import {
   applyModelContextWindowRuntimeOverlay,
@@ -41,7 +42,7 @@ export class ModelPricingService {
   private async fetchPrices(): Promise<void> {
     try {
       const res = await fetch('https://models.dev/api.json', {
-        signal: AbortSignal.timeout(10000)
+        signal: createAbortTimeoutSignal(10000)
       })
       if (!res.ok) return
       const data = await res.json()

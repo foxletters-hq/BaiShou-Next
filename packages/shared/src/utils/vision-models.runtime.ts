@@ -1,3 +1,4 @@
+import { createAbortTimeoutSignal } from './abort-signal-timeout.util'
 import { normalizeModelBaseId } from './provider-vision-models'
 
 const MODELS_DEV_API = 'https://models.dev/api.json'
@@ -85,7 +86,7 @@ export function isVisionModelInRuntime(modelId: string): boolean | undefined {
 export async function refreshVisionModelsFromModelsDev(
   fetcher: typeof fetch = fetch
 ): Promise<string[]> {
-  const response = await fetcher(MODELS_DEV_API, { signal: AbortSignal.timeout(10_000) })
+  const response = await fetcher(MODELS_DEV_API, { signal: createAbortTimeoutSignal(10_000) })
   if (!response.ok) {
     throw new Error(`models.dev returned HTTP ${response.status}`)
   }

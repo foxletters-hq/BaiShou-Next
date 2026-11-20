@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { modelMessageSchema } from 'ai'
+import { z } from 'zod'
 import { MessageAdapter, type MessageWithParts } from '../agent/message.adapter'
 import { wrapMessageBodyForModel } from '@baishou/shared'
 import {
@@ -246,6 +248,33 @@ describe('MessageAdapter.toVercelMessages', () => {
 
       const toolMsg = result[2]!
       expect(toolMsg?.role).toBe('tool')
+    })
+
+    it('should serialize object tool results to strings so ModelMessage[] schema validation passes', async () => {
+      const dbMessages: MessageWithParts[] = [
+        makeUserMsg('查一下排名'),
+        makeAssistantMsg([
+          makeToolPart({
+            callId: 'call_obj_1',
+            name: 'web_search',
+            arguments: { query: 'AI ranking' } as any,
+            result: { totalCount: 2, results: [{ title: 'A', url: 'https://example.com' }] } as any,
+            status: 'completed'
+          }),
+          makeTextPart('这是总结')
+        ])
+      ]
+
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
+      const toolMsg = result[2]!
+      expect(toolMsg.role).toBe('tool')
+      const toolPart = (toolMsg.content as any[])[0]
+      expect(typeof toolPart.output.value).toBe('string')
+      expect(JSON.parse(toolPart.output.value)).toEqual({
+        totalCount: 2,
+        results: [{ title: 'A', url: 'https://example.com' }]
+      })
+      expect(z.array(modelMessageSchema).safeParse(result).success).toBe(true)
     })
   })
 

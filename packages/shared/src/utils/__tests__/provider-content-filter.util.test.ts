@@ -67,6 +67,12 @@ describe('provider-content-filter.util', () => {
     expect(isProviderContentFilterError(new Error('Model does not support image input'))).toBe(
       false
     )
+    const invalidPromptErr = new Error(
+      'Invalid prompt: The messages do not match the ModelMessage[] schema.'
+    )
+    invalidPromptErr.name = 'AI_InvalidPromptError'
+    ;(invalidPromptErr as { cause?: unknown }).cause = new Error('contains 敏感内容 in prompt')
+    expect(isProviderContentFilterError(invalidPromptErr)).toBe(false)
   })
 
   it('localizes content filter and vision errors for bubble display', () => {
