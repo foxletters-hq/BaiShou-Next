@@ -8,6 +8,10 @@ export interface ProviderBrandIconProps {
   /** 供应商类型（如 openai），在自定义 id 时用于回退匹配品牌图标 */
   providerType?: string
   size?: number
+  /** 强制使用单色（黑白）图标版本，便于融入极简设置列表与单色卡片 */
+  monochrome?: boolean
+  /** 单色图标着色（默认使用主题主文字色） */
+  color?: string
 }
 
 function resolveIconProviderId(providerId: string, providerType?: string): string {
@@ -19,7 +23,9 @@ function resolveIconProviderId(providerId: string, providerType?: string): strin
 const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
   providerId,
   providerType,
-  size = 22
+  size = 22,
+  monochrome = false,
+  color
 }) => {
   const { colors, isDark } = useNativeTheme()
   const iconProviderId = useMemo(
@@ -27,11 +33,12 @@ const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
     [providerId, providerType]
   )
   const Icon = useMemo(
-    () => getProviderIconComponent(iconProviderId, isDark),
-    [iconProviderId, isDark]
+    () => getProviderIconComponent(iconProviderId, isDark, { monochrome }),
+    [iconProviderId, isDark, monochrome]
   )
 
   const wrapSize = size + 8
+  const tintColor = monochrome ? (color ?? colors.textPrimary) : color
 
   return (
     <View
@@ -46,9 +53,15 @@ const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
       ]}
     >
       {Icon ? (
-        <Icon width={size} height={size} />
+        <Icon
+          width={size}
+          height={size}
+          {...(tintColor ? { color: tintColor, fill: tintColor } : {})}
+        />
       ) : (
-        <Text style={[styles.fallback, { color: colors.primary, fontSize: size * 0.55 }]}>
+        <Text
+          style={[styles.fallback, { color: tintColor ?? colors.primary, fontSize: size * 0.55 }]}
+        >
           {providerId.slice(0, 2).toUpperCase()}
         </Text>
       )}

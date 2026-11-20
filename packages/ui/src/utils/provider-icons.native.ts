@@ -15,10 +15,12 @@ export { PROVIDER_ICON_IDS }
 
 export function getProviderIconComponent(
   providerId: string,
-  isDark: boolean
+  isDark: boolean,
+  options?: { monochrome?: boolean }
 ): ProviderIconComponent | undefined {
   const pair = PROVIDER_ICON_REGISTRY[providerId as ProviderIconRegistryId]
   if (!pair) return undefined
+  if (options?.monochrome) return pair.dark as ProviderIconComponent
   return (isDark ? pair.dark : pair.light) as ProviderIconComponent
 }
 

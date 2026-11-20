@@ -22,7 +22,8 @@ export const SETTINGS_NAV_ICON_IDS = [
   'storage',
   'version-migration',
   'git',
-  'general'
+  'general',
+  'help-docs'
 ] as const
 
 export type SettingsNavIconId = (typeof SETTINGS_NAV_ICON_IDS)[number]

@@ -12,10 +12,15 @@ import { useSettingsAccount } from './useSettingsAccount'
 
 export interface QuickSettingsGroupProps {
   groupCardStyle: object
+  /** 追加在卡片末尾（聊天背景下方）的导航条目，如「使用教程」 */
+  footer?: React.ReactNode
 }
 
-/** 个人资料分组卡片内容（用户 / 身份卡 / 工作区 / 外观 / 聊天背景） */
-export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCardStyle }) => {
+/** 个人资料分组卡片内容（用户 / 身份卡 / 工作区 / 外观 / 聊天背景 / 可选底部条目） */
+export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({
+  groupCardStyle,
+  footer
+}) => {
   const account = useSettingsAccount()
 
   return (
@@ -63,7 +68,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       <SettingsGroupDivider />
       <ChatBackgroundSettingsCard
         embedded
-        isLast
+        isLast={!footer}
         backgroundPath={account.chatBackgroundPath}
         resolvedBackgroundUri={account.resolvedBackgroundUri}
         blur={account.chatBackgroundBlur}
@@ -77,6 +82,12 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
           void account.saveChatBackgroundStyle({ chatBackgroundOverlayOpacity: value })
         }
       />
+      {footer ? (
+        <>
+          <SettingsGroupDivider />
+          {footer}
+        </>
+      ) : null}
     </View>
   )
 }

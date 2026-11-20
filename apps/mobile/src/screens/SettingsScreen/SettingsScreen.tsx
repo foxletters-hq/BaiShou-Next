@@ -5,12 +5,14 @@ import {
   useNativeTheme,
   scrollIndicatorStyle,
   SettingsNavIcon,
-  SettingsListLeadingIcon
+  SettingsListLeadingIcon,
+  ProviderBrandIcon
 } from '@baishou/ui/native'
 import { useTranslation } from 'react-i18next'
 import { iconSizes, mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import { CompactTabHeader } from '../../components/CompactTabHeader'
 import {
+  SETTINGS_HELP_DOCS_ITEM,
   SETTINGS_HUB_GROUPS,
   type SettingsHubItem,
   type SettingsHubRoute
@@ -60,7 +62,16 @@ export const SettingsScreen: React.FC = () => {
       activeOpacity={0.65}
     >
       <SettingsListLeadingIcon>
-        <SettingsNavIcon id={item.icon} size={18} color={colors.textSecondary} />
+        {item.brandProviderId ? (
+          <ProviderBrandIcon
+            providerId={item.brandProviderId}
+            size={18}
+            monochrome
+            color={colors.textSecondary}
+          />
+        ) : (
+          <SettingsNavIcon id={item.icon} size={18} color={colors.textSecondary} />
+        )}
       </SettingsListLeadingIcon>
       <Text style={[styles.listItemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
         {t(item.titleKey)}
@@ -90,7 +101,10 @@ export const SettingsScreen: React.FC = () => {
             <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>
               {t('settings.hub_group_quick', '个人资料')}
             </Text>
-            <QuickSettingsGroup groupCardStyle={groupCardStyle} />
+            <QuickSettingsGroup
+              groupCardStyle={groupCardStyle}
+              footer={renderNavItem(SETTINGS_HELP_DOCS_ITEM, true)}
+            />
           </View>
 
           {SETTINGS_HUB_GROUPS.map((group) => (

@@ -4,6 +4,7 @@ import {
   Archive,
   ArrowLeftRight,
   BookMarked,
+  BookOpen,
   Cable,
   Cloud,
   Database,
@@ -50,7 +51,8 @@ const SETTINGS_NAV_ICONS: Record<SettingsNavIconId, React.ComponentType<LucidePr
   storage: FolderOpen,
   'version-migration': ArrowLeftRight,
   git: History,
-  general: Settings
+  general: Settings,
+  'help-docs': BookOpen
 }
 
 export interface SettingsNavIconProps extends Omit<LucideProps, 'ref'> {

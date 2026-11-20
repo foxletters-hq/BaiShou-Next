@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, StatusBar, StyleSheet, type LayoutChangeEvent, type ViewStyle } from 'react-native'
 import Animated, {
   Easing,
@@ -15,6 +15,7 @@ import { getStackScreenChrome } from './stackScreenChrome'
 import { logNavigationPhase, sampleTransitionFrames } from '../navigation/transitionDiagnostics'
 
 const FADE_IN_DURATION_MS = 240
+const FADE_SETTLE_GUARD_MS = FADE_IN_DURATION_MS + 160
 void FadeIn
 
 export interface StackScreenLayoutProps extends StackScreenHeaderProps {
@@ -48,14 +49,33 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
 
   const contentOpacity = useSharedValue(0)
   const fadeStartedRef = useRef(false)
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Reanimated 4 + Fabric 会在 PropsFilter 中永久缓存 animatedStyle 的首次初值（opacity: 0）。
+  // 淡入结束后切回静态 `{ opacity: 1 }`，避免外部 Activity 返回（如 DocumentPicker）或后续重渲染
+  // 触发 Fabric Shadow Tree 重提交时将内容区覆写回 opacity: 0 导致标题栏以下整片空白。
+  const [fadeCompleted, setFadeCompleted] = useState(false)
+
+  const clearSettleTimer = useCallback(() => {
+    if (settleTimerRef.current) {
+      clearTimeout(settleTimerRef.current)
+      settleTimerRef.current = null
+    }
+  }, [])
+
+  const markFadeCompleted = useCallback(() => {
+    clearSettleTimer()
+    contentOpacity.value = 1
+    setFadeCompleted(true)
+  }, [clearSettleTimer, contentOpacity])
 
   const onFadeFinish = useCallback(
     (finished?: boolean) => {
       logNavigationPhase(diagTag, 'StackScreenLayout:fadeFinish', {
         finished: Boolean(finished)
       })
+      markFadeCompleted()
     },
-    [diagTag]
+    [diagTag, markFadeCompleted]
   )
 
   const triggerFadeIn = useCallback(
@@ -66,6 +86,10 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
         source: triggerSource,
         durationMs: FADE_IN_DURATION_MS
       })
+      clearSettleTimer()
+      settleTimerRef.current = setTimeout(() => {
+        markFadeCompleted()
+      }, FADE_SETTLE_GUARD_MS)
       contentOpacity.value = withTiming(
         1,
         {
@@ -77,7 +101,7 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
         }
       )
     },
-    [contentOpacity, diagTag, onFadeFinish]
+    [clearSettleTimer, contentOpacity, diagTag, markFadeCompleted, onFadeFinish]
   )
 
   useEffect(() => {
@@ -88,9 +112,10 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
     }, 120)
     return () => {
       clearTimeout(fallbackTimer)
+      clearSettleTimer()
       stopSample()
     }
-  }, [diagTag, triggerFadeIn])
+  }, [clearSettleTimer, diagTag, triggerFadeIn])
 
   const handleContentLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -127,7 +152,11 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
         <StackScreenHeader {...headerProps} transparent={transparent} />
         <Animated.View
           onLayout={handleContentLayout}
-          style={[styles.content, contentStyle, animatedContentStyle]}
+          style={[
+            styles.content,
+            contentStyle,
+            fadeCompleted ? styles.contentVisible : animatedContentStyle
+          ]}
         >
           {children}
         </Animated.View>
@@ -138,5 +167,6 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { flex: 1 }
+  content: { flex: 1 },
+  contentVisible: { opacity: 1 }
 })

@@ -6,6 +6,7 @@ export type SettingsStackPathname =
   | '/settings/lan-transfer'
   | '/settings/data-sync'
   | '/settings/version-migration'
+  | '/settings/deepseek-import'
   | '/incremental-sync'
   | '/settings/tts'
   | '/graph'
@@ -21,12 +22,22 @@ export interface SettingsHubItem {
   id: string
   titleKey: string
   icon: SettingsNavIconId
+  /** 若指定则优先渲染对应品牌图标（如 deepseek） */
+  brandProviderId?: string
   route: SettingsHubRoute
 }
 
 export interface SettingsHubGroup {
   titleKey: string
   items: SettingsHubItem[]
+}
+
+/** 归于顶部「个人资料」卡片末尾（对齐桌面端常规分组）的使用教程入口 */
+export const SETTINGS_HELP_DOCS_ITEM: SettingsHubItem = {
+  id: 'help-docs',
+  titleKey: 'settings.help_docs',
+  icon: 'help-docs',
+  route: { type: 'stack', pathname: '/settings/help-docs' }
 }
 
 /** 与桌面端 SettingsPage / 旧版 BaiShou 移动枢纽分组对齐 */
@@ -152,10 +163,11 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'stack', pathname: '/settings/version-migration' }
       },
       {
-        id: 'help-docs',
-        titleKey: 'settings.help_docs',
-        icon: 'general',
-        route: { type: 'stack', pathname: '/settings/help-docs' }
+        id: 'deepseek-import',
+        titleKey: 'deepseek_import.entry_title',
+        icon: 'version-migration',
+        brandProviderId: 'deepseek',
+        route: { type: 'stack', pathname: '/settings/deepseek-import' }
       }
     ]
   }
@@ -179,32 +191,27 @@ const HIDDEN_SECTION_TITLE_KEYS: Record<string, string> = {
   developer: 'settings.developer_options'
 }
 
+const ALL_HUB_ITEMS: SettingsHubItem[] = [
+  SETTINGS_HELP_DOCS_ITEM,
+  ...SETTINGS_HUB_GROUPS.flatMap((g) => g.items)
+]
+
 export function getHubItemTitleKey(section: string): string | undefined {
   if (section in HIDDEN_SECTION_TITLE_KEYS) {
     return HIDDEN_SECTION_TITLE_KEYS[section]
   }
-  for (const group of SETTINGS_HUB_GROUPS) {
-    for (const item of group.items) {
-      if (
-        item.id === section ||
-        (item.route.type === 'section' && item.route.section === section)
-      ) {
-        return item.titleKey
-      }
+  for (const item of ALL_HUB_ITEMS) {
+    if (item.id === section || (item.route.type === 'section' && item.route.section === section)) {
+      return item.titleKey
     }
   }
   return undefined
 }
 
 export function getHubItemIconId(section: string): SettingsNavIconId | undefined {
-  for (const group of SETTINGS_HUB_GROUPS) {
-    for (const item of group.items) {
-      if (
-        item.id === section ||
-        (item.route.type === 'section' && item.route.section === section)
-      ) {
-        return item.icon
-      }
+  for (const item of ALL_HUB_ITEMS) {
+    if (item.id === section || (item.route.type === 'section' && item.route.section === section)) {
+      return item.icon
     }
   }
   if (section === 'developer') return 'general'
