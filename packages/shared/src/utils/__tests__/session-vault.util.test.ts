@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { deriveLegacyVaultId } from '../vault-id.util'
 import {
+  evaluateSessionVaultAccess,
   resolveSessionFlushTargetVault,
+  resolveSessionVaultCandidateIds,
   sessionBelongsToActiveVault,
   sessionBelongsToActiveVaultId
 } from '../session-vault.util'
@@ -45,5 +48,107 @@ describe('sessionBelongsToActiveVault', () => {
   it('匹配同名 vault', () => {
     expect(sessionBelongsToActiveVault('Personal85', 'Personal85')).toBe(true)
     expect(sessionBelongsToActiveVault('Personal', 'Personal85')).toBe(false)
+  })
+})
+
+describe('resolveSessionVaultCandidateIds', () => {
+  const personalLegacyId = deriveLegacyVaultId('Personal')
+
+  it('should exclude Personal legacy id when Personal exists as another registered vault', () => {
+    const candidates = resolveSessionVaultCandidateIds({
+      activeVault: { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' },
+      allVaults: [
+        { id: personalLegacyId, name: 'Personal' },
+        { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }
+      ]
+    })
+
+    expect(candidates).toEqual(['vlt_52f1ae2cda9f36e5', deriveLegacyVaultId('Personal45')])
+    expect(candidates).not.toContain(personalLegacyId)
+  })
+
+  it('should exclude Personal legacy id for a custom vault when Personal exists', () => {
+    const candidates = resolveSessionVaultCandidateIds({
+      activeVault: { id: 'vlt_work', name: 'Work' },
+      allVaults: [
+        { id: 'vlt_personal_rand', name: 'Personal' },
+        { id: 'vlt_work', name: 'Work' }
+      ]
+    })
+
+    expect(candidates).toEqual(['vlt_work', deriveLegacyVaultId('Work')])
+    expect(candidates).not.toContain(personalLegacyId)
+  })
+
+  it('should exclude Personal legacy id across multi-vault custom setups without Personal', () => {
+    const candidates = resolveSessionVaultCandidateIds({
+      activeVault: { id: 'vlt_work', name: 'Work' },
+      allVaults: [
+        { id: 'vlt_work', name: 'Work' },
+        { id: 'vlt_life', name: 'Life' }
+      ]
+    })
+
+    expect(candidates).toEqual(['vlt_work', deriveLegacyVaultId('Work')])
+    expect(candidates).not.toContain(personalLegacyId)
+  })
+
+  it('should include Personal legacy id for a sole Personal-derivative vault', () => {
+    const candidates = resolveSessionVaultCandidateIds({
+      activeVault: { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' },
+      allVaults: [{ id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }]
+    })
+
+    expect(candidates).toEqual([
+      'vlt_52f1ae2cda9f36e5',
+      deriveLegacyVaultId('Personal45'),
+      personalLegacyId
+    ])
+  })
+
+  it('should include Personal legacy id when Personal itself is active with a random id', () => {
+    const candidates = resolveSessionVaultCandidateIds({
+      activeVault: { id: 'vlt_personal_rand', name: 'Personal' },
+      allVaults: [
+        { id: 'vlt_personal_rand', name: 'Personal' },
+        { id: 'vlt_work', name: 'Work' }
+      ]
+    })
+
+    expect(candidates).toEqual(['vlt_personal_rand', personalLegacyId])
+  })
+
+  it('should include Personal legacy id for a sole renamed vault to preserve legacy sessions', () => {
+    const candidates = resolveSessionVaultCandidateIds({
+      activeVault: { id: 'vlt_renamed', name: 'MyDiary' },
+      allVaults: [{ id: 'vlt_renamed', name: 'MyDiary' }]
+    })
+
+    expect(candidates).toEqual(['vlt_renamed', deriveLegacyVaultId('MyDiary'), personalLegacyId])
+  })
+})
+
+describe('evaluateSessionVaultAccess', () => {
+  const personalLegacyId = deriveLegacyVaultId('Personal')
+
+  it('should deny Personal session when active vault is Personal45 and Personal also exists', () => {
+    const evaluation = evaluateSessionVaultAccess(personalLegacyId, {
+      activeVault: { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' },
+      allVaults: [
+        { id: personalLegacyId, name: 'Personal' },
+        { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }
+      ]
+    })
+
+    expect(evaluation.decision).toBe('deny-other-vault')
+  })
+
+  it('should allow self-heal when session uses legacy Personal id and no other Personal vault exists', () => {
+    const evaluation = evaluateSessionVaultAccess(personalLegacyId, {
+      activeVault: { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' },
+      allVaults: [{ id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }]
+    })
+
+    expect(evaluation.decision).toBe('self-heal')
   })
 })

@@ -120,9 +120,14 @@ export {
 export { classifyIncrementalSyncPaths } from './sync/incremental-sync-path-classify.util'
 export type { RemovedManifestEntry } from './types/version-control.types'
 export {
+  evaluateSessionVaultAccess,
+  resolveSessionVaultCandidateIds,
   sessionBelongsToActiveVault,
   sessionBelongsToActiveVaultId,
-  resolveSessionFlushTargetVault
+  resolveSessionFlushTargetVault,
+  type ResolveSessionVaultCandidateIdsInput,
+  type SessionVaultAccessEvaluation,
+  type VaultScopeIdentity
 } from './utils/session-vault.util'
 export * from './utils/version-control-path.util'
 export * from './utils/git-commit-message.util'

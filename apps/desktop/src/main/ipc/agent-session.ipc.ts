@@ -6,10 +6,11 @@ import { settingsManager } from './settings.ipc'
 import {
   GlobalModelsConfig,
   buildBranchSessionTitle,
-  deriveLegacyVaultId,
+  evaluateSessionVaultAccess,
   extractMessagePlainTextSnippet,
   logger,
   resolveDialogueModelSelection,
+  resolveSessionVaultCandidateIds,
   sessionBelongsToActiveVaultId
 } from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
@@ -21,60 +22,18 @@ export async function assertSessionInActiveVault<
   if (!session) {
     throw new Error(i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L157', '原会话不存在'))
   }
-  if (sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+  const activeVault = resolveActiveVault()
+  const stored = String(session.vaultId ?? '').trim()
+  const evaluation = evaluateSessionVaultAccess(session.vaultId, {
+    activeVault: { id: activeVaultId || activeVault.id, name: activeVault.name },
+    allVaults: vaultService.getAllVaults()
+  })
+
+  if (evaluation.decision === 'match') {
     return session
   }
 
-  const activeVault = resolveActiveVault()
-  const activeName = activeVault.name || 'Personal'
-  const nameDerived = deriveLegacyVaultId(activeName)
-  const defaultPersonalDerived = deriveLegacyVaultId('Personal')
-  const stored = String(session.vaultId ?? '').trim()
-
-  const allVaults = vaultService.getAllVaults()
-  const otherVaults = allVaults.filter((v) => {
-    const vid = String(v.id ?? '').trim()
-    const vname = String(v.name ?? '').trim()
-    return vid !== activeVaultId && vname !== activeName
-  })
-
-  // 1. 如果明确属于系统中另一个有效小窝（按真实 ID 或名称或旧派生 ID 匹配），拒绝越权访问
-  const belongsToOtherVault =
-    otherVaults.length > 0 &&
-    Boolean(stored) &&
-    otherVaults.some((other) => {
-      const otherId = String(other.id ?? '').trim()
-      const otherName = String(other.name ?? '').trim()
-      if (otherId && stored === otherId) return true
-      if (otherName && (stored === otherName || stored === deriveLegacyVaultId(otherName))) {
-        return true
-      }
-      return false
-    })
-
-  if (belongsToOtherVault) {
-    throw new Error(
-      i18n.t(
-        'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
-        '无权访问其他小窝的会话'
-      )
-    )
-  }
-
-  // 2. 检查是否满足当前小窝的合法历史/衍生自愈放行条件：
-  const isPersonalDerivative = /^Personal(\d+)?$/i.test(activeName)
-  const isDefaultPersonalCandidate =
-    stored === defaultPersonalDerived &&
-    (isPersonalDerivative || !otherVaults.some((v) => v.name?.trim() === 'Personal'))
-
-  const isAdmissibleCandidate =
-    !stored ||
-    stored === 'default' ||
-    stored === nameDerived ||
-    stored === activeName ||
-    isDefaultPersonalCandidate
-
-  if (!isAdmissibleCandidate) {
+  if (evaluation.decision !== 'self-heal') {
     throw new Error(
       i18n.t(
         'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
@@ -85,12 +44,12 @@ export async function assertSessionInActiveVault<
 
   if (session.id) {
     logger.info(
-      `[IPC] assertSessionInActiveVault: 自愈会话 ${session.id} 的 vault_id 从 ${stored || '(empty)'} 到 ${activeVaultId}`
+      `[IPC] assertSessionInActiveVault: 自愈会话 ${session.id} 的 vault_id 从 ${stored || '(empty)'} 到 ${evaluation.activeVaultId}`
     )
     const { realSessionRepo } = getAgentManagers()
-    await realSessionRepo.updateSessionVaultId(session.id, activeVaultId)
+    await realSessionRepo.updateSessionVaultId(session.id, evaluation.activeVaultId)
   }
-  return { ...session, vaultId: activeVaultId }
+  return { ...session, vaultId: evaluation.activeVaultId }
 }
 
 export function registerSessionIPC() {
@@ -108,12 +67,10 @@ export function registerSessionIPC() {
     ) => {
       const { sessionManager } = getAgentManagers()
       const activeVault = resolveActiveVault()
-      const activeVaultId = activeVault.id
-      const nameDerived = deriveLegacyVaultId(activeVault.name || 'Personal')
-      const defaultPersonalDerived = deriveLegacyVaultId('Personal')
-      const vaultCandidateIds = Array.from(
-        new Set([activeVaultId, nameDerived, defaultPersonalDerived].filter(Boolean))
-      )
+      const vaultCandidateIds = resolveSessionVaultCandidateIds({
+        activeVault,
+        allVaults: vaultService.getAllVaults()
+      })
       logger.info(
         `[IPC] agent:get-sessions - vaultIds=${vaultCandidateIds.join(',')}, astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
       )
@@ -318,8 +275,11 @@ export function registerSessionIPC() {
           ? String(assistantId).trim()
           : ''
     if (!normalized) return []
-    const activeVaultId = resolveActiveVaultId()
-    return sessionManager.findAllSessions(-1, 0, normalized, undefined, activeVaultId)
+    const vaultCandidateIds = resolveSessionVaultCandidateIds({
+      activeVault: resolveActiveVault(),
+      allVaults: vaultService.getAllVaults()
+    })
+    return sessionManager.findAllSessions(-1, 0, normalized, undefined, vaultCandidateIds)
   })
 
   // 对话分支：从指定消息位置复制一个新会话

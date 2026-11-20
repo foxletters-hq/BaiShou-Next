@@ -150,4 +150,21 @@ describe('SessionAggregateSync', () => {
     const sessionInsert = stmts.find((stmt) => stmt.sql.includes('INSERT INTO agent_sessions'))
     expect(sessionInsert?.args?.[3]).toBe('latte')
   })
+
+  it('keeps Personal45 sessions scoped to Personal45 instead of collapsing into Personal when vaultId is absent', async () => {
+    const { deriveLegacyVaultId } = await import('@baishou/shared')
+    await sync.upsertAggregate({
+      session: {
+        id: 's-personal45',
+        vaultName: 'Personal45',
+        createdAt: 1_700_000_000_000,
+        updatedAt: 1_700_000_100_000
+      },
+      messages: []
+    })
+    const stmts = batchMock.mock.calls[0]?.[0] as Array<{ sql: string; args?: unknown[] }>
+    const sessionInsert = stmts.find((stmt) => stmt.sql.includes('INSERT INTO agent_sessions'))
+    expect(sessionInsert?.args?.[2]).toBe(deriveLegacyVaultId('Personal45'))
+    expect(sessionInsert?.args?.[2]).not.toBe(deriveLegacyVaultId('Personal'))
+  })
 })

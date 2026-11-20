@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { deriveLegacyVaultId } from '@baishou/shared'
 import {
   loadMobileSessionInActiveVault,
-  resolveMobileActiveVaultId
+  resolveMobileActiveVaultId,
+  resolveMobileSessionVaultCandidateIds
 } from '../mobile-session-vault.util'
 
 function servicesWith(
@@ -126,5 +127,38 @@ describe('loadMobileSessionInActiveVault', () => {
     const session = await loadMobileSessionInActiveVault(services, 'sess_1')
     expect(session?.vaultId).toBe('vlt_live')
     expect(services.sessionManager.notifySessionMutated).not.toHaveBeenCalled()
+  })
+
+  it('should deny a Personal session when Personal and Personal45 both exist', async () => {
+    const personalId = deriveLegacyVaultId('Personal')
+    const services = {
+      ...servicesWith({ id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }, { vaultId: personalId }),
+      vaultService: {
+        getActiveVault: () => ({ id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }),
+        getAllVaults: () => [
+          { id: personalId, name: 'Personal' },
+          { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }
+        ]
+      }
+    }
+    await expect(loadMobileSessionInActiveVault(services, 'branch-1')).resolves.toBeNull()
+    expect(services.sessionRepo.updateSessionVaultId).not.toHaveBeenCalled()
+  })
+})
+
+describe('resolveMobileSessionVaultCandidateIds', () => {
+  it('should exclude Personal vault id when switching to Personal45 while Personal exists', () => {
+    const personalId = deriveLegacyVaultId('Personal')
+    const candidates = resolveMobileSessionVaultCandidateIds({
+      vaultService: {
+        getActiveVault: () => ({ id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }),
+        getAllVaults: () => [
+          { id: personalId, name: 'Personal' },
+          { id: 'vlt_52f1ae2cda9f36e5', name: 'Personal45' }
+        ]
+      }
+    })
+    expect(candidates).toEqual(['vlt_52f1ae2cda9f36e5', deriveLegacyVaultId('Personal45')])
+    expect(candidates).not.toContain(personalId)
   })
 })

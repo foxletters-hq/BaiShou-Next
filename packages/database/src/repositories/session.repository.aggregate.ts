@@ -38,8 +38,9 @@ function resolveSessionVaultId(session: {
     return rawId
   }
 
-  // 2. 若属于 Personal 或历史衍生名（Personal82, Personal8273 等）或未填/default，统一收敛至标准 Personal ID
-  if (!vaultName || vaultName === 'default' || /^Personal(\d+)?$/i.test(vaultName)) {
+  // 2. 仅未填或 default 回退至标准 Personal ID；
+  // 带数字尾号的小窝（如 Personal45）可能是用户实际使用的主工作空间，按其自身名称派生，不强行并入 Personal。
+  if (!vaultName || vaultName === 'default') {
     return deriveLegacyVaultId('Personal')
   }
 
