@@ -86,9 +86,7 @@ describe('journal-files.util', () => {
     expect(
       path.resolve(resolveShadowJournalAbsolutePath(journalsBase, shadowPath)).replace(/\\/g, '/')
     ).toBe(
-      path
-        .resolve('D:\\Notes\\Vault', '2.日记', '2024', '06', '2024-06-01.md')
-        .replace(/\\/g, '/')
+      path.resolve('D:\\Notes\\Vault', '2.日记', '2024', '06', '2024-06-01.md').replace(/\\/g, '/')
     )
   })
 

@@ -66,9 +66,7 @@ describe('stripLeakedMessageTimeFromAssistantText', () => {
   it('unwraps nested metadata with malformed message-time close tag', () => {
     const raw =
       '</thinking>\n<message-time>2026-02-10 16:40</message-time>\n<message-content>\n<message-time>2026-02-10 16:40</time>\n明白，先按照这个方案推进第一阶段。'
-    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe(
-      '明白，先按照这个方案推进第一阶段。'
-    )
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('明白，先按照这个方案推进第一阶段。')
   })
 
   it('returns empty string when only leaked metadata remains', () => {
@@ -101,7 +99,8 @@ describe('stripLeakedMessageTimeFromAssistantText', () => {
   })
 
   it('strips a leaked conversation_time table from assistant text', () => {
-    const raw = '<conversation_time>\n1. user 2026-03-05 09:15\n</conversation_time>\n收到，马上处理。'
+    const raw =
+      '<conversation_time>\n1. user 2026-03-05 09:15\n</conversation_time>\n收到，马上处理。'
     expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('收到，马上处理。')
   })
 })

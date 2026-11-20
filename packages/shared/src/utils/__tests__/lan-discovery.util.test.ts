@@ -94,7 +94,9 @@ describe('lan-discovery.util', () => {
   })
 
   it('builds stable service names from device id suffix', () => {
-    expect(buildLanServiceName('DemoUser', 'desktop-12345678-abcd')).toBe('BaiShou-DemoUser-5678abcd')
+    expect(buildLanServiceName('DemoUser', 'desktop-12345678-abcd')).toBe(
+      'BaiShou-DemoUser-5678abcd'
+    )
   })
 
   it('builds ASCII .local mDNS hostnames so Android DNSSD treats SRV target as local domain', () => {

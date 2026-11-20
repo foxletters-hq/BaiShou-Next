@@ -230,7 +230,7 @@ describe('DatabaseAdapter.getBySource', () => {
 describe('DatabaseAdapter.getAvailableSummaries', () => {
   it('formats summary ranges with local calendar dates', async () => {
     const start = new Date(2025, 5, 16)
-    const end = new Date(2026, 2, 11)
+    const end = new Date(2025, 5, 22)
     const orderBy = vi.fn().mockReturnValue({
       limit: vi.fn().mockResolvedValue([{ start, end }])
     })
