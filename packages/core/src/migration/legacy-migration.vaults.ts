@@ -34,18 +34,133 @@ export async function readLegacyVaultRegistry(
   }
 }
 
-/** 工作区是否已有日记/总结/会话库等用户数据（仅空目录或 config 视为无内容） */
+async function hasAnyNonHiddenFileInTree(
+  fileSystem: IFileSystem,
+  dirPath: string
+): Promise<boolean> {
+  if (!(await fileSystem.exists(dirPath))) return false
+  const entries = await fileSystem.readdir(dirPath).catch(() => [])
+  for (const entry of entries) {
+    if (entry.startsWith('.')) continue
+    const fullPath = path.join(dirPath, path.basename(entry))
+    try {
+      const stat = await fileSystem.stat(fullPath)
+      if (stat.isFile) return true
+      if (stat.isDirectory && (await hasAnyNonHiddenFileInTree(fileSystem, fullPath))) {
+        return true
+      }
+    } catch {
+      // 忽略不可读条目
+    }
+  }
+  return false
+}
+
+async function hasAnyNonHiddenJsonFile(fileSystem: IFileSystem, dirPath: string): Promise<boolean> {
+  if (!(await fileSystem.exists(dirPath))) return false
+  const entries = await fileSystem.readdir(dirPath).catch(() => [])
+  return entries.some((entry) => !entry.startsWith('.') && entry.endsWith('.json'))
+}
+
+function isUntouchedDefaultLatteJson(raw: string): boolean {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    if (!parsed || typeof parsed !== 'object') return false
+    const id = String(parsed.id ?? '').trim()
+    if (id !== 'latte' && id !== 'default') return false
+    const name = String(parsed.name ?? '').trim()
+    if (name && name !== 'Latte' && name !== '拉提') return false
+    if (typeof parsed.customSystemPrompt === 'string' && parsed.customSystemPrompt.trim()) {
+      return false
+    }
+    if (typeof parsed.avatarPath === 'string' && parsed.avatarPath.trim()) {
+      return false
+    }
+    if (typeof parsed.providerId === 'string' && parsed.providerId.trim()) {
+      return false
+    }
+    if (typeof parsed.modelId === 'string' && parsed.modelId.trim()) {
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function hasCustomOrModifiedAssistant(
+  fileSystem: IFileSystem,
+  assistantsDir: string
+): Promise<boolean> {
+  if (!(await fileSystem.exists(assistantsDir))) return false
+  const entries = await fileSystem.readdir(assistantsDir).catch(() => [])
+  for (const entry of entries) {
+    if (entry.startsWith('.') || !entry.endsWith('.json')) continue
+    const safeName = path.basename(entry)
+    if (safeName.toLowerCase() !== 'latte.json') {
+      return true
+    }
+    try {
+      const raw = await fileSystem.readFile(path.join(assistantsDir, safeName), 'utf8')
+      if (!isUntouchedDefaultLatteJson(raw)) {
+        return true
+      }
+    } catch {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * 工作区是否已有真实用户数据：
+ * - Journals 下有 .md 日记
+ * - Archives / Summaries / Attachments 下有实际文件
+ * - Sessions 下有 .json 会话
+ * - Assistants 下有自定义伙伴或已被用户修改过的 latte.json
+ * - 旧版 .baishou/agent.sqlite 非空
+ * 仅空文件夹、config/ 或全新安装生成的未修改默认 latte.json 视为无用户内容。
+ */
 export async function vaultDirectoryHasUserContent(
   fileSystem: IFileSystem,
   rootDir: string,
   vaultName: string
 ): Promise<boolean> {
   const vaultDir = path.join(rootDir, vaultName)
-  return (
-    (await fileSystem.exists(path.join(vaultDir, 'Journals'))) ||
-    (await fileSystem.exists(path.join(vaultDir, 'Archives'))) ||
-    (await fileSystem.exists(path.join(vaultDir, '.baishou', 'agent.sqlite')))
-  )
+  if (!(await fileSystem.exists(vaultDir))) return false
+
+  if (await journalMarkdownExistsInTree(fileSystem, path.join(vaultDir, 'Journals'))) {
+    return true
+  }
+
+  for (const folder of ['Archives', 'Summaries', 'Attachments'] as const) {
+    const dir = path.join(vaultDir, folder)
+    if (await hasAnyNonHiddenFileInTree(fileSystem, dir)) {
+      return true
+    }
+  }
+
+  if (await hasAnyNonHiddenJsonFile(fileSystem, path.join(vaultDir, 'Sessions'))) {
+    return true
+  }
+
+  if (await hasCustomOrModifiedAssistant(fileSystem, path.join(vaultDir, 'Assistants'))) {
+    return true
+  }
+
+  const legacyAgentDb = path.join(vaultDir, '.baishou', 'agent.sqlite')
+  if (await fileSystem.exists(legacyAgentDb)) {
+    try {
+      const stat = await fileSystem.stat(legacyAgentDb)
+      if ((stat.size ?? 0) >= MIN_AGENT_SQLITE_BYTES_FOR_IMPORT) {
+        return true
+      }
+    } catch {
+      return true
+    }
+  }
+
+  return false
 }
 
 /** 归档导入时是否值得迁移该工作区（跳过 registry 残留的空壳目录） */

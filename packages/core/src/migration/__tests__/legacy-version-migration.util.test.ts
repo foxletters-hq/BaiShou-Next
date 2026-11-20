@@ -118,6 +118,31 @@ describe('legacy-version-migration.util', () => {
     vi.restoreAllMocks()
   })
 
+  it('resolveLegacyVaultTargetName reuses existing empty placeholder vault without random suffix', () => {
+    const existing = new Set(['Personal'])
+    const reusableEmptyNames = new Set(['Personal'])
+    expect(resolveLegacyVaultTargetName('Personal', existing, {}, { reusableEmptyNames })).toBe(
+      'Personal'
+    )
+    expect(
+      resolveLegacyVaultTargetName(
+        'Personal',
+        existing,
+        { Personal: 'Personal' },
+        { reusableEmptyNames }
+      )
+    ).toBe('Personal')
+    // 已有明确不同名映射（如二次迁移续传）仍沿用原映射
+    expect(
+      resolveLegacyVaultTargetName(
+        'Personal',
+        existing,
+        { Personal: 'Personal42' },
+        { reusableEmptyNames }
+      )
+    ).toBe('Personal42')
+  })
+
   it('normalizeImportedSectionIds maps legacy flat workspace section ids', () => {
     const normalized = normalizeImportedSectionIds(
       ['avatar', 'diaries', 'assistants', 'workspace:Personal'],

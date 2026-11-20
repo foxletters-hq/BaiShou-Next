@@ -1,5 +1,17 @@
-import { path, type IFileSystem, type VaultService } from '@baishou/core-mobile'
-import { deriveLegacyVaultId, isVaultId, logger, type ISqlExecutor } from '@baishou/shared'
+import {
+  path,
+  vaultDirectoryHasUserContent,
+  type IFileSystem,
+  type VaultService
+} from '@baishou/core-mobile'
+import {
+  deriveLegacyVaultId,
+  isVaultId,
+  logger,
+  normalizeStorageRoot,
+  type ISqlExecutor
+} from '@baishou/shared'
+import { AUTO_HEAL_PERSONAL_SESSIONS_DONE_ROOTS_KEY } from '../constants/storage'
 
 export interface AutoHealMobileOptions {
   fileSystem: IFileSystem
@@ -8,6 +20,79 @@ export interface AutoHealMobileOptions {
   /** 调用方已知的当前小窝名；用于在后台任务中跳过用户正在使用的小窝 */
   activeVaultName?: string | null
   sqlExecutor?: ISqlExecutor | ((sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>)
+  /** 可选覆盖：是否已完成该 storageRoot 的一次性 Personal/Sessions 历史归属扫描（便于测试注入） */
+  hasCompletedPersonalSessionScan?: (normalizedRoot: string) => Promise<boolean>
+  /** 可选覆盖：标记该 storageRoot 已完成一次性 Personal/Sessions 扫描 */
+  markPersonalSessionScanCompleted?: (normalizedRoot: string) => Promise<void>
+}
+
+const completedPersonalScanRootsMemory = new Set<string>()
+const inFlightAutoHealByRoot = new Map<string, Promise<AutoHealResult>>()
+
+async function loadAsyncStorageSafe(): Promise<{
+  getItem: (key: string) => Promise<string | null>
+  setItem: (key: string, value: string) => Promise<void>
+} | null> {
+  try {
+    const mod = await import('@react-native-async-storage/async-storage')
+    const store = mod.default ?? (mod as unknown as { getItem?: unknown; setItem?: unknown })
+    if (typeof store?.getItem === 'function' && typeof store?.setItem === 'function') {
+      return store as {
+        getItem: (key: string) => Promise<string | null>
+        setItem: (key: string, value: string) => Promise<void>
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+async function defaultHasCompletedPersonalSessionScan(normalizedRoot: string): Promise<boolean> {
+  if (completedPersonalScanRootsMemory.has(normalizedRoot)) return true
+  const store = await loadAsyncStorageSafe()
+  if (!store) return false
+  try {
+    const raw = await store.getItem(AUTO_HEAL_PERSONAL_SESSIONS_DONE_ROOTS_KEY)
+    if (!raw) return false
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (typeof item === 'string' && item) completedPersonalScanRootsMemory.add(item)
+      }
+      return completedPersonalScanRootsMemory.has(normalizedRoot)
+    }
+  } catch {
+    // 忽略损坏缓存，回退重新扫描一次
+  }
+  return false
+}
+
+async function defaultMarkPersonalSessionScanCompleted(normalizedRoot: string): Promise<void> {
+  completedPersonalScanRootsMemory.add(normalizedRoot)
+  const store = await loadAsyncStorageSafe()
+  if (!store) return
+  try {
+    const raw = await store.getItem(AUTO_HEAL_PERSONAL_SESSIONS_DONE_ROOTS_KEY)
+    const set = new Set<string>(completedPersonalScanRootsMemory)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (typeof item === 'string' && item) set.add(item)
+        }
+      }
+    }
+    await store.setItem(AUTO_HEAL_PERSONAL_SESSIONS_DONE_ROOTS_KEY, JSON.stringify(Array.from(set)))
+  } catch {
+    // 持久化失败不影响主流程，本进程内存已标记
+  }
+}
+
+/** 测试用：重置进程内自愈完成缓存 */
+export function resetAutoHealMemoryStateForTest(): void {
+  completedPersonalScanRootsMemory.clear()
+  inFlightAutoHealByRoot.clear()
 }
 
 async function runSql(
@@ -41,7 +126,7 @@ interface SessionMeta {
   vaultId?: string
 }
 
-/** 仅识别系统默认小窝 Personal 后面追加 2 位以上数字的目录，避免误合并用户自建的其它小窝 */
+/** 仅识别系统默认小窝 Personal 后面追加 2 位以上数字的目录 */
 const DERIVATIVE_DIR_PATTERN = /^Personal(\d{2,})$/
 
 function parseSessionMeta(raw: string): SessionMeta {
@@ -105,44 +190,6 @@ export function sanitizeSessionJsonContent(
   }
 }
 
-/**
- * 扫描并递归收集指定目录下所有文件的相对路径
- */
-async function collectFilesRecursively(
-  fileSystem: IFileSystem,
-  baseDir: string,
-  relDir = ''
-): Promise<string[]> {
-  const currentDir = relDir ? path.join(baseDir, relDir) : baseDir
-  if (!(await fileSystem.exists(currentDir))) {
-    return []
-  }
-
-  const entries = await fileSystem.readdir(currentDir).catch(() => [])
-  const files: string[] = []
-
-  for (const entry of entries) {
-    if (entry.startsWith('.')) continue
-    const safeEntry = path.basename(entry)
-    const relPath = relDir ? path.join(relDir, safeEntry) : safeEntry
-    const fullPath = path.join(baseDir, relPath)
-
-    try {
-      const st = await fileSystem.stat(fullPath)
-      if (st.isDirectory) {
-        const subFiles = await collectFilesRecursively(fileSystem, baseDir, relPath)
-        files.push(...subFiles)
-      } else if (st.isFile) {
-        files.push(relPath)
-      }
-    } catch {
-      // 忽略不可读条目
-    }
-  }
-
-  return files
-}
-
 async function readRegistryEntries(
   fileSystem: IFileSystem,
   storageRoot: string
@@ -174,28 +221,47 @@ async function writeRegistryEntries(
 }
 
 /**
- * 移动端工作区分裂自愈服务：
- * 1. 仅在存储根下确实存在由重名随机数产生的衍生工作区（如 Personal82、Personal8273）时执行；
- * 2. 将衍生工作区中的 Sessions、Journals、Attachments 安全迁移/合并回主工作区（同名冲突不覆盖）；
- * 3. 只修正引用了被合并小窝的会话 JSON，不重写无关会话；
- * 4. 只对齐本次实际合并/修正过的会话在 SQLite 中的 vault_id 与 assistant_id；
- * 5. 清理 vault_registry.json 中已成功合并的衍生条目；
- * 6. 不改变用户当前选择的小窝，也不改写其它小窝的会话归属。
- *
- * 没有衍生小窝时直接返回，避免每次启动/切换都全量扫描会话文件。
+ * 移动端衍生工作区安全自愈服务（仅执行无损清理，严禁静默合并或删除含真实用户数据的小窝）：
+ * 1. 若磁盘上的 PersonalXX 目录包含任何真实用户数据（日记、会话、总结、附件、自定义伙伴），
+ *    一律视作独立工作空间原样保留（用户可能将其作为主工作空间使用），绝不后台静默搬迁或删除；
+ * 2. 仅清理确认无任何用户内容且非当前活跃小窝的空壳 PersonalXX 目录；
+ * 3. 清理目录已在磁盘上不存在的幽灵 PersonalXX 注册表条目；
+ * 4. 仅原地清洗物理位于 Personal/Sessions 目录下、但元信息错指向已不存在衍生小窝或旧随机 ID 的会话。
  */
 export async function autoHealMobileDerivativeVaults(
   options: AutoHealMobileOptions
 ): Promise<AutoHealResult> {
+  if (!options.storageRoot) {
+    return { healed: false, mergedSessions: 0, mergedJournals: 0, removedVaults: [] }
+  }
+  const normalizedRoot = normalizeStorageRoot(options.storageRoot) || options.storageRoot
+  const existingTask = inFlightAutoHealByRoot.get(normalizedRoot)
+  if (existingTask) return existingTask
+
+  const task = runAutoHealMobileDerivativeVaults(options, normalizedRoot).finally(() => {
+    if (inFlightAutoHealByRoot.get(normalizedRoot) === task) {
+      inFlightAutoHealByRoot.delete(normalizedRoot)
+    }
+  })
+  inFlightAutoHealByRoot.set(normalizedRoot, task)
+  return task
+}
+
+async function runAutoHealMobileDerivativeVaults(
+  options: AutoHealMobileOptions,
+  normalizedRoot: string
+): Promise<AutoHealResult> {
   const { fileSystem, storageRoot, vaultService, sqlExecutor } = options
+  const hasCompletedPersonalScan =
+    options.hasCompletedPersonalSessionScan ?? defaultHasCompletedPersonalSessionScan
+  const markPersonalScanCompleted =
+    options.markPersonalSessionScanCompleted ?? defaultMarkPersonalSessionScanCompleted
   const result: AutoHealResult = {
     healed: false,
     mergedSessions: 0,
     mergedJournals: 0,
     removedVaults: []
   }
-
-  if (!storageRoot) return result
 
   try {
     if (!(await fileSystem.exists(storageRoot))) {
@@ -213,20 +279,27 @@ export async function autoHealMobileDerivativeVaults(
 
     const activeName = options.activeVaultName ?? vaultService?.getActiveVault()?.name ?? null
 
-    const derivativeCandidates: Array<{ baseName: string; derivativeName: string }> = []
+    // 1. 仅识别「无任何真实用户内容」的空壳衍生目录；有用户内容的独立小窝一律原样保留
+    const emptyDerivativeDirs: string[] = []
+    const preservedDerivativeDirs = new Set<string>()
     for (const entry of allEntries) {
       if (entry.startsWith('.')) continue
       if (!DERIVATIVE_DIR_PATTERN.test(entry)) continue
-      const baseName = 'Personal'
       if (entry === activeName) {
-        // 用户明确选择的小窝即使名字类似衍生目录也不能删，否则切换会被自愈逻辑回滚
+        preservedDerivativeDirs.add(entry)
         logger.info('[AutoHeal] 跳过当前活跃小窝，保留用户选择:', entry)
         continue
       }
-      derivativeCandidates.push({ baseName, derivativeName: entry })
+      const hasContent = await vaultDirectoryHasUserContent(fileSystem, storageRoot, entry)
+      if (hasContent) {
+        preservedDerivativeDirs.add(entry)
+        logger.info('[AutoHeal] 保留含用户数据的独立工作区，不执行静默合并:', entry)
+        continue
+      }
+      emptyDerivativeDirs.push(entry)
     }
 
-    // 目录已被删除但注册表仍残留的衍生小窝：仍需要清洗引用它们的会话
+    // 2. 目录已不存在但注册表仍残留的衍生条目
     const staleRegistryDerivatives = registryEntries.filter((entry) => {
       const name = typeof entry.name === 'string' ? entry.name : ''
       if (!name || name === activeName) return false
@@ -234,454 +307,174 @@ export async function autoHealMobileDerivativeVaults(
       return !entriesSet.has(name)
     })
 
-    // 检查主小窝 Personal/Sessions 下是否存在未清洗的残留衍生会话或旧随机 ID
+    // 3. 快路径：无空壳/幽灵衍生小窝且已完成过一次性 Personal/Sessions 扫描时，直接跳过 O(N) 会话读取
+    const hasDerivativeCleanupWork =
+      emptyDerivativeDirs.length > 0 || staleRegistryDerivatives.length > 0
+    const personalScanAlreadyDone = hasDerivativeCleanupWork
+      ? false
+      : await hasCompletedPersonalScan(normalizedRoot)
+    if (!hasDerivativeCleanupWork && personalScanAlreadyDone) {
+      return result
+    }
+
+    // 4. 收集仍然独立存活的其它小窝 ID，防止误改写
+    const preservedDerivativeIds = new Set<string>()
+    for (const name of preservedDerivativeDirs) {
+      const regId = registryByName.get(name)?.id
+      if (typeof regId === 'string' && regId.trim()) preservedDerivativeIds.add(regId.trim())
+      preservedDerivativeIds.add(deriveLegacyVaultId(name))
+    }
+
+    // 5. 检查物理位于 Personal/Sessions 下的会话是否残余引用了已不存在的衍生目录或旧随机 ID
     const personalSessionsDir = path.join(storageRoot, 'Personal', 'Sessions')
-    let hasLingeringPersonalSessions = false
-    const lingeringDerivativeNames = new Set<string>()
-    const lingeringDerivativeIds = new Set<string>()
+    const personalRegistryEntry = registryByName.get('Personal')
+    const targetPersonalId =
+      typeof personalRegistryEntry?.id === 'string' && isVaultId(personalRegistryEntry.id)
+        ? personalRegistryEntry.id
+        : deriveLegacyVaultId('Personal')
 
+    const removableDerivativeNames = new Set<string>([
+      ...emptyDerivativeDirs,
+      ...staleRegistryDerivatives
+        .map((entry) => (typeof entry.name === 'string' ? entry.name : ''))
+        .filter(Boolean)
+    ])
+    const removableDerivativeIds = new Set<string>()
+    for (const name of removableDerivativeNames) {
+      const regId = registryByName.get(name)?.id
+      if (typeof regId === 'string' && regId.trim()) removableDerivativeIds.add(regId.trim())
+      removableDerivativeIds.add(deriveLegacyVaultId(name))
+    }
+
+    const personalSessionsToRepair: Array<{
+      filePath: string
+      fileName: string
+      raw: string
+      id: string
+    }> = []
     if (await fileSystem.exists(personalSessionsDir)) {
-      const personalRegistryEntry = registryByName.get('Personal')
-      const targetPersonalId =
-        typeof personalRegistryEntry?.id === 'string' && isVaultId(personalRegistryEntry.id)
-          ? personalRegistryEntry.id
-          : deriveLegacyVaultId('Personal')
       const personalFiles = await fileSystem.readdir(personalSessionsDir).catch(() => [])
-
       for (const file of personalFiles) {
         if (!file.endsWith('.json')) continue
-        const filePath = path.join(personalSessionsDir, path.basename(file))
+        const safeFile = path.basename(file)
+        const filePath = path.join(personalSessionsDir, safeFile)
         try {
           const raw = await fileSystem.readFile(filePath, 'utf8')
           const meta = parseSessionMeta(raw)
-          const needsRepair =
-            (meta.vaultName && DERIVATIVE_DIR_PATTERN.test(meta.vaultName)) ||
-            (meta.vaultId && meta.vaultId !== targetPersonalId && isVaultId(meta.vaultId))
-          if (needsRepair) {
-            hasLingeringPersonalSessions = true
-            if (meta.vaultName) lingeringDerivativeNames.add(meta.vaultName)
-            if (meta.vaultId) lingeringDerivativeIds.add(meta.vaultId)
+          const refsRemovedDerivative =
+            (meta.vaultName !== undefined && removableDerivativeNames.has(meta.vaultName)) ||
+            (meta.vaultId !== undefined && removableDerivativeIds.has(meta.vaultId))
+          const refsUnregisteredDerivativeName =
+            meta.vaultName !== undefined &&
+            DERIVATIVE_DIR_PATTERN.test(meta.vaultName) &&
+            !preservedDerivativeDirs.has(meta.vaultName)
+          const refsStalePersonalRandomId =
+            meta.vaultId !== undefined &&
+            isVaultId(meta.vaultId) &&
+            meta.vaultId !== targetPersonalId &&
+            !preservedDerivativeIds.has(meta.vaultId) &&
+            (!meta.vaultName ||
+              meta.vaultName === 'Personal' ||
+              meta.vaultName === 'default' ||
+              refsUnregisteredDerivativeName)
+
+          if (
+            refsRemovedDerivative ||
+            refsUnregisteredDerivativeName ||
+            refsStalePersonalRandomId
+          ) {
+            personalSessionsToRepair.push({
+              filePath,
+              fileName: safeFile,
+              raw,
+              id: meta.id || safeFile.replace(/\.json$/i, '')
+            })
           }
         } catch {
-          // ignore
+          // 忽略不可读文件
         }
       }
     }
 
     if (
-      derivativeCandidates.length === 0 &&
+      emptyDerivativeDirs.length === 0 &&
       staleRegistryDerivatives.length === 0 &&
-      !hasLingeringPersonalSessions
+      personalSessionsToRepair.length === 0
     ) {
+      await markPersonalScanCompleted(normalizedRoot)
       return result
     }
 
-    const staleRegistryNames = new Set(
-      staleRegistryDerivatives
-        .map((entry) => (typeof entry.name === 'string' ? entry.name : ''))
-        .filter(Boolean)
-    )
-
-    logger.info('[AutoHeal] 启动自愈检查', {
+    logger.info('[AutoHeal] 启动安全自愈清理', {
       storageRoot,
-      derivatives: derivativeCandidates.map((item) => item.derivativeName),
+      emptyDerivativeDirs,
       staleRegistryDerivatives: staleRegistryDerivatives.map((item) => item.name),
-      hasLingeringPersonalSessions
+      personalSessionsToRepairCount: personalSessionsToRepair.length
     })
 
-    /** baseName -> 需要清洗的衍生小窝名集合 */
-    const derivativeNamesByBase = new Map<string, Set<string>>()
-    /** baseName -> 需要清洗的衍生小窝 id 集合 */
-    const derivativeIdsByBase = new Map<string, Set<string>>()
-    /** baseName -> 本次修正过的会话 id */
-    const repairedSessionIdsByBase = new Map<string, Set<string>>()
-
-    const addSetValue = (target: Map<string, Set<string>>, key: string, value: string) => {
-      if (!value) return
-      const set = target.get(key) ?? new Set<string>()
-      set.add(value)
-      target.set(key, set)
-    }
-
-    const addDerivativeIdentity = (baseName: string, name: string, id?: string) => {
-      addSetValue(derivativeNamesByBase, baseName, name)
-      if (id) addSetValue(derivativeIdsByBase, baseName, id)
-      const registryEntry = registryByName.get(name)
-      const registryId = typeof registryEntry?.id === 'string' ? registryEntry.id : ''
-      if (registryId) addSetValue(derivativeIdsByBase, baseName, registryId)
-    }
-
-    for (const name of lingeringDerivativeNames) {
-      addSetValue(derivativeNamesByBase, 'Personal', name)
-    }
-    for (const id of lingeringDerivativeIds) {
-      addSetValue(derivativeIdsByBase, 'Personal', id)
-    }
-
-    for (const stale of staleRegistryDerivatives) {
-      const name = typeof stale.name === 'string' ? stale.name : ''
-      if (!name) continue
-      addDerivativeIdentity('Personal', name, typeof stale.id === 'string' ? stale.id : undefined)
-    }
-
-    for (const { baseName, derivativeName } of derivativeCandidates) {
-      const baseDir = path.join(storageRoot, baseName)
-      const derivDir = path.join(storageRoot, derivativeName)
-      const baseRegistryEntry = registryByName.get(baseName)
-      const targetVaultId =
-        typeof baseRegistryEntry?.id === 'string' && isVaultId(baseRegistryEntry.id)
-          ? baseRegistryEntry.id
-          : deriveLegacyVaultId(baseName)
-
-      addDerivativeIdentity(
-        baseName,
-        derivativeName,
-        typeof registryByName.get(derivativeName)?.id === 'string'
-          ? registryByName.get(derivativeName)!.id
-          : undefined
-      )
-
-      let mergeFailed = false
-      await fileSystem.mkdir(baseDir, { recursive: true })
-
-      // 1. 合并 Sessions/*.json
-      const derivSessionsDir = path.join(derivDir, 'Sessions')
-      const baseSessionsDir = path.join(baseDir, 'Sessions')
-      if (await fileSystem.exists(derivSessionsDir)) {
-        await fileSystem.mkdir(baseSessionsDir, { recursive: true })
-        const sessionFiles = await fileSystem.readdir(derivSessionsDir).catch(() => [])
-
-        for (const file of sessionFiles) {
-          if (!file.endsWith('.json')) continue
-          const safeFile = path.basename(file)
-          const srcPath = path.join(derivSessionsDir, safeFile)
-          const destPath = path.join(baseSessionsDir, safeFile)
-
-          try {
-            const raw = await fileSystem.readFile(srcPath, 'utf8')
-            const contentToWrite = sanitizeSessionJsonContent(raw, baseName, targetVaultId)
-            const meta = parseSessionMeta(raw)
-
-            const destExists = await fileSystem.exists(destPath)
-            if (destExists) {
-              const destRaw = await fileSystem.readFile(destPath, 'utf8').catch(() => null)
-              const destStat = await fileSystem.stat(destPath).catch(() => null)
-              const canReplaceEmpty = destStat ? destStat.size === 0 : false
-              const destMeta = destRaw ? parseSessionMeta(destRaw) : {}
-              const isDestDerivative = Boolean(
-                destMeta.vaultName && DERIVATIVE_DIR_PATTERN.test(destMeta.vaultName)
-              )
-              if (destRaw !== contentToWrite && !canReplaceEmpty && !isDestDerivative) {
-                // 同名会话内容不同：保留源文件，避免静默丢弃历史消息
-                mergeFailed = true
-                logger.warn('[AutoHeal] 目标会话已存在且内容不同，保留衍生文件:', {
-                  derivativeName,
-                  file: safeFile
-                })
-                continue
-              }
-              if (canReplaceEmpty || isDestDerivative) {
-                await fileSystem.writeFile(destPath, contentToWrite, 'utf8')
-              }
-            } else {
-              await fileSystem.writeFile(destPath, contentToWrite, 'utf8')
-            }
-
-            if (meta.id) addSetValue(repairedSessionIdsByBase, baseName, meta.id)
-            else addSetValue(repairedSessionIdsByBase, baseName, safeFile.replace(/\.json$/i, ''))
-            await fileSystem.unlink(srcPath).catch(() => {})
-            result.mergedSessions++
-          } catch (sessionErr) {
-            mergeFailed = true
-            logger.warn(`[AutoHeal] 迁移会话文件 ${safeFile} 失败:`, sessionErr as Error)
-          }
-        }
-      }
-
-      // 2. 合并 Journals/**/*.md
-      const derivJournalsDir = path.join(derivDir, 'Journals')
-      const baseJournalsDir = path.join(baseDir, 'Journals')
-      if (await fileSystem.exists(derivJournalsDir)) {
-        await fileSystem.mkdir(baseJournalsDir, { recursive: true })
-        const journalFiles = await collectFilesRecursively(fileSystem, derivJournalsDir)
-
-        for (const relFile of journalFiles) {
-          if (!relFile.endsWith('.md')) continue
-          const srcPath = path.join(derivJournalsDir, relFile)
-          const destPath = path.join(baseJournalsDir, relFile)
-
-          try {
-            const destExists = await fileSystem.exists(destPath)
-            if (destExists) {
-              const [srcRaw, destRaw] = await Promise.all([
-                fileSystem.readFile(srcPath, 'utf8'),
-                fileSystem.readFile(destPath, 'utf8').catch(() => null)
-              ])
-              if (srcRaw !== destRaw) {
-                mergeFailed = true
-                logger.warn('[AutoHeal] 目标日记已存在且内容不同，保留衍生文件:', {
-                  derivativeName,
-                  file: relFile
-                })
-                continue
-              }
-            } else {
-              await fileSystem.mkdir(path.dirname(destPath), { recursive: true })
-              const content = await fileSystem.readFile(srcPath, 'utf8')
-              await fileSystem.writeFile(destPath, content, 'utf8')
-              result.mergedJournals++
-            }
-            await fileSystem.unlink(srcPath).catch(() => {})
-          } catch (journalErr) {
-            mergeFailed = true
-            logger.warn(`[AutoHeal] 迁移日记文件 ${relFile} 失败:`, journalErr as Error)
-          }
-        }
-      }
-
-      // 3. 合并 Attachments
-      const derivAttDir = path.join(derivDir, 'Attachments')
-      const baseAttDir = path.join(baseDir, 'Attachments')
-      if (await fileSystem.exists(derivAttDir)) {
-        await fileSystem.mkdir(baseAttDir, { recursive: true })
-        const attFiles = await collectFilesRecursively(fileSystem, derivAttDir)
-
-        for (const relFile of attFiles) {
-          const srcPath = path.join(derivAttDir, relFile)
-          const destPath = path.join(baseAttDir, relFile)
-          try {
-            if (!(await fileSystem.exists(destPath))) {
-              await fileSystem.mkdir(path.dirname(destPath), { recursive: true })
-              await fileSystem.copyFile(srcPath, destPath)
-            }
-            await fileSystem.unlink(srcPath).catch(() => {})
-          } catch (attachmentErr) {
-            mergeFailed = true
-            logger.warn(`[AutoHeal] 迁移附件 ${relFile} 失败:`, attachmentErr as Error)
-          }
-        }
-      }
-
-      // 4. 合并 Assistants/*.json
-      const derivAssistantsDir = path.join(derivDir, 'Assistants')
-      const baseAssistantsDir = path.join(baseDir, 'Assistants')
-      if (await fileSystem.exists(derivAssistantsDir)) {
-        await fileSystem.mkdir(baseAssistantsDir, { recursive: true })
-        const assistantFiles = await fileSystem.readdir(derivAssistantsDir).catch(() => [])
-
-        for (const file of assistantFiles) {
-          if (!file.endsWith('.json')) continue
-          const safeFile = path.basename(file)
-          const srcPath = path.join(derivAssistantsDir, safeFile)
-          const destPath = path.join(baseAssistantsDir, safeFile)
-
-          try {
-            const destExists = await fileSystem.exists(destPath)
-            if (destExists) {
-              const [srcRaw, destRaw] = await Promise.all([
-                fileSystem.readFile(srcPath, 'utf8'),
-                fileSystem.readFile(destPath, 'utf8').catch(() => null)
-              ])
-              if (srcRaw !== destRaw) {
-                // 若为 latte.json 且内容不同，转存为衍生自定义助手，避免静默丢失
-                if (safeFile.toLowerCase() === 'latte.json') {
-                  try {
-                    const parsed = JSON.parse(srcRaw)
-                    const newId = `ast_derived_${Date.now()}`
-                    parsed.id = newId
-                    parsed.isDefault = false
-                    const migratedPath = path.join(baseAssistantsDir, `${newId}.json`)
-                    await fileSystem.writeFile(
-                      migratedPath,
-                      JSON.stringify(parsed, null, 2),
-                      'utf8'
-                    )
-                    if (sqlExecutor) {
-                      await runSql(
-                        sqlExecutor,
-                        `INSERT OR REPLACE INTO agent_assistants (id, name, emoji, avatar_path, description, system_prompt, custom_system_prompt, is_default, is_pinned, context_window, provider_id, model_id, compress_token_threshold, compress_keep_turns, assistant_kind, sort_order, vault_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [
-                          newId,
-                          parsed.name || 'Latte',
-                          parsed.emoji || '✨',
-                          parsed.avatarPath || null,
-                          parsed.description || null,
-                          parsed.systemPrompt || null,
-                          parsed.customSystemPrompt || null,
-                          0,
-                          parsed.isPinned ? 1 : 0,
-                          parsed.contextWindow || null,
-                          parsed.providerId || null,
-                          parsed.modelId || null,
-                          parsed.compressTokenThreshold || null,
-                          parsed.compressKeepTurns || null,
-                          'custom',
-                          parsed.sortOrder || 0,
-                          targetVaultId,
-                          Date.now(),
-                          Date.now()
-                        ]
-                      )
-                    }
-                  } catch (astParseErr) {
-                    mergeFailed = true
-                    logger.warn('[AutoHeal] 转存衍生 latte 失败:', astParseErr as Error)
-                    continue
-                  }
-                } else {
-                  mergeFailed = true
-                  logger.warn('[AutoHeal] 目标助手已存在且内容不同，保留衍生文件:', {
-                    derivativeName,
-                    file: safeFile
-                  })
-                  continue
-                }
-              }
-            } else {
-              const content = await fileSystem.readFile(srcPath, 'utf8')
-              await fileSystem.writeFile(destPath, content, 'utf8')
-              if (sqlExecutor) {
-                try {
-                  const parsed = JSON.parse(content)
-                  if (parsed.id && parsed.name) {
-                    await runSql(
-                      sqlExecutor,
-                      `INSERT OR REPLACE INTO agent_assistants (id, name, emoji, avatar_path, description, system_prompt, custom_system_prompt, is_default, is_pinned, context_window, provider_id, model_id, compress_token_threshold, compress_keep_turns, assistant_kind, sort_order, vault_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                      [
-                        parsed.id,
-                        parsed.name,
-                        parsed.emoji || '✨',
-                        parsed.avatarPath || null,
-                        parsed.description || null,
-                        parsed.systemPrompt || null,
-                        parsed.customSystemPrompt || null,
-                        parsed.isDefault ? 1 : 0,
-                        parsed.isPinned ? 1 : 0,
-                        parsed.contextWindow || null,
-                        parsed.providerId || null,
-                        parsed.modelId || null,
-                        parsed.compressTokenThreshold || null,
-                        parsed.compressKeepTurns || null,
-                        parsed.assistantKind || (parsed.isDefault ? 'default' : 'custom'),
-                        parsed.sortOrder || 0,
-                        targetVaultId,
-                        Date.now(),
-                        Date.now()
-                      ]
-                    )
-                  }
-                } catch {
-                  // 忽略个别非法 JSON
-                }
-              }
-            }
-            await fileSystem.unlink(srcPath).catch(() => {})
-          } catch (assistantErr) {
-            mergeFailed = true
-            logger.warn(`[AutoHeal] 迁移助手 ${safeFile} 失败:`, assistantErr as Error)
-          }
-        }
-      }
-
-      // 5. 仅在全部内容迁移成功时移除衍生目录，否则保留以便下次重试
-      if (mergeFailed) {
-        logger.warn('[AutoHeal] 衍生工作区存在未迁移内容，保留目录:', derivativeName)
-        continue
-      }
-
+    // 6. 仅删除空壳衍生目录
+    for (const dirName of emptyDerivativeDirs) {
+      const derivDir = path.join(storageRoot, dirName)
       try {
         await fileSystem.rm(derivDir, { recursive: true, force: true })
-        result.removedVaults.push(derivativeName)
+        result.removedVaults.push(dirName)
       } catch (removeErr) {
-        logger.warn('[AutoHeal] 删除衍生工作区失败:', removeErr as Error)
+        logger.warn('[AutoHeal] 删除空壳衍生目录失败:', removeErr as Error)
       }
     }
 
-    // 5. 只清洗引用了衍生小窝的会话文件，避免每次改写无关会话
-    for (const [baseName, derivativeNames] of derivativeNamesByBase) {
-      const baseSessionsDir = path.join(storageRoot, baseName, 'Sessions')
-      if (!(await fileSystem.exists(baseSessionsDir))) continue
-      const derivativeIds = derivativeIdsByBase.get(baseName) ?? new Set<string>()
-      const baseRegistryEntry = registryByName.get(baseName)
-      const targetVaultId =
-        typeof baseRegistryEntry?.id === 'string' && isVaultId(baseRegistryEntry.id)
-          ? baseRegistryEntry.id
-          : deriveLegacyVaultId(baseName)
-      const files = await fileSystem.readdir(baseSessionsDir).catch(() => [])
-      let updatedCount = 0
-
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue
-        const filePath = path.join(baseSessionsDir, path.basename(file))
-        try {
-          const raw = await fileSystem.readFile(filePath, 'utf8')
-          const meta = parseSessionMeta(raw)
-          const referencesDerivative =
-            (meta.vaultName !== undefined && derivativeNames.has(meta.vaultName)) ||
-            (meta.vaultId !== undefined && derivativeIds.has(meta.vaultId)) ||
-            (baseName === 'Personal' &&
-              ((meta.vaultName !== undefined && DERIVATIVE_DIR_PATTERN.test(meta.vaultName)) ||
-                (meta.vaultId !== undefined &&
-                  meta.vaultId !== targetVaultId &&
-                  isVaultId(meta.vaultId))))
-          if (!referencesDerivative) continue
-
-          const sanitized = sanitizeSessionJsonContent(raw, baseName, targetVaultId)
-          if (sanitized !== raw) {
-            await fileSystem.writeFile(filePath, sanitized, 'utf8')
-            updatedCount++
-          }
-          if (meta.id) addSetValue(repairedSessionIdsByBase, baseName, meta.id)
-          else addSetValue(repairedSessionIdsByBase, baseName, file.replace(/\.json$/i, ''))
-        } catch (sanitizeErr) {
-          logger.warn(`[AutoHeal] 清洗会话文件 ${file} 失败:`, sanitizeErr as Error)
+    // 7. 原地清洗物理位于 Personal/Sessions 下且归属错位的会话 JSON
+    const repairedSessionIds: string[] = []
+    let updatedCount = 0
+    let repairHadError = false
+    for (const item of personalSessionsToRepair) {
+      try {
+        const sanitized = sanitizeSessionJsonContent(item.raw, 'Personal', targetPersonalId)
+        if (sanitized !== item.raw) {
+          await fileSystem.writeFile(item.filePath, sanitized, 'utf8')
+          updatedCount++
         }
+        repairedSessionIds.push(item.id)
+      } catch (sanitizeErr) {
+        repairHadError = true
+        logger.warn(`[AutoHeal] 清洗会话文件 ${item.fileName} 失败:`, sanitizeErr as Error)
       }
+    }
 
-      if (updatedCount > 0) {
-        logger.info('[AutoHeal] 会话归属清洗完成', {
-          baseName,
-          updatedFiles: updatedCount,
-          derivatives: Array.from(derivativeNames)
+    if (updatedCount > 0) {
+      logger.info('[AutoHeal] Personal 会话归属清洗完成', {
+        updatedFiles: updatedCount
+      })
+    }
+
+    // 8. 仅对齐本次原地清洗过的 Personal 会话在 SQLite 中的归属
+    if (sqlExecutor && repairedSessionIds.length > 0) {
+      const chunkSize = 400
+      try {
+        for (let offset = 0; offset < repairedSessionIds.length; offset += chunkSize) {
+          const chunk = repairedSessionIds.slice(offset, offset + chunkSize)
+          const placeholders = chunk.map(() => '?').join(', ')
+          await runSql(
+            sqlExecutor,
+            `UPDATE agent_sessions SET vault_id = ?, assistant_id = CASE WHEN assistant_id = 'default' OR assistant_id IS NULL OR assistant_id = '' THEN 'latte' ELSE assistant_id END WHERE id IN (${placeholders})`,
+            [targetPersonalId, ...chunk]
+          )
+        }
+        logger.info('[AutoHeal] SQLite 会话归属已对齐', {
+          baseName: 'Personal',
+          targetVaultId: targetPersonalId,
+          sessionCount: repairedSessionIds.length
         })
+      } catch (sqlErr) {
+        logger.warn('[AutoHeal] SQLite 会话归属对齐出现非致命异常:', sqlErr as Error)
       }
     }
 
-    // 6. 只更新本次实际修正过的会话，不再全表改写 vault_id
-    if (sqlExecutor) {
-      for (const [baseName, sessionIds] of repairedSessionIdsByBase) {
-        if (sessionIds.size === 0) continue
-        const baseRegistryEntry = registryByName.get(baseName)
-        const targetVaultId =
-          typeof baseRegistryEntry?.id === 'string' && isVaultId(baseRegistryEntry.id)
-            ? baseRegistryEntry.id
-            : deriveLegacyVaultId(baseName)
-        const ids = Array.from(sessionIds)
-        const chunkSize = 400
-
-        try {
-          for (let offset = 0; offset < ids.length; offset += chunkSize) {
-            const chunk = ids.slice(offset, offset + chunkSize)
-            const placeholders = chunk.map(() => '?').join(', ')
-            await runSql(
-              sqlExecutor,
-              `UPDATE agent_sessions SET vault_id = ?, assistant_id = CASE WHEN assistant_id = 'default' OR assistant_id IS NULL OR assistant_id = '' THEN 'latte' ELSE assistant_id END WHERE id IN (${placeholders})`,
-              [targetVaultId, ...chunk]
-            )
-          }
-          logger.info('[AutoHeal] SQLite 会话归属已对齐', {
-            baseName,
-            targetVaultId,
-            sessionCount: ids.length
-          })
-        } catch (sqlErr) {
-          logger.warn('[AutoHeal] SQLite 会话归属对齐出现非致命异常:', sqlErr as Error)
-        }
-      }
-    }
-
-    // 7. 只移除已成功合并的衍生目录与已确认不存在的幽灵条目，保留其它小窝和 Personal 的既有身份
-    const registryNamesToRemove = new Set([...result.removedVaults, ...staleRegistryNames])
+    // 9. 清理已删除空壳与已确认不存在的幽灵注册表条目
+    const staleNames = staleRegistryDerivatives
+      .map((entry) => (typeof entry.name === 'string' ? entry.name : ''))
+      .filter(Boolean)
+    const registryNamesToRemove = new Set([...result.removedVaults, ...staleNames])
     if (registryNamesToRemove.size > 0) {
       const cleaned = registryEntries.filter((entry) => {
         const name = typeof entry.name === 'string' ? entry.name : ''
@@ -695,8 +488,8 @@ export async function autoHealMobileDerivativeVaults(
       }
     }
 
-    // 8. 重新加载注册表，让内存与磁盘一致；不改变用户当前选择的小窝
-    if (vaultService) {
+    // 10. 重载注册表，不改变用户当前选择的小窝
+    if (vaultService && (result.removedVaults.length > 0 || staleNames.length > 0)) {
       try {
         await vaultService.initRegistry()
       } catch (registryErr) {
@@ -704,11 +497,13 @@ export async function autoHealMobileDerivativeVaults(
       }
     }
 
-    if (derivativeCandidates.length > 0) {
+    if (!repairHadError) {
+      await markPersonalScanCompleted(normalizedRoot)
+    }
+
+    if (result.removedVaults.length > 0) {
       result.healed = true
-      logger.info('[AutoHeal] 衍生工作区自愈完成:', {
-        mergedSessions: result.mergedSessions,
-        mergedJournals: result.mergedJournals,
+      logger.info('[AutoHeal] 空壳衍生目录清理完成:', {
         removedVaults: result.removedVaults
       })
     }

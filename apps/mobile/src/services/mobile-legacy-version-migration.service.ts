@@ -237,6 +237,22 @@ async function collectExistingTargetVaultNames(
   return existing
 }
 
+async function collectReusableEmptyVaultNames(
+  runtime: MobileVersionMigrationRuntime,
+  candidateNames: Iterable<string>
+): Promise<Set<string>> {
+  const reusable = new Set<string>()
+  const rootDir = await runtime.pathService.getRootDirectory()
+  for (const rawName of candidateNames) {
+    const name = rawName.trim()
+    if (!name) continue
+    if (!(await vaultDirectoryHasUserContent(runtime.fileSystem, rootDir, name))) {
+      reusable.add(name)
+    }
+  }
+  return reusable
+}
+
 async function preResolveWorkspaceTargetVault(
   runtime: MobileVersionMigrationRuntime,
   legacyVaultName: string
@@ -244,7 +260,10 @@ async function preResolveWorkspaceTargetVault(
   await runtime.vaultService.initRegistry()
   const stored = await getStoredVaultNameMap()
   const existing = await collectExistingTargetVaultNames(runtime)
-  return resolveLegacyVaultTargetName(legacyVaultName, existing, stored)
+  const reusableEmptyNames = existing.has(legacyVaultName.trim())
+    ? await collectReusableEmptyVaultNames(runtime, [legacyVaultName])
+    : undefined
+  return resolveLegacyVaultTargetName(legacyVaultName, existing, stored, { reusableEmptyNames })
 }
 
 async function removeEmptyLegacyVaultPlaceholder(
@@ -296,7 +315,12 @@ function buildImporterDeps(
 
     const stored = await getStoredVaultNameMap()
     const existing = await collectExistingTargetVaultNames(runtime)
-    const target = resolveLegacyVaultTargetName(legacyVaultName, existing, stored)
+    const reusableEmptyNames = existing.has(legacyVaultName.trim())
+      ? await collectReusableEmptyVaultNames(runtime, [legacyVaultName])
+      : undefined
+    const target = resolveLegacyVaultTargetName(legacyVaultName, existing, stored, {
+      reusableEmptyNames
+    })
     pinnedTargets.set(legacyVaultName, target)
     if (target !== legacyVaultName && stored[legacyVaultName] !== target) {
       await mergeVaultNameMap({ [legacyVaultName]: target })

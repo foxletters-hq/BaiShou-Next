@@ -1,5 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
-import { autoHealMobileDerivativeVaults } from '../mobile-vault-auto-heal.service'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  autoHealMobileDerivativeVaults,
+  resetAutoHealMemoryStateForTest
+} from '../mobile-vault-auto-heal.service'
 import type { IFileSystem, FileStat } from '@baishou/core-mobile'
 
 class MockMemoryFileSystem implements IFileSystem {
@@ -122,6 +125,10 @@ class MockMemoryFileSystem implements IFileSystem {
 }
 
 describe('mobile-vault-auto-heal.service', () => {
+  beforeEach(() => {
+    resetAutoHealMemoryStateForTest()
+  })
+
   it('returns early when no derivative vaults exist', async () => {
     const fs = new MockMemoryFileSystem()
     await fs.mkdir('/root/Personal')
@@ -134,45 +141,39 @@ describe('mobile-vault-auto-heal.service', () => {
     expect(result.healed).toBe(false)
     expect(result.mergedSessions).toBe(0)
     expect(result.mergedJournals).toBe(0)
+    expect(result.removedVaults).toEqual([])
   })
 
-  it('merges Sessions and Journals from derivative vaults into Personal', async () => {
+  it('preserves derivative vaults that contain real user data even when Personal is active', async () => {
     const fs = new MockMemoryFileSystem()
     await fs.mkdir('/root/Personal/Journals/2026/07')
-    await fs.writeFile('/root/Personal/Journals/2026/07/01.md', '# 现有日记')
+    await fs.writeFile('/root/Personal/Journals/2026/07/01.md', '# Personal 日记')
 
-    // 衍生工作区 Personal82
-    await fs.mkdir('/root/Personal82/Sessions')
+    // 用户把 Personal45 当主工作空间使用，即使切去 Personal 看了一眼也不能被静默拆解
+    await fs.mkdir('/root/Personal45/Sessions')
     await fs.writeFile(
-      '/root/Personal82/Sessions/sess_abc.json',
+      '/root/Personal45/Sessions/sess_abc.json',
       JSON.stringify({
         id: 'sess_abc',
-        title: '老会话',
-        vaultName: 'Personal82',
-        assistantId: 'default'
+        title: '主空间会话',
+        vaultName: 'Personal45',
+        vaultId: 'vlt_p45',
+        assistantId: 'latte'
       })
     )
-    await fs.mkdir('/root/Personal82/Journals/2026/07')
-    await fs.writeFile('/root/Personal82/Journals/2026/07/14.md', '# 衍生工作区日记')
-
-    // 衍生工作区 Personal8273
-    await fs.mkdir('/root/Personal8273/Sessions')
+    await fs.mkdir('/root/Personal45/Journals/2026/07')
+    await fs.writeFile('/root/Personal45/Journals/2026/07/14.md', '# 主空间日记')
+    await fs.mkdir('/root/Personal45/Assistants')
     await fs.writeFile(
-      '/root/Personal8273/Sessions/sess_xyz.json',
-      JSON.stringify({
-        id: 'sess_xyz',
-        title: '新对话',
-        vaultName: 'Personal8273'
-      })
+      '/root/Personal45/Assistants/ast_custom.json',
+      JSON.stringify({ id: 'ast_custom', name: '自定义伙伴', isDefault: false })
     )
 
-    // vault_registry.json
     await fs.writeFile(
       '/root/vault_registry.json',
       JSON.stringify([
         { id: 'vlt_pers', name: 'Personal', path: '/root/Personal' },
-        { id: 'vlt_p82', name: 'Personal82', path: '/root/Personal82' },
-        { id: 'vlt_p8273', name: 'Personal8273', path: '/root/Personal8273' }
+        { id: 'vlt_p45', name: 'Personal45', path: '/root/Personal45' }
       ])
     )
 
@@ -181,43 +182,84 @@ describe('mobile-vault-auto-heal.service', () => {
     const result = await autoHealMobileDerivativeVaults({
       fileSystem: fs,
       storageRoot: '/root',
+      activeVaultName: 'Personal',
       sqlExecutor
     })
 
-    expect(result.healed).toBe(true)
-    expect(result.mergedSessions).toBe(2)
-    expect(result.mergedJournals).toBe(1)
-    expect(result.removedVaults).toContain('Personal82')
-    expect(result.removedVaults).toContain('Personal8273')
+    expect(result.healed).toBe(false)
+    expect(result.mergedSessions).toBe(0)
+    expect(result.mergedJournals).toBe(0)
+    expect(result.removedVaults).toEqual([])
 
-    // 验证会话文件已合并且内容已修正
-    expect(await fs.exists('/root/Personal/Sessions/sess_abc.json')).toBe(true)
-    const contentAbc = JSON.parse(await fs.readFile('/root/Personal/Sessions/sess_abc.json'))
-    expect(contentAbc.vaultName).toBe('Personal')
-    expect(contentAbc.vaultId).toBe('vlt_pers')
-    expect(contentAbc.assistantId).toBe('latte')
+    // Personal45 所有用户文件与注册表条目均原样保留
+    expect(await fs.exists('/root/Personal45/Sessions/sess_abc.json')).toBe(true)
+    expect(await fs.exists('/root/Personal45/Journals/2026/07/14.md')).toBe(true)
+    expect(await fs.exists('/root/Personal45/Assistants/ast_custom.json')).toBe(true)
+    expect(await fs.exists('/root/Personal/Sessions/sess_abc.json')).toBe(false)
+    expect(await fs.exists('/root/Personal/Journals/2026/07/14.md')).toBe(false)
 
-    expect(await fs.exists('/root/Personal/Sessions/sess_xyz.json')).toBe(true)
-    const contentXyz = JSON.parse(await fs.readFile('/root/Personal/Sessions/sess_xyz.json'))
-    expect(contentXyz.vaultName).toBe('Personal')
-    expect(contentXyz.vaultId).toBe('vlt_pers')
-    expect(contentXyz.assistantId).toBe('latte')
-
-    // 验证日记已合并
-    expect(await fs.exists('/root/Personal/Journals/2026/07/14.md')).toBe(true)
-    expect(await fs.exists('/root/Personal/Journals/2026/07/01.md')).toBe(true)
-
-    // 验证衍生目录已清理
-    expect(await fs.exists('/root/Personal82')).toBe(false)
-    expect(await fs.exists('/root/Personal8273')).toBe(false)
-
-    // 验证 vault_registry.json 已清理
     const registry = JSON.parse(await fs.readFile('/root/vault_registry.json'))
-    expect(registry.length).toBe(1)
-    expect(registry[0].name).toBe('Personal')
+    expect(registry.map((item: { name: string }) => item.name)).toEqual(['Personal', 'Personal45'])
+    expect(sqlExecutor).not.toHaveBeenCalled()
+  })
 
-    // 验证 SQL 更新已执行
-    expect(sqlExecutor).toHaveBeenCalled()
+  it('removes empty shell derivative vaults that have no user content and cleans registry', async () => {
+    const fs = new MockMemoryFileSystem()
+    await fs.mkdir('/root/Personal/Journals')
+    await fs.mkdir('/root/Personal82/Journals')
+    await fs.mkdir('/root/Personal82/Sessions')
+    await fs.writeFile(
+      '/root/Personal82/Assistants/latte.json',
+      JSON.stringify({ id: 'latte', name: '拉提', isDefault: true })
+    )
+    await fs.writeFile(
+      '/root/vault_registry.json',
+      JSON.stringify([
+        { id: 'vlt_pers', name: 'Personal', path: '/root/Personal' },
+        { id: 'vlt_p82', name: 'Personal82', path: '/root/Personal82' }
+      ])
+    )
+
+    const result = await autoHealMobileDerivativeVaults({
+      fileSystem: fs,
+      storageRoot: '/root',
+      activeVaultName: 'Personal'
+    })
+
+    expect(result.healed).toBe(true)
+    expect(result.removedVaults).toEqual(['Personal82'])
+    expect(await fs.exists('/root/Personal82')).toBe(false)
+
+    const registry = JSON.parse(await fs.readFile('/root/vault_registry.json'))
+    expect(registry.map((item: { name: string }) => item.name)).toEqual(['Personal'])
+  })
+
+  it('does not remove even an empty derivative vault if the user is currently using it', async () => {
+    const fs = new MockMemoryFileSystem()
+    await fs.mkdir('/root/Personal')
+    await fs.mkdir('/root/Personal82/Sessions')
+
+    const initRegistry = vi.fn().mockResolvedValue(undefined)
+    const vaultService = {
+      getActiveVault: () => ({
+        id: 'vlt_p82',
+        name: 'Personal82',
+        path: '/root/Personal82',
+        createdAt: new Date(),
+        lastAccessedAt: new Date()
+      }),
+      initRegistry
+    }
+
+    const result = await autoHealMobileDerivativeVaults({
+      fileSystem: fs,
+      storageRoot: '/root',
+      vaultService: vaultService as never
+    })
+
+    expect(result.healed).toBe(false)
+    expect(await fs.exists('/root/Personal82')).toBe(true)
+    expect(initRegistry).not.toHaveBeenCalled()
   })
 
   it('does not rewrite unrelated Personal sessions when no derivative vault is present', async () => {
@@ -247,7 +289,7 @@ describe('mobile-vault-auto-heal.service', () => {
     expect(untouched.session.assistantId).toBe('latte')
   })
 
-  it('cleans sessions that reference a derivative vault even after its directory was removed', async () => {
+  it('cleans sessions in Personal/Sessions that reference a removed derivative vault and prunes stale registry entry', async () => {
     const fs = new MockMemoryFileSystem()
     await fs.mkdir('/root/Personal/Sessions')
     await fs.writeFile(
@@ -284,47 +326,9 @@ describe('mobile-vault-auto-heal.service', () => {
     expect(registry.map((item: { name: string }) => item.name)).toEqual(['Personal'])
   })
 
-  it('does not remove the derivative vault the user is currently using', async () => {
-    const fs = new MockMemoryFileSystem()
-    await fs.mkdir('/root/Personal/Sessions')
-    await fs.mkdir('/root/Personal82/Sessions')
-    await fs.writeFile(
-      '/root/Personal82/Sessions/sess_active.json',
-      JSON.stringify({
-        id: 'sess_active',
-        vaultName: 'Personal82',
-        assistantId: 'default'
-      })
-    )
-
-    const initRegistry = vi.fn().mockResolvedValue(undefined)
-    const vaultService = {
-      getActiveVault: () => ({
-        id: 'vlt_p82',
-        name: 'Personal82',
-        path: '/root/Personal82',
-        createdAt: new Date(),
-        lastAccessedAt: new Date()
-      }),
-      initRegistry
-    }
-
-    const result = await autoHealMobileDerivativeVaults({
-      fileSystem: fs,
-      storageRoot: '/root',
-      vaultService: vaultService as never
-    })
-
-    expect(result.healed).toBe(false)
-    expect(await fs.exists('/root/Personal82/Sessions/sess_active.json')).toBe(true)
-    expect(await fs.exists('/root/Personal/Sessions/sess_active.json')).toBe(false)
-    expect(initRegistry).not.toHaveBeenCalled()
-  })
-
   it('cleans orphaned derivative sessions directly in Personal/Sessions even with clean registry and no derivative dirs', async () => {
     const fs = new MockMemoryFileSystem()
     await fs.mkdir('/root/Personal/Sessions')
-    // 模拟用户的真实数据场景：Personal8273 衍生会话直接落在 Personal/Sessions 下
     await fs.writeFile(
       '/root/Personal/Sessions/1792893581323.json',
       JSON.stringify({
@@ -338,7 +342,6 @@ describe('mobile-vault-auto-heal.service', () => {
         messages: []
       })
     )
-    // 模拟早期会话遗留随机 ID
     await fs.writeFile(
       '/root/Personal/Sessions/1792838612754.json',
       JSON.stringify({
@@ -352,7 +355,6 @@ describe('mobile-vault-auto-heal.service', () => {
         messages: []
       })
     )
-    // 干净的 registry，只有 Personal
     await fs.writeFile(
       '/root/vault_registry.json',
       JSON.stringify([{ id: 'vlt_pers', name: 'Personal', path: '/root/Personal' }])
@@ -378,46 +380,57 @@ describe('mobile-vault-auto-heal.service', () => {
     expect(sqlExecutor).toHaveBeenCalled()
   })
 
-  it('merges Assistants from derivative vaults into Personal', async () => {
+  it('skips full Personal/Sessions read on subsequent cold starts after one-time scan completes', async () => {
     const fs = new MockMemoryFileSystem()
-    await fs.mkdir('/root/Personal/Assistants')
     await fs.writeFile(
-      '/root/Personal/Assistants/latte.json',
-      JSON.stringify({ id: 'latte', name: '拉提', isDefault: true })
+      '/root/Personal/Sessions/s1.json',
+      JSON.stringify({ session: { id: 's1', vaultName: 'Personal', vaultId: 'vlt_pers' } })
     )
-
-    // 衍生工作区 Personal45
-    await fs.mkdir('/root/Personal45/Assistants')
-    await fs.writeFile(
-      '/root/Personal45/Assistants/ast_custom.json',
-      JSON.stringify({ id: 'ast_custom', name: '自定义伙伴', isDefault: false })
-    )
-
     await fs.writeFile(
       '/root/vault_registry.json',
-      JSON.stringify([
-        { id: 'vlt_pers', name: 'Personal', path: '/root/Personal' },
-        { id: 'vlt_p45', name: 'Personal45', path: '/root/Personal45' }
-      ])
+      JSON.stringify([{ id: 'vlt_pers', name: 'Personal', path: '/root/Personal' }])
     )
 
-    const sqlExecutor = vi.fn().mockResolvedValue({ rows: [] })
+    let completed = false
+    const readFileSpy = vi.spyOn(fs, 'readFile')
 
-    const result = await autoHealMobileDerivativeVaults({
+    // 首次启动：执行一次扫描并记录完成
+    await autoHealMobileDerivativeVaults({
       fileSystem: fs,
       storageRoot: '/root',
-      sqlExecutor
+      hasCompletedPersonalSessionScan: async () => completed,
+      markPersonalSessionScanCompleted: async () => {
+        completed = true
+      }
     })
+    expect(completed).toBe(true)
+    expect(readFileSpy).toHaveBeenCalledWith('/root/Personal/Sessions/s1.json', 'utf8')
 
-    expect(result.healed).toBe(true)
-    expect(result.removedVaults).toContain('Personal45')
+    // 二次启动：零会话 JSON 读取
+    readFileSpy.mockClear()
+    await autoHealMobileDerivativeVaults({
+      fileSystem: fs,
+      storageRoot: '/root',
+      hasCompletedPersonalSessionScan: async () => completed,
+      markPersonalSessionScanCompleted: async () => {
+        completed = true
+      }
+    })
+    const sessionReads = readFileSpy.mock.calls.filter(([p]) => String(p).includes('/Sessions/'))
+    expect(sessionReads).toHaveLength(0)
 
-    // 验证自定义助手已被合并到 Personal
-    expect(await fs.exists('/root/Personal/Assistants/ast_custom.json')).toBe(true)
-    const customContent = JSON.parse(await fs.readFile('/root/Personal/Assistants/ast_custom.json'))
-    expect(customContent.name).toBe('自定义伙伴')
-
-    // 验证衍生工作区已删除
-    expect(await fs.exists('/root/Personal45')).toBe(false)
+    // 后续若新出现空壳衍生目录，仍能正常触发清理
+    await fs.mkdir('/root/Personal99/Sessions')
+    const thirdResult = await autoHealMobileDerivativeVaults({
+      fileSystem: fs,
+      storageRoot: '/root',
+      activeVaultName: 'Personal',
+      hasCompletedPersonalSessionScan: async () => completed,
+      markPersonalSessionScanCompleted: async () => {
+        completed = true
+      }
+    })
+    expect(thirdResult.removedVaults).toEqual(['Personal99'])
+    expect(await fs.exists('/root/Personal99')).toBe(false)
   })
 })

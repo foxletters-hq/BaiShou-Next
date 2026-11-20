@@ -17,6 +17,7 @@ import {
   resolveLegacyVaultTargetName,
   scanLegacyVersionMigration,
   stageLegacySqliteForAttach,
+  vaultDirectoryHasUserContent,
   type LegacyAvatarImporter,
   type LegacyVersionMigrationBatchImportResult,
   type LegacyVersionMigrationImportResult,
@@ -168,7 +169,16 @@ async function buildImporterDeps(
     }
     const stored = await getStoredVaultNameMap()
     const existing = new Set(vaultService.getAllVaults().map((v) => v.name))
-    const target = resolveLegacyVaultTargetName(legacyVaultName, existing, stored)
+    const trimmed = legacyVaultName.trim()
+    const reusableEmptyNames =
+      trimmed &&
+      existing.has(trimmed) &&
+      !(await vaultDirectoryHasUserContent(fileSystem, targetRoot, trimmed))
+        ? new Set([trimmed])
+        : undefined
+    const target = resolveLegacyVaultTargetName(legacyVaultName, existing, stored, {
+      reusableEmptyNames
+    })
     if (!stored[legacyVaultName] && target !== legacyVaultName) {
       await mergeVaultNameMap({ [legacyVaultName]: target })
     }

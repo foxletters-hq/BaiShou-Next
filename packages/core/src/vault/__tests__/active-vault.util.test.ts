@@ -21,13 +21,13 @@ describe('pickActiveVault', () => {
     expect(pickActiveVault([], 'vlt_aaa')).toBeNull()
   })
 
-  it('prefers Personal base vault over newer derivative vault when no preference', () => {
+  it('prefers newer lastAccessedAt even when the vault has a numeric suffix like Personal45', () => {
     const list = [
       { id: 'vlt_deriv', name: 'Personal45', lastAccessedAt: new Date('2026-11-04T00:00:00.000Z') },
       { id: 'vlt_base', name: 'Personal', lastAccessedAt: new Date('2026-10-01T00:00:00.000Z') }
     ]
-    expect(pickActiveVault(list, null)?.name).toBe('Personal')
-    expect(pickActiveVault(list, undefined)?.id).toBe('vlt_base')
+    expect(pickActiveVault(list, null)?.name).toBe('Personal45')
+    expect(pickActiveVault(list, undefined)?.id).toBe('vlt_deriv')
   })
 })
 
@@ -45,11 +45,11 @@ describe('pickActiveVaultNameFromRegistryEntries', () => {
     expect(pickActiveVaultNameFromRegistryEntries(entries, 'vlt_gone')).toBe('B')
   })
 
-  it('prefers base Personal over newer derivative vault without preference', () => {
+  it('prefers newer lastAccessedAt across Personal and Personal82 without preference', () => {
     const mixed = [
       { id: 'vlt_deriv', name: 'Personal82', lastAccessedAt: '2026-11-04T00:00:00.000Z' },
       { id: 'vlt_base', name: 'Personal', lastAccessedAt: '2026-10-01T00:00:00.000Z' }
     ]
-    expect(pickActiveVaultNameFromRegistryEntries(mixed, null)).toBe('Personal')
+    expect(pickActiveVaultNameFromRegistryEntries(mixed, null)).toBe('Personal82')
   })
 })
