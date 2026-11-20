@@ -2,7 +2,10 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { useAgentNavigationStore } from '@baishou/store'
 import type { MobileAssistantUi } from '../lib/mobile-assistant.util'
-import { loadMobileSessionInActiveVault } from '../utils/mobile-session-vault.util'
+import {
+  loadMobileSessionInActiveVault,
+  resolveMobileSessionVaultCandidateIds
+} from '../utils/mobile-session-vault.util'
 import {
   readAgentNavigationSnapshot,
   writeAgentNavigationSnapshot
@@ -21,12 +24,21 @@ type Services = {
   sessionManager: {
     getSessionById: (sessionId: string) => Promise<SessionRow | null>
     notifySessionMutated?: (sessionId: string) => void
-    list?: (limit?: number, offset?: number, assistantId?: string) => Promise<Array<{ id: string }>>
+    list?: (
+      limit?: number,
+      offset?: number,
+      assistantId?: string,
+      searchQuery?: string,
+      vaultId?: string | string[]
+    ) => Promise<Array<{ id: string }>>
   }
   sessionRepo?: {
     updateSessionVaultId?: (sessionId: string, vaultId: string) => Promise<void>
   }
-  vaultService?: { getActiveVault?: () => { id?: string; name?: string } | null }
+  vaultService?: {
+    getActiveVault?: () => { id?: string; name?: string } | null
+    getAllVaults?: () => Array<{ id?: string; name?: string }>
+  }
 }
 
 type UseAgentNavigationPersistenceOptions = {
@@ -75,6 +87,7 @@ export function useAgentNavigationPersistence({
   invalidateCurrentSession
 }: UseAgentNavigationPersistenceOptions) {
   const hydratedRef = useRef(false)
+  const hydratedVaultKeyRef = useRef<string | null>(null)
   const initialRestoreDoneRef = useRef(false)
   const restoringRef = useRef(false)
   const lastPersistedRef = useRef<string>('')
@@ -84,18 +97,35 @@ export function useAgentNavigationPersistence({
   const lastReconcileKeyRef = useRef('')
   const currentSessionIdRef = useRef<string | null>(currentSessionId)
   const currentAssistantIdRef = useRef<string | null>(currentAssistant?.id ?? null)
+  const vaultSwitchingRef = useRef(vaultSwitching)
   const [navigationHydrationEpoch, setNavigationHydrationEpoch] = useState(0)
 
   currentSessionIdRef.current = currentSessionId
   currentAssistantIdRef.current = currentAssistant?.id ?? null
+  vaultSwitchingRef.current = vaultSwitching
+
+  const listRecentSessionsForAssistant = useCallback(
+    async (assistantId: string): Promise<Array<{ id: string }>> => {
+      if (!services?.sessionManager.list || vaultSwitchingRef.current) return []
+      const vaultCandidateIds = resolveMobileSessionVaultCandidateIds(services)
+      return services.sessionManager
+        .list(1, 0, assistantId, undefined, vaultCandidateIds)
+        .catch(() => [])
+    },
+    [services]
+  )
 
   const persistSnapshot = useCallback(
-    async (snapshot: { assistantId: string | null; sessionId: string | null }) => {
-      if (!services) return
-      const serialized = JSON.stringify(snapshot)
+    async (
+      snapshot: { assistantId: string | null; sessionId: string | null },
+      explicitVaultKey?: string | null
+    ) => {
+      if (!services || vaultSwitchingRef.current) return
+      const vaultKey = explicitVaultKey ?? hydratedVaultKeyRef.current
+      if (!vaultKey) return
+      const serialized = `${vaultKey}:${JSON.stringify(snapshot)}`
       if (serialized === lastPersistedRef.current) return
       lastPersistedRef.current = serialized
-      const vaultKey = await services.pathService.getActiveVaultNameForContext()
       useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
       await writeAgentNavigationSnapshot(vaultKey, snapshot)
     },
@@ -104,23 +134,26 @@ export function useAgentNavigationPersistence({
 
   useEffect(() => {
     hydratedRef.current = false
+    hydratedVaultKeyRef.current = null
     initialRestoreDoneRef.current = false
     restoringRef.current = false
     prevAssistantIdRef.current = null
+    prevSessionIdRef.current = null
     if (!dbReady || !services || vaultSwitching) return
 
     let cancelled = false
     void (async () => {
       const vaultKey = await services.pathService.getActiveVaultNameForContext()
       const saved = await readAgentNavigationSnapshot(vaultKey)
-      if (cancelled) return
+      if (cancelled || vaultSwitchingRef.current) return
       if (saved) {
         useAgentNavigationStore.getState().setContext(vaultKey, saved)
-        lastPersistedRef.current = JSON.stringify(saved)
+        lastPersistedRef.current = `${vaultKey}:${JSON.stringify(saved)}`
       } else {
         useAgentNavigationStore.getState().clearContext(vaultKey)
         lastPersistedRef.current = ''
       }
+      hydratedVaultKeyRef.current = vaultKey
       hydratedRef.current = true
       setNavigationHydrationEpoch((epoch) => epoch + 1)
     })()
@@ -137,6 +170,102 @@ export function useAgentNavigationPersistence({
       clearSession()
     }
   }, [clearSession, currentSessionId, restoreLastSessionOnReturn, restorePrefReady])
+
+  const restoreSavedOrRecentSession = useCallback(
+    async (options: {
+      vaultKey: string
+      saved: { assistantId: string | null; sessionId: string | null }
+      logRestoreAttempt?: boolean
+      isCancelled?: () => boolean
+    }): Promise<boolean> => {
+      const { vaultKey, saved, logRestoreAttempt = false, isCancelled } = options
+      if (!services) return false
+      const isStale = () =>
+        Boolean(isCancelled?.()) ||
+        vaultSwitchingRef.current ||
+        hydratedVaultKeyRef.current !== vaultKey
+
+      let assistantToUse = currentAssistant
+      if (saved.assistantId) {
+        const assistant = assistants.find((item) => item.id === saved.assistantId)
+        if (assistant && assistant.id !== currentAssistant?.id) {
+          handleSelectAssistant(assistant)
+          assistantToUse = assistant
+        }
+      }
+
+      if (saved.sessionId) {
+        if (logRestoreAttempt) {
+          console.log('[useAgentNavigation] 尝试恢复持久化选中的会话:', {
+            vaultKey,
+            sessionId: saved.sessionId,
+            savedAssistantId: saved.assistantId
+          })
+        }
+        const session = await lookupSession(services, saved.sessionId)
+        if (isStale()) return true
+        if (!session) {
+          if (logRestoreAttempt) {
+            console.warn(
+              '[useAgentNavigation] 持久化会话未找到或无法在此小窝中加载，尝试恢复伙伴最新会话:',
+              saved.sessionId
+            )
+          }
+          const recent = assistantToUse?.id
+            ? await listRecentSessionsForAssistant(assistantToUse.id)
+            : []
+          if (isStale()) return true
+          if (recent.length > 0 && recent[0]?.id) {
+            await handleSelectSession(recent[0].id)
+            void loadSessions(true, assistantToUse?.id)
+            return true
+          }
+          // 清除已被拦截/失效的脏持久化会话 ID，避免下次切回此小窝重复恢复跨小窝会话
+          await persistSnapshot(
+            { assistantId: assistantToUse?.id ?? null, sessionId: null },
+            vaultKey
+          )
+          invalidateCurrentSession()
+          return true
+        }
+
+        const sessionAssistantId = session.assistantId ?? saved.assistantId ?? null
+        if (sessionAssistantId && sessionAssistantId !== assistantToUse?.id) {
+          const assistant = assistants.find((item) => item.id === sessionAssistantId)
+          if (assistant) {
+            handleSelectAssistant(assistant)
+            assistantToUse = assistant
+          }
+        }
+
+        await handleSelectSession(saved.sessionId)
+        void loadSessions(true, assistantToUse?.id ?? sessionAssistantId ?? undefined)
+        return true
+      }
+
+      // 快照无 sessionId，但开启了「返回后继续上次会话」且已确定助手：兜底恢复最新会话
+      if (assistantToUse?.id) {
+        const recent = await listRecentSessionsForAssistant(assistantToUse.id)
+        if (!isStale() && recent.length > 0 && recent[0]?.id) {
+          await handleSelectSession(recent[0].id)
+          void loadSessions(true, assistantToUse.id)
+          return true
+        }
+      }
+      return false
+    },
+    [
+      assistants,
+      currentAssistant,
+      handleSelectAssistant,
+      handleSelectSession,
+      invalidateCurrentSession,
+      listRecentSessionsForAssistant,
+      loadSessions,
+      persistSnapshot,
+      services
+    ]
+  )
 
   useEffect(() => {
     if (!hydratedRef.current || !dbReady || !services || vaultSwitching || restoringRef.current) {
@@ -157,73 +286,24 @@ export function useAgentNavigationPersistence({
     }
     if (assistants.length === 0) return
 
+    const vaultKey = hydratedVaultKeyRef.current
+    if (!vaultKey) return
+
     let cancelled = false
     restoringRef.current = true
 
     void (async () => {
       try {
-        const vaultKey = await services.pathService.getActiveVaultNameForContext()
         const saved = useAgentNavigationStore.getState().getContext(vaultKey)
         if (!saved.sessionId && !saved.assistantId) return
 
-        let assistantToUse = currentAssistant
-        if (saved.assistantId) {
-          const assistant = assistants.find((item) => item.id === saved.assistantId)
-          if (assistant && assistant.id !== currentAssistant?.id) {
-            handleSelectAssistant(assistant)
-            assistantToUse = assistant
-          }
-        }
-
-        if (saved.sessionId) {
-          console.log('[useAgentNavigation] 尝试恢复持久化选中的会话:', {
-            vaultKey,
-            sessionId: saved.sessionId,
-            savedAssistantId: saved.assistantId
-          })
-          const session = await lookupSession(services, saved.sessionId)
-          if (cancelled) return
-          if (!session) {
-            console.warn(
-              '[useAgentNavigation] 持久化会话未找到或无法在此小窝中加载，尝试恢复伙伴最新会话:',
-              saved.sessionId
-            )
-            const recent =
-              assistantToUse?.id && services.sessionManager.list
-                ? await services.sessionManager.list(1, 0, assistantToUse.id).catch(() => [])
-                : []
-            if (!cancelled && recent.length > 0 && recent[0]?.id) {
-              await handleSelectSession(recent[0].id)
-              void loadSessions(true, assistantToUse?.id)
-              return
-            }
-            invalidateCurrentSession()
-            return
-          }
-
-          const sessionAssistantId = session.assistantId ?? saved.assistantId ?? null
-          if (sessionAssistantId && sessionAssistantId !== assistantToUse?.id) {
-            const assistant = assistants.find((item) => item.id === sessionAssistantId)
-            if (assistant) {
-              handleSelectAssistant(assistant)
-              assistantToUse = assistant
-            }
-          }
-
-          await handleSelectSession(saved.sessionId)
-          void loadSessions(true, assistantToUse?.id ?? sessionAssistantId ?? undefined)
-          return
-        }
-
-        // 快照无 sessionId，但开启了「返回后继续上次会话」且已确定助手：兜底恢复最新会话
-        if (restoreLastSessionOnReturn && assistantToUse?.id && services.sessionManager.list) {
-          const recent = await services.sessionManager.list(1, 0, assistantToUse.id).catch(() => [])
-          if (!cancelled && recent.length > 0 && recent[0]?.id) {
-            await handleSelectSession(recent[0].id)
-            void loadSessions(true, assistantToUse.id)
-            return
-          }
-        }
+        const handled = await restoreSavedOrRecentSession({
+          vaultKey,
+          saved,
+          logRestoreAttempt: true,
+          isCancelled: () => cancelled
+        })
+        if (handled) return
 
         if (!currentSessionId) {
           clearSession()
@@ -241,18 +321,14 @@ export function useAgentNavigationPersistence({
       restoringRef.current = false
     }
   }, [
-    assistants,
+    assistants.length,
     clearSession,
-    invalidateCurrentSession,
-    currentAssistant,
     currentSessionId,
     dbReady,
-    handleSelectAssistant,
-    handleSelectSession,
-    loadSessions,
     navigationHydrationEpoch,
-    restorePrefReady,
     restoreLastSessionOnReturn,
+    restorePrefReady,
+    restoreSavedOrRecentSession,
     services,
     vaultSwitching
   ])
@@ -313,12 +389,12 @@ export function useAgentNavigationPersistence({
   ])
 
   useEffect(() => {
-    if (!dbReady || !services || !currentSessionId) return
+    if (!dbReady || !services || !currentSessionId || vaultSwitching) return
 
     let cancelled = false
     void (async () => {
       const session = await lookupSession(services, currentSessionId)
-      if (cancelled || !session) return
+      if (cancelled || vaultSwitchingRef.current || !session) return
 
       const sessionAssistantId = session.assistantId ?? null
       if (
@@ -346,13 +422,15 @@ export function useAgentNavigationPersistence({
     dbReady,
     handleSelectAssistant,
     loadSessions,
-    services
+    services,
+    vaultSwitching
   ])
 
   const reconcileSessionAssistant = useCallback(async () => {
     if (!hydratedRef.current || !dbReady || !services || vaultSwitching || !restorePrefReady) return
 
-    const vaultKey = await services.pathService.getActiveVaultNameForContext()
+    const vaultKey = hydratedVaultKeyRef.current
+    if (!vaultKey) return
     const reconcileKey = `${vaultKey}:${currentAssistant?.id ?? ''}:${currentSessionId ?? ''}`
     const now = Date.now()
     if (
@@ -388,52 +466,16 @@ export function useAgentNavigationPersistence({
           savedAssistantId: saved.assistantId
         })
       ) {
-        void persistSnapshot({ assistantId: currentAssistant!.id, sessionId: null })
+        void persistSnapshot({ assistantId: currentAssistant!.id, sessionId: null }, vaultKey)
         return
       }
 
-      let assistantToUse = currentAssistant
-      if (saved.assistantId) {
-        const assistant = assistants.find((item) => item.id === saved.assistantId)
-        if (assistant && assistant.id !== currentAssistant?.id) {
-          handleSelectAssistant(assistant)
-          assistantToUse = assistant
-        }
-      }
-
-      if (saved.sessionId) {
-        const session = await lookupSession(services, saved.sessionId)
-        if (!session) {
-          const recent =
-            assistantToUse?.id && services.sessionManager.list
-              ? await services.sessionManager.list(1, 0, assistantToUse.id).catch(() => [])
-              : []
-          if (recent.length > 0 && recent[0]?.id) {
-            await handleSelectSession(recent[0].id)
-            void loadSessions(true, assistantToUse?.id)
-            return
-          }
-          invalidateCurrentSession()
-          return
-        }
-        await handleSelectSession(saved.sessionId)
-        void loadSessions(true, saved.assistantId ?? assistantToUse?.id ?? undefined)
-        return
-      }
-
-      // 快照无 sessionId，但开启了「返回后继续上次会话」：兜底拉取该助手最新会话
-      if (assistantToUse?.id && services.sessionManager.list) {
-        const recent = await services.sessionManager.list(1, 0, assistantToUse.id).catch(() => [])
-        if (recent.length > 0 && recent[0]?.id) {
-          await handleSelectSession(recent[0].id)
-          void loadSessions(true, assistantToUse.id)
-          return
-        }
-      }
+      await restoreSavedOrRecentSession({ vaultKey, saved })
       return
     }
 
     const session = await lookupSession(services, currentSessionId)
+    if (vaultSwitchingRef.current || hydratedVaultKeyRef.current !== vaultKey) return
     if (!session) {
       invalidateCurrentSession()
       return
@@ -461,11 +503,11 @@ export function useAgentNavigationPersistence({
     currentSessionId,
     dbReady,
     handleSelectAssistant,
-    handleSelectSession,
     loadSessions,
     persistSnapshot,
     restorePrefReady,
     restoreLastSessionOnReturn,
+    restoreSavedOrRecentSession,
     services,
     vaultSwitching
   ])
@@ -476,7 +518,9 @@ export function useAgentNavigationPersistence({
       void reconcileSessionAssistant()
 
       return () => {
-        if (!hydratedRef.current || !services) return
+        if (!hydratedRef.current || !services || vaultSwitchingRef.current) return
+        const boundVaultKey = hydratedVaultKeyRef.current
+        if (!boundVaultKey) return
         if (
           shouldSkipNavigationPersistBeforeRestore({
             restoreLastSessionOnReturn,
@@ -487,10 +531,13 @@ export function useAgentNavigationPersistence({
           return
         }
         void (async () => {
-          await persistSnapshot({
-            assistantId: currentAssistantIdRef.current,
-            sessionId: restoreLastSessionOnReturn ? currentSessionIdRef.current : null
-          })
+          await persistSnapshot(
+            {
+              assistantId: currentAssistantIdRef.current,
+              sessionId: restoreLastSessionOnReturn ? currentSessionIdRef.current : null
+            },
+            boundVaultKey
+          )
         })()
       }
     }, [reconcileSessionAssistant, persistSnapshot, restoreLastSessionOnReturn, services])

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { deriveLegacyVaultId } from '@baishou/shared'
 import type { AgentSession } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { subscribeMobileSessionChanged } from '../services/mobile-session-events'
-import { resolveMobileActiveVaultId } from '../utils/mobile-session-vault.util'
+import {
+  resolveMobileActiveVaultId,
+  resolveMobileSessionVaultCandidateIds
+} from '../utils/mobile-session-vault.util'
 
 /** 每页 20 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
 export const SESSION_PAGE_SIZE = 20
@@ -21,7 +23,7 @@ export interface LoadSessionsOptions {
 
 export function useAgentSessions(activeAssistantId: string | undefined) {
   const { t } = useTranslation()
-  const { services, dbReady, vaultRevision, ecosystemResyncEpoch } = useBaishou()
+  const { services, dbReady, vaultRevision, vaultSwitching, ecosystemResyncEpoch } = useBaishou()
 
   const [sessions, setSessions] = useState<AgentSession[]>([])
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
@@ -46,6 +48,17 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
   useEffect(() => {
     searchQueryRef.current = sessionSearchQuery
   }, [sessionSearchQuery])
+
+  // 切换小窝瞬间立刻作废在途请求并清空旧小窝列表，防止串展示与旧请求晚到覆写
+  useEffect(() => {
+    if (!vaultSwitching) return
+    lastLoadRequestId.current += 1
+    loadingMoreInFlightRef.current = false
+    sessionsLoadedFromDbRef.current = 0
+    setSessions([])
+    setHasMoreSessions(false)
+    setIsLoadingMoreSessions(false)
+  }, [vaultSwitching])
 
   const mapSession = useCallback(
     (s: {
@@ -73,7 +86,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
 
   const loadSessions = useCallback(
     async (resetOffset = false, overrideAssistantId?: string, options?: LoadSessionsOptions) => {
-      if (!dbReady || !services) return
+      if (!dbReady || !services || vaultSwitching) return
 
       const targetAssistantId = overrideAssistantId || assistantIdRef.current
       if (!targetAssistantId) return
@@ -95,11 +108,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
 
       try {
         const activeVaultId = resolveMobileActiveVaultId(services)
-        const activeVault = services.vaultService?.getActiveVault?.()
-        const derivedId = activeVault?.name ? deriveLegacyVaultId(activeVault.name) : undefined
-        const vaultCandidateIds = Array.from(
-          new Set([activeVaultId, derivedId, deriveLegacyVaultId('Personal')].filter(Boolean))
-        ) as string[]
+        const vaultCandidateIds = resolveMobileSessionVaultCandidateIds(services)
         const normalizedQuery = searchQueryRef.current.trim() || undefined
         console.log('[useAgentSessions] 开始加载会话列表:', {
           reqId,
@@ -165,7 +174,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
         }
       }
     },
-    [dbReady, services, mapSession]
+    [dbReady, services, vaultSwitching, mapSession]
   )
 
   const refreshSessions = useCallback(async () => {
@@ -239,6 +248,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
 
   // vault 切换或后台索引完成后刷新会话列表
   useEffect(() => {
+    if (vaultSwitching) return
     const vaultChanged = lastVaultRevisionRef.current !== vaultRevision
     const ecosystemResynced = lastEcosystemResyncEpochRef.current !== ecosystemResyncEpoch
     lastVaultRevisionRef.current = vaultRevision
@@ -247,18 +257,34 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     if (!vaultChanged && !ecosystemResynced) return
     if (!activeAssistantId || !dbReady) return
 
-    const timer = setTimeout(() => {
-      if (vaultChanged) {
-        sessionsLoadedFromDbRef.current = 0
-      }
+    if (vaultChanged) {
+      lastLoadRequestId.current += 1
+      sessionsLoadedFromDbRef.current = 0
+      setSessions([])
+      setHasMoreSessions(false)
       void loadSessions(true, activeAssistantId, {
-        preserveLoadedCount: !vaultChanged,
-        scrollToTop: vaultChanged
+        preserveLoadedCount: false,
+        scrollToTop: true
+      })
+      return
+    }
+
+    const timer = setTimeout(() => {
+      void loadSessions(true, activeAssistantId, {
+        preserveLoadedCount: true,
+        scrollToTop: false
       })
     }, SESSION_LIST_REFRESH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [vaultRevision, ecosystemResyncEpoch, activeAssistantId, dbReady, loadSessions])
+  }, [
+    vaultRevision,
+    vaultSwitching,
+    ecosystemResyncEpoch,
+    activeAssistantId,
+    dbReady,
+    loadSessions
+  ])
 
   // 监听会话变更（如命名模型生成新标题并落盘）实时刷新列表，保留已分页加载深度
   useEffect(() => {

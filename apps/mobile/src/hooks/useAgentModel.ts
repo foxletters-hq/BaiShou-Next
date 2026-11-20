@@ -24,8 +24,15 @@ export interface UseAgentModelOptions {
 
 export function useAgentModel(options: UseAgentModelOptions = {}) {
   const { currentSessionIdRef } = options
-  const { services, dbReady, storageReady, vaultRevision, storageIndexing, ecosystemResyncEpoch } =
-    useBaishou()
+  const {
+    services,
+    dbReady,
+    storageReady,
+    vaultRevision,
+    vaultSwitching,
+    storageIndexing,
+    ecosystemResyncEpoch
+  } = useBaishou()
 
   const [currentAssistant, setCurrentAssistant] = useState<Assistant | null>(null)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
@@ -157,16 +164,26 @@ export function useAgentModel(options: UseAgentModelOptions = {}) {
     }, [reloadGlobalModels])
   )
 
+  // 切换小窝期间立即清空旧伙伴与会话模型绑定，避免切换瞬间拿旧小窝伙伴去查新小窝会话或覆盖新小窝持久化伙伴
+  useEffect(() => {
+    if (!vaultSwitching) return
+    setCurrentAssistant(null)
+    userManuallySetModelRef.current = false
+    prevSessionIdRef.current = null
+  }, [vaultSwitching])
+
   // 加载默认助手和全局模型；工作区切换后随 vaultRevision 重载（对齐桌面 AgentLayout）
   useEffect(() => {
-    if (!dbReady || !services || !storageReady) return
+    if (!dbReady || !services || !storageReady || vaultSwitching) return
 
+    let cancelled = false
     const loadDefaultConfig = async () => {
       try {
         await runWithSqliteBusyRetry(async () => {
           if (storageIndexing) {
             await waitForVaultEcosystemResync()
           }
+          if (cancelled) return
 
           const assistants = await listAssistantsForUi(
             services.assistantManager,
@@ -174,12 +191,15 @@ export function useAgentModel(options: UseAgentModelOptions = {}) {
             services.fileSystem,
             { preferFileUri: true, skipAvatarResolve: true }
           )
+          if (cancelled) return
 
           const nextGlobalModels =
             (await services.settingsManager.get<GlobalModelsConfig>('global_models')) || null
+          if (cancelled) return
           setGlobalModels(nextGlobalModels)
 
           const vaultKey = await services.pathService.getActiveVaultNameForContext()
+          if (cancelled) return
           const persisted = useAgentNavigationStore.getState().getContext(vaultKey)
 
           setCurrentAssistant((prev) => {
@@ -204,16 +224,22 @@ export function useAgentModel(options: UseAgentModelOptions = {}) {
           })
         })
       } catch (e) {
-        console.warn('Failed to load default config', e)
+        if (!cancelled) {
+          console.warn('Failed to load default config', e)
+        }
       }
     }
 
     void loadDefaultConfig()
+    return () => {
+      cancelled = true
+    }
   }, [
     dbReady,
     services,
     storageReady,
     vaultRevision,
+    vaultSwitching,
     storageIndexing,
     ecosystemResyncEpoch,
     applyResolvedModel

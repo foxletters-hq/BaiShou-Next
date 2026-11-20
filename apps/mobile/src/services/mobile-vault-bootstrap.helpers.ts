@@ -202,24 +202,28 @@ export async function runVaultBootstrap(
   mobileDataBootstrapper.registerDeps(bootstrapDeps)
   deps.diaryStack.shadowIndexSyncService.setSyncEnabled(true)
 
-  if (!options?.skipAutoHeal) {
-    try {
-      const { autoHealMobileDerivativeVaults } = await import('./mobile-vault-auto-heal.service')
-      const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
-      const storageRoot = await deps.pathService.getRootDirectory()
-      await autoHealMobileDerivativeVaults({
-        fileSystem: deps.fileSystem,
-        storageRoot,
-        vaultService: deps.vaultService,
-        sqlExecutor: agentDbRuntimeRef.current?.sqlExecutor
-      })
-    } catch (healErr) {
-      logger.warn('[VaultRuntime] autoHealMobileDerivativeVaults failed:', healErr as Error)
-    }
+  const scheduleFastPathAutoHeal = () => {
+    if (options?.skipAutoHeal) return
+    void (async () => {
+      try {
+        const { autoHealMobileDerivativeVaults } = await import('./mobile-vault-auto-heal.service')
+        const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+        const storageRoot = await deps.pathService.getRootDirectory()
+        await autoHealMobileDerivativeVaults({
+          fileSystem: deps.fileSystem,
+          storageRoot,
+          vaultService: deps.vaultService,
+          sqlExecutor: agentDbRuntimeRef.current?.sqlExecutor
+        })
+      } catch (healErr) {
+        logger.warn('[VaultRuntime] autoHealMobileDerivativeVaults failed:', healErr as Error)
+      }
+    })()
   }
 
   if (options?.skipFullResync) {
     await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
+    scheduleFastPathAutoHeal()
     return
   }
 
@@ -301,6 +305,7 @@ export async function runVaultBootstrap(
             }
           })()
         }
+        scheduleFastPathAutoHeal()
         options?.onResyncComplete?.()
         return
       }

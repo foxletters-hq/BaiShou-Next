@@ -15,6 +15,7 @@ import type { useBaishou } from '../../../providers/BaishouProvider'
 import type { useAgentModel } from '../../../hooks/useAgentModel'
 import type { useAgentSession } from '../../../hooks/useAgentSession'
 import type { useAgentSessions } from '../../../hooks/useAgentSessions'
+import { resolveMobileSessionVaultCandidateIds } from '../../../utils/mobile-session-vault.util'
 
 type Baishou = ReturnType<typeof useBaishou>
 type Model = ReturnType<typeof useAgentModel>
@@ -181,6 +182,7 @@ export function useAgentAssistants(deps: {
 
   const handleSelectAssistantWithTracking = useCallback(
     async (assistant: AssistantSummary) => {
+      if (vaultSwitching) return
       const full = assistants.find((a) => a.id === assistant.id) ?? assistant
       if (!full?.id) return
 
@@ -204,8 +206,9 @@ export function useAgentAssistants(deps: {
 
       if (dbReady && services) {
         try {
+          const vaultCandidateIds = resolveMobileSessionVaultCandidateIds(services)
           const [recentSessions] = await Promise.all([
-            services.sessionManager.list(1, 0, assistant.id),
+            services.sessionManager.list(1, 0, assistant.id, undefined, vaultCandidateIds),
             loadSessions(true, assistant.id)
           ])
           if (recentSessions?.length > 0) {
@@ -220,6 +223,7 @@ export function useAgentAssistants(deps: {
     },
     [
       assistants,
+      vaultSwitching,
       handleSelectAssistant,
       handleAssistantSwitched,
       handleSelectSession,

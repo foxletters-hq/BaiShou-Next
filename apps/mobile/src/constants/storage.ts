@@ -14,3 +14,6 @@ export const FLUTTER_LEGACY_MIGRATION_COMPLETED_KEY = '@baishou/flutter_legacy_m
 export const LEGACY_MIGRATION_PROMPT_DISMISSED_KEY = '@baishou/legacy_migration_prompt_dismissed'
 /** 全量恢复替换数据库后，待下次启动写入的 cloud_sync_config */
 export const PENDING_RESTORE_CLOUD_SYNC_CONFIG_KEY = '@baishou/pending_restore_cloud_sync_config'
+/** 已完成 Personal/Sessions 一次性历史归属清洗的 storageRoot 集合，避免每次启动全量读取会话 JSON */
+export const AUTO_HEAL_PERSONAL_SESSIONS_DONE_ROOTS_KEY =
+  '@baishou/auto_heal_personal_sessions_done_roots_v1'

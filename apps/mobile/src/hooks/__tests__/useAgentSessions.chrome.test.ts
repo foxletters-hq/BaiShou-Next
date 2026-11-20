@@ -53,4 +53,14 @@ describe('mobile useAgentSessions pagination & search chrome', () => {
     expect(hookSrc).toContain('resolveMobileActiveVaultId(services)')
     expect(hookSrc).not.toContain('activeVault?.id ??')
   })
+
+  it('使用 resolveMobileSessionVaultCandidateIds 计算候选小窝 ID，不在多小窝下无条件混入 Personal 会话', () => {
+    expect(hookSrc).toContain('resolveMobileSessionVaultCandidateIds(services)')
+    expect(hookSrc).not.toContain("deriveLegacyVaultId('Personal')")
+  })
+
+  it('小窝切换期间清空会话列表并阻断加载，防止跨小窝列表残留', () => {
+    expect(hookSrc).toContain('vaultSwitching')
+    expect(hookSrc).toContain('if (!dbReady || !services || vaultSwitching) return')
+  })
 })
