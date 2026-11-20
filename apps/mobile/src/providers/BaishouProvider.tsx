@@ -82,7 +82,8 @@ export function BaishouProvider({ children }: BaishouProviderProps) {
       if (nextState !== 'background' && nextState !== 'inactive') return
       const runtime = agentDbRuntimeRef.current
       if (!runtime) return
-      void runtime.settingsManager.flushToDisk().catch((e) => {
+      // 仅存在未落盘变更时才刷盘，避免切后台时无意义地争抢 SQLite 锁与外部存储 I/O
+      void runtime.settingsManager.flushIfDirty().catch((e) => {
         logger.warn('[BaishouProvider] settings flush on background failed:', e as Error)
       })
     })

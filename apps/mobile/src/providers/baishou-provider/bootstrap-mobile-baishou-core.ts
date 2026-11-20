@@ -135,8 +135,9 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       )
     }
 
-    // 1b. 异步连接独立 knowledge.db（第二连接单独 loadSqliteVec，不阻塞主库就绪链路）
-    void (async () => {
+    // 1b. 延迟连接独立 knowledge.db：等 AgentDB 与 ShadowDB 就绪后再错峰打开，
+    // 避免冷启动首秒多库并发 sqlite3_open / loadExtensionAsync 触发原生闪退或阻塞主链路。
+    const connectKnowledgeDbDeferred = async (): Promise<void> => {
       try {
         const knowledgeDbDir = await pathService.getRootDirectory()
         await fileSystem.mkdir(knowledgeDbDir, { recursive: true })
@@ -160,7 +161,7 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
           knowledgeDbError as Error
         )
       }
-    })()
+    }
 
     // 3. 构建 Repositories（vault id 解析器自动对齐活跃仓，未初始化前兜底）
     let vaultService: VaultService | null = null
@@ -453,7 +454,8 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       sessionFileService,
       sessionSyncService,
       drizzleDb,
-      expoDb
+      expoDb,
+      connectKnowledgeDbDeferred
     }
     const nextState = await bootstrapMobileSyncLayer(ctx, state)
     await finalizeVaultRuntimeHandlers(ctx, nextState)

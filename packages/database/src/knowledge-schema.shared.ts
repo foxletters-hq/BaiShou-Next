@@ -286,10 +286,31 @@ export const KNOWLEDGE_INGEST_JOBS_SQL = `
   )
 `
 
+const REQUIRED_KNOWLEDGE_CORE_TABLES = [
+  'notebooks',
+  'knowledge_sources',
+  'knowledge_chunks',
+  'knowledge_ingest_jobs',
+  'knowledge_embed_ledger',
+  'notebook_graph_nodes',
+  'notebook_graph_aliases',
+  'notebook_graph_edges'
+] as const
+
 async function getUserVersion(client: unknown): Promise<number> {
   const res = await executeRawSql(client, 'PRAGMA user_version')
   const row = res.rows[0] as { user_version?: number } | undefined
   return Number(row?.user_version ?? 0)
+}
+
+async function hasAllCoreKnowledgeTables(client: unknown): Promise<boolean> {
+  const inClause = REQUIRED_KNOWLEDGE_CORE_TABLES.map((name) => `'${name}'`).join(', ')
+  const res = await executeRawSql(
+    client,
+    `SELECT name FROM sqlite_master WHERE type='table' AND name IN (${inClause})`
+  )
+  const existing = new Set(res.rows.map((r) => String((r as { name?: unknown }).name ?? '')))
+  return REQUIRED_KNOWLEDGE_CORE_TABLES.every((name) => existing.has(name))
 }
 
 async function tableHasColumn(client: unknown, table: string, column: string): Promise<boolean> {
@@ -365,6 +386,14 @@ export async function ensureKnowledgeSchema(
   client: unknown,
   logPrefix = '[KnowledgeSchema]'
 ): Promise<void> {
+  // 冷启动快路径：user_version 已最新且核心表完整时直接跳过全部重复 DDL、删建索引与全表 DELETE，
+  // 避免移动端在外部共享存储上每次启动执行 30+ 次写事务导致卡顿数十秒甚至阻塞原生线程池。
+  const currentVersion = await getUserVersion(client)
+  if (currentVersion >= KNOWLEDGE_SCHEMA_VERSION && (await hasAllCoreKnowledgeTables(client))) {
+    logger.info(`${logPrefix} Schema 已是最新 (v${currentVersion})，跳过重复建表与索引重建`)
+    return
+  }
+
   await executeRawSql(client, KNOWLEDGE_NOTEBOOKS_SQL)
   await executeRawSql(client, KNOWLEDGE_SOURCES_SQL)
   await executeRawSql(client, KNOWLEDGE_SOURCES_NOTEBOOK_IDX_SQL)

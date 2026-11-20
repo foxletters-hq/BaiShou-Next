@@ -62,6 +62,9 @@ export async function commitMobileBaishouReadyState(
   const ragServiceRef = s.ragServiceRef
   const mobileMcpService = s.mobileMcpService
   const runDeferredVaultStartup = s.runDeferredVaultStartup as () => Promise<void>
+  const connectKnowledgeDbDeferred = s.connectKnowledgeDbDeferred as
+    | (() => Promise<void>)
+    | undefined
   void getTtsPlaybackSettings(settingsManager).catch(() => {})
   if (storageReady) {
     void warmAgentScreenCaches(settingsManager, attachmentManager, fileSystem)
@@ -192,6 +195,9 @@ export async function commitMobileBaishouReadyState(
     InteractionManager.runAfterInteractions(() => {
       setTimeout(() => {
         void runDeferredVaultStartup()
+        if (storageReady && connectKnowledgeDbDeferred) {
+          void connectKnowledgeDbDeferred()
+        }
       }, 400)
     })
   }

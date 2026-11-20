@@ -36,6 +36,9 @@ function shouldTraceSettingsKey(key: string): boolean {
 export class SettingsManagerService {
   private flushToDiskTimer: ReturnType<typeof setTimeout> | null = null
   private flushToDiskPromise: Promise<void> | null = null
+  /** 仅追踪未落盘的内存/SQLite 变更版本，切后台时据此跳过无效全量写盘 */
+  private pendingDiskMutationSeq = 0
+  private flushedDiskMutationSeq = 0
 
   constructor(
     private readonly repo: SettingsRepository,
@@ -117,6 +120,22 @@ export class SettingsManagerService {
   /** 仅写 SQLite，不立刻导出全量 settings.json（配合 scheduleFlushToDisk 用于高频轻量更新） */
   async setWithoutFlush<T>(key: string, value: T): Promise<void> {
     await this.repo.set(key, value)
+    this.pendingDiskMutationSeq += 1
+  }
+
+  /** 是否存在尚未落盘的设置变更（或排队中的定时写盘） */
+  hasPendingDiskFlush(): boolean {
+    return (
+      this.pendingDiskMutationSeq > this.flushedDiskMutationSeq ||
+      this.flushToDiskTimer !== null ||
+      this.flushToDiskPromise !== null
+    )
+  }
+
+  /** 仅在存在未落盘设置变更时刷盘，避免 App 切后台无变更时争抢 SQLite 锁与外部存储 I/O */
+  async flushIfDirty(): Promise<void> {
+    if (!this.hasPendingDiskFlush()) return
+    await this.flushToDisk()
   }
 
   /** 防抖将 SQLite 全量快照写入磁盘，避免拖拽排序等操作阻塞 UI */
@@ -135,7 +154,9 @@ export class SettingsManagerService {
     }
     if (this.flushToDiskPromise) {
       await this.flushToDiskPromise
-      return
+      if (this.pendingDiskMutationSeq <= this.flushedDiskMutationSeq) {
+        return
+      }
     }
     this.flushToDiskPromise = this.flushToDiskUnlocked().finally(() => {
       this.flushToDiskPromise = null
@@ -157,6 +178,7 @@ export class SettingsManagerService {
   }
 
   private async flushToDiskUnlocked(): Promise<void> {
+    const targetSeq = this.pendingDiskMutationSeq
     const settingsMap = await this.repo.getAll()
     const shortcutPayload = settingsMap[PROMPT_SHORTCUTS_KEY]
     if (shortcutPayload !== undefined) {
@@ -166,9 +188,11 @@ export class SettingsManagerService {
         () => this.fileService.writeAllSettings(settingsMap),
         { key: PROMPT_SHORTCUTS_KEY, payload: shortcutPayload }
       )
+      this.flushedDiskMutationSeq = Math.max(this.flushedDiskMutationSeq, targetSeq)
       return
     }
     await this.fileService.writeAllSettings(settingsMap)
+    this.flushedDiskMutationSeq = Math.max(this.flushedDiskMutationSeq, targetSeq)
   }
 
   /**

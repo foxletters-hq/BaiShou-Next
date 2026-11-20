@@ -5,8 +5,33 @@ import type { AppDatabase } from './types'
 import type { ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
 import { loadExpoSqliteVecExtension } from './drivers/expo-sqlite-vec.loader'
 import { KNOWLEDGE_DB_FILENAME, ensureKnowledgeSchema } from './knowledge-schema.shared'
+import {
+  isAndroidExternalSharedStoragePath,
+  resolveExpoKnowledgeJournalMode
+} from './expo-knowledge-journal-mode.util'
+
+export { isAndroidExternalSharedStoragePath, resolveExpoKnowledgeJournalMode }
 
 const KNOWLEDGE_DB_CACHE_KB = 512
+const KNOWLEDGE_DB_BUSY_TIMEOUT_MS = 15_000
+
+async function applyKnowledgeConnectionPragmas(
+  expoDb: ExpoSqliteDatabase,
+  dbPath: string
+): Promise<void> {
+  const journalMode = resolveExpoKnowledgeJournalMode(dbPath)
+  try {
+    await expoDb.execAsync(`PRAGMA busy_timeout=${KNOWLEDGE_DB_BUSY_TIMEOUT_MS}`)
+    await expoDb.execAsync(`PRAGMA journal_mode=${journalMode}`)
+    if (journalMode !== 'WAL') {
+      await expoDb.execAsync('PRAGMA synchronous=NORMAL')
+    }
+    await expoDb.execAsync(`PRAGMA cache_size=-${KNOWLEDGE_DB_CACHE_KB}`)
+    await expoDb.execAsync('PRAGMA foreign_keys=ON')
+  } catch (e) {
+    logger.warn('[ExpoKnowledgeDB] PRAGMA 初始化失败，继续使用默认配置:', e as Error)
+  }
+}
 
 function normalizeKnowledgeDbDir(dir: string): string {
   return dir
@@ -112,15 +137,10 @@ export class ExpoKnowledgeConnectionManager {
         )
       }
 
+      // 先设置 busy_timeout 与适配存储介质的 journal_mode，再执行建表/升级，
+      // 避免外部存储 FUSE 上在未配置锁超时与 WAL 风险下执行 DDL。
+      await applyKnowledgeConnectionPragmas(expoDb, dbPath)
       await ensureKnowledgeSchema(expoDb, '[ExpoKnowledgeDB]')
-
-      try {
-        await expoDb.execAsync('PRAGMA journal_mode=WAL')
-        await expoDb.execAsync(`PRAGMA cache_size=-${KNOWLEDGE_DB_CACHE_KB}`)
-        await expoDb.execAsync('PRAGMA foreign_keys=ON')
-      } catch (e) {
-        logger.warn('[ExpoKnowledgeDB] PRAGMA 初始化失败，继续使用默认配置:', e as Error)
-      }
 
       this._expoDb = expoDb
       this._db = drizzle(expoDb as any) as unknown as AppDatabase
@@ -153,6 +173,7 @@ export class ExpoKnowledgeConnectionManager {
         const vecLoad = await loadExpoSqliteVecExtension(expoDb)
         this._vecLoaded = vecLoad.loaded
         this._vecLoadReason = vecLoad.reason
+        await applyKnowledgeConnectionPragmas(expoDb, dbPath)
         await ensureKnowledgeSchema(expoDb, '[ExpoKnowledgeDB]')
         this._expoDb = expoDb
         this._db = drizzle(expoDb as any) as unknown as AppDatabase

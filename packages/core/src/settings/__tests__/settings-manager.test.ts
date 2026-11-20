@@ -157,4 +157,32 @@ describe('SettingsManagerService (Global Vault KV SSOT)', () => {
     expect(p2.nickname).toBe('用户')
     expect(p2.birthday).toBeNull()
   })
+
+  it('should skip disk flush in flushIfDirty when no pending setWithoutFlush mutation exists', async () => {
+    mockRepo.getAll.mockResolvedValue({ theme: 'light' })
+
+    await manager.flushIfDirty()
+    expect(mockRepo.getAll).not.toHaveBeenCalled()
+    expect(mockFileService.writeAllSettings).not.toHaveBeenCalled()
+
+    await manager.set('theme', 'dark')
+    expect(mockFileService.writeAllSettings).toHaveBeenCalledTimes(1)
+
+    await manager.flushIfDirty()
+    expect(mockFileService.writeAllSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('should flush once in flushIfDirty after setWithoutFlush and clear dirty state', async () => {
+    mockRepo.getAll.mockResolvedValue({ draft_key: 'v1' })
+
+    await manager.setWithoutFlush('draft_key', 'v1')
+    expect(manager.hasPendingDiskFlush()).toBe(true)
+
+    await manager.flushIfDirty()
+    expect(mockFileService.writeAllSettings).toHaveBeenCalledTimes(1)
+    expect(manager.hasPendingDiskFlush()).toBe(false)
+
+    await manager.flushIfDirty()
+    expect(mockFileService.writeAllSettings).toHaveBeenCalledTimes(1)
+  })
 })
