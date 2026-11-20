@@ -1,14 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
-import {
-  Button,
-  getProviderIcon,
-  ModelSwitcherPopup,
-  RestoreBlockingOverlay,
-  SettingsPageChrome
-} from '@baishou/ui'
+import { Button, ModelSwitcherPopup, RestoreBlockingOverlay, SettingsPageChrome } from '@baishou/ui'
 import { useDesktopDeepSeekImport } from '../hooks/useDesktopDeepSeekImport'
+import { DeepSeekMonoIcon } from './DeepSeekMonoIcon'
 import { DeepSeekImportTargetSection } from './DeepSeekImportTargetSection'
 import { DeepSeekImportSessionListSection } from './DeepSeekImportSessionListSection'
 import { DeepSeekImportResultSection } from './DeepSeekImportResultSection'
@@ -70,8 +65,6 @@ export const DeepSeekImportPane: React.FC = () => {
     handleReset
   } = useDesktopDeepSeekImport()
 
-  const deepSeekMonoIcon = getProviderIcon('deepseek', false, { monochrome: true })
-
   const overlayMessage = (() => {
     if (!importProgress) return t('deepseek_import.importing_title')
     if (importProgress.phase === 'creating_assistant') {
@@ -117,18 +110,7 @@ export const DeepSeekImportPane: React.FC = () => {
             <section className={pane.cardSection}>
               <div className={styles.cardBody}>
                 <div className={styles.heroRow}>
-                  {deepSeekMonoIcon ? (
-                    <span
-                      aria-hidden
-                      className={styles.brandIcon}
-                      style={{
-                        width: 24,
-                        height: 24,
-                        maskImage: `url(${deepSeekMonoIcon})`,
-                        WebkitMaskImage: `url(${deepSeekMonoIcon})`
-                      }}
-                    />
-                  ) : null}
+                  <DeepSeekMonoIcon size={24} className={styles.brandIcon} />
                   <div className={styles.heroTextCol}>
                     <h4 className={styles.heroTitle}>{t('deepseek_import.intro_title')}</h4>
                     <p className={styles.heroDesc}>{t('deepseek_import.intro_desc')}</p>

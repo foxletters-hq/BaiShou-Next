@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import './SettingsPage.css'
 import { useTranslation } from 'react-i18next'
-import { getProviderIcon } from '@baishou/ui'
+import { DeepSeekMonoIcon } from './components/DeepSeekMonoIcon'
 import { SettingsContentView } from './SettingsContentView'
 import { getSettingsRouteSegment, settingsPathForScope } from './settings-route.util'
 import { resolveSettingsReturnPath } from './settings-navigation.util'
@@ -48,8 +48,6 @@ export const SettingsShell: React.FC = () => {
   const contentKey = getSettingsRouteSegment(location.pathname)
 
   useRagRuntimeBridge(settingsRouteActive)
-
-  const deepSeekMonoIcon = getProviderIcon('deepseek', false, { monochrome: true })
 
   const TABS = useMemo<SettingsTabItem[]>(
     () => [
@@ -195,30 +193,10 @@ export const SettingsShell: React.FC = () => {
         id: 20,
         kind: 'item',
         label: t('deepseek_import.entry_title', '从 DeepSeek 导入'),
-        icon: deepSeekMonoIcon ? (
-          <span
-            aria-hidden
-            style={{
-              display: 'inline-block',
-              width: NAV_ICON_SIZE,
-              height: NAV_ICON_SIZE,
-              backgroundColor: 'currentColor',
-              maskImage: `url(${deepSeekMonoIcon})`,
-              WebkitMaskImage: `url(${deepSeekMonoIcon})`,
-              maskRepeat: 'no-repeat',
-              WebkitMaskRepeat: 'no-repeat',
-              maskPosition: 'center',
-              WebkitMaskPosition: 'center',
-              maskSize: 'contain',
-              WebkitMaskSize: 'contain'
-            }}
-          />
-        ) : (
-          <ArrowLeftRight size={NAV_ICON_SIZE} />
-        )
+        icon: <DeepSeekMonoIcon size={NAV_ICON_SIZE} />
       }
     ],
-    [deepSeekMonoIcon, t]
+    [t]
   )
 
   useEffect(() => {

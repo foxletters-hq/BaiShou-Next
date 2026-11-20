@@ -25,14 +25,23 @@ describe('Desktop DeepSeek import entry, IPC, and UI chrome', () => {
     expect(preloadIndexSrc).toContain('deepSeekImportApi')
     expect(tabsSrc).toContain("'deepseek-import'")
     expect(shellSrc).toContain('deepseek_import.entry_title')
-    expect(shellSrc).toContain("getProviderIcon('deepseek', false, { monochrome: true })")
+    expect(shellSrc).toContain('<DeepSeekMonoIcon')
+    expect(shellSrc).not.toContain('maskImage')
     expect(contentSrc).toContain("case 'deepseek-import':")
     expect(contentSrc).toContain('<DeepSeekImportPane />')
   })
 
-  it('uses @baishou/ui controls, monochrome icon, and places start import button right of select-all', () => {
+  it('uses @baishou/ui controls, inline monochrome SVG icon, and places start import button right of select-all', () => {
     const paneSrc = readFileSync(
       resolve(desktopRoot, 'src/renderer/src/features/settings/components/DeepSeekImportPane.tsx'),
+      'utf8'
+    )
+    const iconSrc = readFileSync(
+      resolve(desktopRoot, 'src/renderer/src/features/settings/components/DeepSeekMonoIcon.tsx'),
+      'utf8'
+    )
+    const canonicalSvg = readFileSync(
+      resolve(desktopRoot, '../../packages/ui/src/assets/ai_provider_icon/deepseek.svg'),
       'utf8'
     )
     const targetSrc = readFileSync(
@@ -53,7 +62,12 @@ describe('Desktop DeepSeek import entry, IPC, and UI chrome', () => {
     expect(paneSrc).toContain('SettingsPageChrome')
     expect(paneSrc).toContain('RestoreBlockingOverlay')
     expect(paneSrc).toContain('ModelSwitcherPopup')
-    expect(paneSrc).toContain("getProviderIcon('deepseek', false, { monochrome: true })")
+    expect(paneSrc).toContain('<DeepSeekMonoIcon')
+    expect(paneSrc).not.toContain('maskImage')
+
+    const canonicalPathMatch = canonicalSvg.match(/<path d="([^"]+)"/)
+    expect(canonicalPathMatch?.[1]).toBeTruthy()
+    expect(iconSrc).toContain(`d="${canonicalPathMatch?.[1]}"`)
 
     expect(targetSrc).toContain('SegmentedControl')
     expect(targetSrc).toContain('AssistantAvatarPicker')

@@ -35,16 +35,9 @@
 }
 
 .brandIcon {
-  display: inline-block;
+  display: block;
   flex-shrink: 0;
   color: var(--text-primary);
-  background-color: currentcolor;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
 }
 
 .heroTextCol {
