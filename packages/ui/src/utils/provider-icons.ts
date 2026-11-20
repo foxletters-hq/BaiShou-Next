@@ -10,9 +10,14 @@ import {
 
 export { PROVIDER_ICON_IDS }
 
-export function getProviderIcon(providerId: string, isDark: boolean): string | undefined {
+export function getProviderIcon(
+  providerId: string,
+  isDark: boolean,
+  options?: { monochrome?: boolean }
+): string | undefined {
   const pair = PROVIDER_ICON_REGISTRY[providerId as ProviderIconRegistryId]
   if (!pair) return undefined
+  if (options?.monochrome) return pair.dark
   return isDark ? pair.dark : pair.light
 }
 

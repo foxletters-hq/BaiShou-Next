@@ -2,6 +2,7 @@
 
 export * from './types/sync.ipc'
 export * from './types/version-control.types'
+export * from './types/deepseek-import.types'
 export {
   INCREMENTAL_SYNC_CHUNK_SIZE,
   INCREMENTAL_SYNC_SCOPE_I18N_KEYS,

@@ -45,6 +45,15 @@ describe('provider-icons (LobeHub local assets)', () => {
     expect(getProviderIcon('opencodego', false)).toBe(getProviderIcon('opencodego', true))
   })
 
+  it('supports monochrome option returning the monochrome asset in light mode', () => {
+    const mono = getProviderIcon('deepseek', false, { monochrome: true })
+    const dark = getProviderIcon('deepseek', true)
+    const light = getProviderIcon('deepseek', false)
+    expect(mono).toBeTruthy()
+    expect(mono).toBe(dark)
+    expect(mono).not.toBe(light)
+  })
+
   it('getProviderIconIds matches registry', () => {
     expect(getProviderIconIds().sort()).toEqual([...PROVIDER_ICON_IDS].sort())
   })
