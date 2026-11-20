@@ -1,8 +1,10 @@
+import { getHistoricalProcessExitReasons } from '../../modules/expo-baishou-server'
 import {
   appendDiagnosticBreadcrumb,
   appendDiagnosticLog,
   bootstrapDiagnosticLogFromDisk,
   flushDiagnosticLogNow,
+  flushDiagnosticLogSyncBestEffort,
   installMobileDiagnosticLogCapture
 } from './mobile-diagnostic-log.service'
 
@@ -56,10 +58,31 @@ function installGlobalErrorHandler(): void {
       error
     )
     if (isFatal) {
+      flushDiagnosticLogSyncBestEffort()
       void flushDiagnosticLogNow().catch(() => {})
     }
     defaultHandler?.(error, isFatal)
   })
+}
+
+function recordHistoricalProcessExitReasons(): void {
+  try {
+    const reasons = getHistoricalProcessExitReasons(5)
+    if (reasons.length === 0) return
+    const summary = reasons.map((item) => ({
+      at: item.timestamp ? new Date(item.timestamp).toISOString() : '',
+      reason: item.reasonName,
+      code: item.reason,
+      status: item.status,
+      importance: item.importance,
+      pssMb: Math.round((item.pssKb || 0) / 1024),
+      rssMb: Math.round((item.rssKb || 0) / 1024),
+      desc: item.description
+    }))
+    appendDiagnosticLog('info', `[ProcessExitReason] recent=${JSON.stringify(summary)}`)
+  } catch {
+    // 读取系统退出原因失败不影响正常启动
+  }
 }
 
 export function installMobileDiagnosticLog(): void {
@@ -69,6 +92,8 @@ export function installMobileDiagnosticLog(): void {
   appendDiagnosticBreadcrumb('installMobileDiagnosticLog begin')
   installMobileDiagnosticLogCapture()
   installGlobalErrorHandler()
-  void bootstrapDiagnosticLogFromDisk()
+  void bootstrapDiagnosticLogFromDisk().finally(() => {
+    recordHistoricalProcessExitReasons()
+  })
   appendDiagnosticBreadcrumb('installMobileDiagnosticLog done')
 }

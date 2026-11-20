@@ -81,6 +81,18 @@ export type NativeZipArchiveExportResult = {
   zipBytes: number
 }
 
+export type HistoricalProcessExitReason = {
+  timestamp: number
+  pid: number
+  reason: number
+  reasonName: string
+  status: number
+  importance: number
+  pssKb: number
+  rssKb: number
+  description: string
+}
+
 /**
  * 原生模块方法表。拆到独立类型文件，是为了让探测 / 文件 / 传输实现能共用同一份声明，
  * 而不把 50+ 方法签名复制进每个能力文件。
@@ -152,4 +164,5 @@ export declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> 
   startAgentKeepAlive?(sessionId?: string, title?: string, content?: string): boolean
   stopAgentKeepAlive?(sessionId?: string): boolean
   isAgentKeepAliveActive?(): boolean
+  getHistoricalProcessExitReasons?(maxCount?: number): HistoricalProcessExitReason[]
 }

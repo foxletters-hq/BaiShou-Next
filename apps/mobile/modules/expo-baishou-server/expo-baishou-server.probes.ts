@@ -1,5 +1,6 @@
 import { getNative } from './expo-baishou-server.native'
 import type {
+  HistoricalProcessExitReason,
   MirrorProductionLegacyResult,
   StoragePermissionState
 } from './expo-baishou-server.types'
@@ -171,5 +172,19 @@ export function mirrorProductionLegacyToExternal(): MirrorProductionLegacyResult
     }) as MirrorProductionLegacyResult
   } catch {
     return { mirrored: false, reason: 'native_error' }
+  }
+}
+
+/** Android 11+ 读取系统记录的最近进程退出原因；旧版 APK 或非 Android 平台安全返回空数组 */
+export function getHistoricalProcessExitReasons(maxCount = 5): HistoricalProcessExitReason[] {
+  const mod = getNative()
+  if (!mod || typeof mod.getHistoricalProcessExitReasons !== 'function') {
+    return []
+  }
+  try {
+    const raw = mod.getHistoricalProcessExitReasons(maxCount)
+    return Array.isArray(raw) ? raw : []
+  } catch {
+    return []
   }
 }

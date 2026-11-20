@@ -49,4 +49,23 @@ describe('mobile-diagnostic-log.util', () => {
     logBuffer.append('warn', 'third')
     expect(logBuffer.getUnflushedFormattedLines()).toHaveLength(1)
   })
+
+  it('should preserve entries appended during an in-flight flush when marking flushed by sequence', () => {
+    const logBuffer = new DiagnosticLogBuffer(10)
+    logBuffer.append('info', 'first')
+    const snapshot = logBuffer.getUnflushedSnapshot()
+    expect(snapshot.lines).toHaveLength(1)
+
+    // 模拟异步写盘进行中又产生两条新日志
+    logBuffer.append('warn', 'during-flush')
+    logBuffer.append('error', 'after-flush-start')
+
+    logBuffer.markFlushedUpTo(snapshot.endSeq)
+
+    const remaining = logBuffer.getUnflushedSnapshot()
+    expect(remaining.lines).toHaveLength(2)
+    expect(remaining.lines[0]).toContain('during-flush')
+    expect(remaining.lines[1]).toContain('after-flush-start')
+    expect(logBuffer.unflushedSize()).toBe(2)
+  })
 })

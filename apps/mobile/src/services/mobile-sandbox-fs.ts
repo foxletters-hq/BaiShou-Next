@@ -83,6 +83,11 @@ export async function writeAsStringAsync(
   })
 }
 
+/** 同步写盘封装：仅用于致命崩溃等进程即将退出、无法等待微任务队列的落盘路径 */
+export function writeStringSync(uri: string, contents: string): void {
+  toFile(uri).write(contents, { encoding: 'utf8' })
+}
+
 export async function makeDirectoryAsync(
   uri: string,
   options?: { intermediates?: boolean }

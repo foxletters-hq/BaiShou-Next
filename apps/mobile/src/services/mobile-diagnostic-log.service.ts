@@ -8,7 +8,8 @@ import {
   deleteAsync,
   getInfoAsync,
   readAsStringAsync,
-  writeAsStringAsync
+  writeAsStringAsync,
+  writeStringSync
 } from './mobile-sandbox-fs'
 import {
   DiagnosticLogBuffer,
@@ -31,10 +32,12 @@ const MAX_PERSISTED_BYTES = 1024 * 1024
 const LOG_FILENAME = 'baishou_diagnostic.log'
 const EXPORT_TXT_PREFIX = 'baishou_diagnostic'
 const LOG_VERSION_MARKER = '# BaiShouDiagnosticLogVersion: '
-const FLUSH_DEBOUNCE_MS = 250
+const FLUSH_DEBOUNCE_MS = 1000
 
 const buffer = new DiagnosticLogBuffer(MAX_MEMORY_ENTRIES)
 let persistedTail = ''
+let diskLoaded = false
+let persistInFlight: Promise<void> | null = null
 let flushTimer: ReturnType<typeof setTimeout> | undefined
 let captureInstalled = false
 let lastPersistError: string | undefined
@@ -112,6 +115,10 @@ export function appendDiagnosticLog(
   extra?: unknown
 ): void {
   buffer.append(level, message, extra)
+  if (level === 'error') {
+    void flushDiagnosticLogNow()
+    return
+  }
   schedulePersist()
 }
 
@@ -136,37 +143,89 @@ export async function flushDiagnosticLogNow(): Promise<void> {
   await persistDiagnosticLog()
 }
 
-async function persistDiagnosticLog(): Promise<void> {
-  const lines = buffer.getUnflushedFormattedLines()
-  if (lines.length === 0) return
+/**
+ * 致命异常路径使用的同步兜底落盘：避免异步写盘尚未完成进程已被原生层终止。
+ */
+export function flushDiagnosticLogSyncBestEffort(): void {
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = undefined
+  }
+  const snapshot = buffer.getUnflushedSnapshot()
+  if (snapshot.lines.length === 0) return
 
   try {
     const filePath = getLogFilePath()
-    let existing = persistedTail
-    try {
-      const info = await getInfoAsync(filePath)
-      if (info.exists && !info.isDirectory) {
-        const raw = await readAsStringAsync(filePath)
-        if (isCurrentPersistedDiagnosticLog(raw)) {
-          existing = parsePersistedDiagnosticLog(raw).body
-        } else {
-          existing = ''
-        }
-      }
-    } catch {
-      existing = persistedTail
-    }
-
     const merged = trimDiagnosticText(
-      existing ? `${existing}\n${lines.join('\n')}` : lines.join('\n'),
+      persistedTail ? `${persistedTail}\n${snapshot.lines.join('\n')}` : snapshot.lines.join('\n'),
       MAX_PERSISTED_BYTES
     )
-    await writeAsStringAsync(filePath, formatPersistedDiagnosticLog(merged))
+    writeStringSync(filePath, formatPersistedDiagnosticLog(merged))
     persistedTail = merged
-    buffer.markFlushed()
+    buffer.markFlushedUpTo(snapshot.endSeq)
     lastPersistError = undefined
   } catch (error) {
     lastPersistError = error instanceof Error ? error.message : String(error)
+  }
+}
+
+async function ensureDiskTailLoaded(filePath: string): Promise<string> {
+  if (diskLoaded) return persistedTail
+  let existing = persistedTail
+  try {
+    const info = await getInfoAsync(filePath)
+    if (info.exists && !info.isDirectory) {
+      const raw = await readAsStringAsync(filePath)
+      if (isCurrentPersistedDiagnosticLog(raw)) {
+        existing = parsePersistedDiagnosticLog(raw).body
+      } else {
+        existing = ''
+      }
+    }
+  } catch {
+    existing = persistedTail
+  }
+  persistedTail = existing
+  diskLoaded = true
+  return existing
+}
+
+async function persistDiagnosticLog(): Promise<void> {
+  if (persistInFlight) {
+    await persistInFlight
+    if (buffer.unflushedSize() === 0) return
+  }
+
+  const run = (async () => {
+    while (buffer.unflushedSize() > 0) {
+      const snapshot = buffer.getUnflushedSnapshot()
+      if (snapshot.lines.length === 0) return
+
+      try {
+        const filePath = getLogFilePath()
+        const existing = await ensureDiskTailLoaded(filePath)
+        const merged = trimDiagnosticText(
+          existing ? `${existing}\n${snapshot.lines.join('\n')}` : snapshot.lines.join('\n'),
+          MAX_PERSISTED_BYTES
+        )
+        await writeAsStringAsync(filePath, formatPersistedDiagnosticLog(merged))
+        persistedTail = merged
+        buffer.markFlushedUpTo(snapshot.endSeq)
+        lastPersistError = undefined
+      } catch (error) {
+        lastPersistError = error instanceof Error ? error.message : String(error)
+        return
+      }
+    }
+  })()
+
+  persistInFlight = run
+  try {
+    await run
+  } finally {
+    if (persistInFlight === run) {
+      persistInFlight = null
+    }
   }
 }
 
@@ -256,6 +315,7 @@ export async function shareDiagnosticLogAsTxt(options?: {
 
 export async function bootstrapDiagnosticLogFromDisk(): Promise<void> {
   persistedTail = await readPersistedDiagnosticLog()
+  diskLoaded = true
   appendDiagnosticBreadcrumb('app bootstrap')
 }
 
@@ -313,6 +373,8 @@ export function installMobileDiagnosticLogCapture(): void {
 export function resetMobileDiagnosticLogForTests(): void {
   buffer.clear()
   persistedTail = ''
+  diskLoaded = false
+  persistInFlight = null
   lastPersistError = undefined
   if (flushTimer) {
     clearTimeout(flushTimer)

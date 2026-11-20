@@ -2,6 +2,8 @@ package expo.modules.baishouserver
 
 import android.Manifest
 import android.app.Activity
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -1072,6 +1074,59 @@ class ExpoBaishouServerModule : Module() {
 
         Function("isAgentKeepAliveActive") {
             AgentKeepAliveService.isActive()
+        }
+
+        /**
+         * 读取 Android 11+ 系统记录的最近进程退出原因（CRASH_NATIVE / LOW_MEMORY / ANR 等），
+         * 供冷启动诊断日志识别上次原生闪退或系统强杀现场。API < 30 或异常时返回空列表。
+         */
+        Function("getHistoricalProcessExitReasons") { maxCount: Int? ->
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                return@Function emptyList<Map<String, Any?>>()
+            }
+            val context = appContext.reactContext ?: return@Function emptyList<Map<String, Any?>>()
+            try {
+                val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+                    ?: return@Function emptyList<Map<String, Any?>>()
+                val limit = (maxCount ?: 5).coerceIn(1, 16)
+                val reasons = am.getHistoricalProcessExitReasons(context.packageName, 0, limit)
+                reasons.map { info ->
+                    val reasonName = when (info.reason) {
+                        ApplicationExitInfo.REASON_UNKNOWN -> "UNKNOWN"
+                        ApplicationExitInfo.REASON_EXIT_SELF -> "EXIT_SELF"
+                        ApplicationExitInfo.REASON_SIGNALED -> "SIGNALED"
+                        ApplicationExitInfo.REASON_LOW_MEMORY -> "LOW_MEMORY"
+                        ApplicationExitInfo.REASON_CRASH -> "CRASH"
+                        ApplicationExitInfo.REASON_CRASH_NATIVE -> "CRASH_NATIVE"
+                        ApplicationExitInfo.REASON_ANR -> "ANR"
+                        ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "INITIALIZATION_FAILURE"
+                        ApplicationExitInfo.REASON_PERMISSION_CHANGE -> "PERMISSION_CHANGE"
+                        ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "EXCESSIVE_RESOURCE_USAGE"
+                        ApplicationExitInfo.REASON_USER_REQUESTED -> "USER_REQUESTED"
+                        ApplicationExitInfo.REASON_USER_STOPPED -> "USER_STOPPED"
+                        ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "DEPENDENCY_DIED"
+                        ApplicationExitInfo.REASON_OTHER -> "OTHER"
+                        14 -> "FREEZER"
+                        15 -> "PACKAGE_STATE_CHANGE"
+                        16 -> "PACKAGE_UPDATED"
+                        else -> "REASON_${info.reason}"
+                    }
+                    val desc = info.description?.take(500) ?: ""
+                    mapOf(
+                        "timestamp" to info.timestamp,
+                        "pid" to info.pid,
+                        "reason" to info.reason,
+                        "reasonName" to reasonName,
+                        "status" to info.status,
+                        "importance" to info.importance,
+                        "pssKb" to info.pss,
+                        "rssKb" to info.rss,
+                        "description" to desc
+                    )
+                }
+            } catch (_: Throwable) {
+                emptyList<Map<String, Any?>>()
+            }
         }
     }
 }

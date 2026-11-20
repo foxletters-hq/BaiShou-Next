@@ -4,6 +4,7 @@ import type { McpHttpResponseEnvelope } from './expo-baishou-server.types'
 export type {
   ExternalIncrementalSyncScanEntry,
   ExternalPathInfo,
+  HistoricalProcessExitReason,
   McpHttpResponseEnvelope,
   MirrorProductionLegacyResult,
   NativeZipArchiveExportResult,

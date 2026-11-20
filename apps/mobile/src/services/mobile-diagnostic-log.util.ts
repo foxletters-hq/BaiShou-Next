@@ -6,6 +6,15 @@ export interface DiagnosticLogEntry {
   message: string
 }
 
+interface SequencedDiagnosticLogEntry extends DiagnosticLogEntry {
+  seq: number
+}
+
+export interface DiagnosticLogFlushSnapshot {
+  lines: string[]
+  endSeq: number
+}
+
 export function formatDiagnosticLogEntry(entry: DiagnosticLogEntry): string {
   const iso = new Date(entry.ts).toISOString()
   return `${iso} [${entry.level.toUpperCase()}] ${entry.message}`
@@ -46,8 +55,9 @@ export function serializeDiagnosticArgs(args: unknown[]): string {
 }
 
 export class DiagnosticLogBuffer {
-  private entries: DiagnosticLogEntry[] = []
-  private flushedCount = 0
+  private entries: SequencedDiagnosticLogEntry[] = []
+  private nextSeq = 1
+  private flushedSeq = 0
 
   constructor(private readonly maxEntries: number) {}
 
@@ -62,12 +72,15 @@ export class DiagnosticLogBuffer {
           ? `\n${extra.stack}`
           : `\n${serializeDiagnosticArg(extra)}`
 
-    this.entries = trimDiagnosticEntries(
-      [...this.entries, { ts: Date.now(), level, message: `${trimmedMessage}${suffix}` }],
-      this.maxEntries
-    )
-    if (this.flushedCount > this.entries.length) {
-      this.flushedCount = this.entries.length
+    const entry: SequencedDiagnosticLogEntry = {
+      seq: this.nextSeq++,
+      ts: Date.now(),
+      level,
+      message: `${trimmedMessage}${suffix}`
+    }
+    this.entries.push(entry)
+    if (this.entries.length > this.maxEntries) {
+      this.entries = this.entries.slice(this.entries.length - this.maxEntries)
     }
   }
 
@@ -75,23 +88,47 @@ export class DiagnosticLogBuffer {
     this.append('info', `[breadcrumb] ${message}`)
   }
 
+  /**
+   * 抓取当前尚未落盘的日志快照及末尾序号。
+   * 落盘完成后调用 markFlushedUpTo(endSeq)，确保异步写盘期间新追加的日志不会被误标为已落盘。
+   */
+  getUnflushedSnapshot(): DiagnosticLogFlushSnapshot {
+    const pending = this.entries.filter((entry) => entry.seq > this.flushedSeq)
+    if (pending.length === 0) {
+      return { lines: [], endSeq: this.flushedSeq }
+    }
+    return {
+      lines: pending.map(formatDiagnosticLogEntry),
+      endSeq: pending[pending.length - 1]!.seq
+    }
+  }
+
   getUnflushedFormattedLines(): string[] {
-    return this.entries.slice(this.flushedCount).map(formatDiagnosticLogEntry)
+    return this.getUnflushedSnapshot().lines
   }
 
   peekAllFormattedLines(): string[] {
     return this.entries.map(formatDiagnosticLogEntry)
   }
 
+  markFlushedUpTo(endSeq: number): void {
+    if (endSeq > this.flushedSeq) {
+      this.flushedSeq = endSeq
+    }
+  }
+
   markFlushed(): void {
-    this.flushedCount = this.entries.length
+    const last = this.entries[this.entries.length - 1]
+    if (last && last.seq > this.flushedSeq) {
+      this.flushedSeq = last.seq
+    }
   }
 
   /** @deprecated 仅在写入成功后丢弃已持久化条目 */
   drainFormattedLines(): string[] {
-    const lines = this.getUnflushedFormattedLines()
-    this.markFlushed()
-    return lines
+    const snapshot = this.getUnflushedSnapshot()
+    this.markFlushedUpTo(snapshot.endSeq)
+    return snapshot.lines
   }
 
   peekFormattedLines(): string[] {
@@ -100,7 +137,7 @@ export class DiagnosticLogBuffer {
 
   clear(): void {
     this.entries = []
-    this.flushedCount = 0
+    this.flushedSeq = this.nextSeq - 1
   }
 
   size(): number {
@@ -108,6 +145,10 @@ export class DiagnosticLogBuffer {
   }
 
   unflushedSize(): number {
-    return this.entries.length - this.flushedCount
+    let count = 0
+    for (const entry of this.entries) {
+      if (entry.seq > this.flushedSeq) count += 1
+    }
+    return count
   }
 }
