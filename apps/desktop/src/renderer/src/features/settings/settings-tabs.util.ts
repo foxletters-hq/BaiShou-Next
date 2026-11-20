@@ -20,7 +20,8 @@ export const SETTINGS_TAB_SEGMENTS: Record<number, string> = {
   12: 'git',
   10: 'attachments',
   8: 'lan-transfer',
-  17: 'legacy-migration'
+  17: 'legacy-migration',
+  20: 'deepseek-import'
 }
 
 const SEGMENT_TO_TAB: Record<string, number> = {

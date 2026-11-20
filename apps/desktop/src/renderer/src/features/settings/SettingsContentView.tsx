@@ -22,6 +22,7 @@ import { GitSettingsPane } from './components/GitSettingsPane'
 import { WorkspaceManagementPane } from './components/WorkspaceManagementPane'
 import { IdentityCardManagementPane } from './components/IdentityCardManagementPane'
 import { LegacyMigrationPane } from './components/LegacyMigrationPane'
+import { DeepSeekImportPane } from './components/DeepSeekImportPane'
 import { LatteSettingsPane } from './components/LatteSettingsPane'
 import { HelpDocsPane } from './components/HelpDocsPane'
 import { MemoryCenterPage } from '../memory/MemoryCenterPage'
@@ -48,6 +49,7 @@ const FULL_HEIGHT_SEGMENTS = new Set([
   'diary-template',
   'diary-ai-writing',
   'legacy-migration',
+  'deepseek-import',
   'latte'
 ])
 
@@ -233,6 +235,8 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
         return <GitSettingsPane />
       case 'legacy-migration':
         return <LegacyMigrationPane />
+      case 'deepseek-import':
+        return <DeepSeekImportPane />
       default:
         return <GeneralSettingsPane settings={settings} />
     }
