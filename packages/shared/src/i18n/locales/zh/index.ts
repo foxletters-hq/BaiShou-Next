@@ -10,6 +10,7 @@ import ai from './ai.json'
 import appShell from './app-shell.json'
 import common from './common.json'
 import dataSync from './data-sync.json'
+import deepseekImport from './deepseek-import.json'
 import diary from './diary.json'
 import graph from './graph.json'
 import knowledge from './knowledge.json'
@@ -31,6 +32,7 @@ export default mergeCatalogs(
   appShell,
   common,
   dataSync,
+  deepseekImport,
   diary,
   graph,
   knowledge,
