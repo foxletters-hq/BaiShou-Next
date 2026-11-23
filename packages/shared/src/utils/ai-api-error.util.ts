@@ -109,6 +109,37 @@ export function toSerializableAiError(error: unknown, prefix?: string): Error {
   return new Error(message)
 }
 
+export interface SafeAiErrorLogMeta {
+  message: string
+  name?: string
+  statusCode?: number
+  isRetryable?: boolean
+}
+
+/**
+ * 提取可安全写入诊断日志的 AI 错误摘要。
+ * 刻意剥离 Vercel AI SDK 错误对象上挂载的 responseBody / requestBodyValues / data，
+ * 避免 4096 维原始 embedding 浮点数组或明文请求体被 JSON.stringify 刷进诊断日志。
+ */
+export function toSafeAiErrorLogMeta(error: unknown): SafeAiErrorLogMeta {
+  const message = formatAiApiCallError(error)
+  if (!error || typeof error !== 'object') {
+    return { message }
+  }
+  const rec = error as Record<string, unknown>
+  const name = typeof rec.name === 'string' && rec.name.trim() ? rec.name.trim() : undefined
+  const rawStatus = rec.statusCode ?? rec.status
+  const statusCode =
+    typeof rawStatus === 'number' && Number.isFinite(rawStatus) ? rawStatus : undefined
+  const isRetryable = typeof rec.isRetryable === 'boolean' ? rec.isRetryable : undefined
+  return {
+    message,
+    ...(name ? { name } : {}),
+    ...(statusCode !== undefined ? { statusCode } : {}),
+    ...(isRetryable !== undefined ? { isRetryable } : {})
+  }
+}
+
 type LocalizeFn = (key: string, fallback: string) => string
 
 function stripIpcErrorPrefixes(message: string): string {

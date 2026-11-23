@@ -3,6 +3,7 @@ import {
   classifyAiApiCallError,
   formatAiApiCallError,
   localizeAiApiErrorMessage,
+  toSafeAiErrorLogMeta,
   toSerializableAiError
 } from '../ai-api-error.util'
 
@@ -50,6 +51,26 @@ describe('formatAiApiCallError', () => {
     const wrapped = toSerializableAiError(err, 'Batch embed failed')
     expect(wrapped.message).toBe('Batch embed failed: no funds')
     expect(wrapped).toBeInstanceOf(Error)
+  })
+
+  it('strips responseBody and requestBodyValues when building safe log metadata', () => {
+    const err = Object.assign(new Error('Invalid embedding payload'), {
+      name: 'AI_TypeValidationError',
+      statusCode: 200,
+      isRetryable: false,
+      responseBody: '{"data":[{"embedding":[0.11,0.22,0.33],"index":0}]}',
+      requestBodyValues: { input: ['private diary text'] }
+    })
+
+    const safe = toSafeAiErrorLogMeta(err)
+    expect(safe).toEqual({
+      message: 'Invalid embedding payload',
+      name: 'AI_TypeValidationError',
+      statusCode: 200,
+      isRetryable: false
+    })
+    expect(JSON.stringify(safe)).not.toContain('0.11')
+    expect(JSON.stringify(safe)).not.toContain('private diary text')
   })
 })
 

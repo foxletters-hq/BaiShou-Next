@@ -20,6 +20,8 @@ export interface ISearchQueryOptions {
   ftsWeight?: number // RRF 合成时关键词权重，默认 0.3
   vectorWeight?: number // RRF 合成时向量占比，默认 0.7
   filter?: VectorSearchQueryFilter
+  /** 可选：上游 Embedding API 耗时（ms），仅用于脱敏性能日志观测 */
+  embedApiMs?: number
 }
 
 /** 向量/FTS 检索可选过滤（先按时间收窄候选，再做语义/关键词排序）。 */
