@@ -43,20 +43,22 @@ export class SessionSyncService {
 
   /**
    * 同步指定的 JSON Session 到 DB 影子表中。
+   * 走后台低优锁，避免外部文件同步抢占前台 UI 读写。
    * @param vaultName 显式指定工作区时从该 vault 的 Sessions/ 读取
    */
   async syncSessionFile(sessionId: string, vaultName?: string | null): Promise<void> {
+    const bgRepo = this.getBackgroundRepo()
     const fileContent = await this.fileService.readSession(sessionId, vaultName)
 
     if (!fileContent) {
       // 该文件已被从别的端删除同步到本地（成了空气），我们需要从 DB 清除幽灵缓存
       // 注意 SessionRepository.deleteSessions 接收的是数组
-      await this.sessionRepo.deleteSessions([sessionId])
+      await bgRepo.deleteSessions([sessionId])
       return
     }
 
     // JSON 解析出来后可能会把 Date 变成 string，我们在 upsertAggregate 内部统一恢复了它。
-    await this.sessionRepo.upsertAggregate(fileContent)
+    await bgRepo.upsertAggregate(fileContent)
   }
 
   /**

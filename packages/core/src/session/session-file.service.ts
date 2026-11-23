@@ -2,6 +2,9 @@ import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
 
+/** 超过此字节阈值的超大会话首次落盘跳过全文件回读与二次 JSON.parse 比对，避免内存峰值与主线程卡顿 */
+const SKIP_READ_BEFORE_WRITE_MIN_CHARS = 2 * 1024 * 1024
+
 export class SessionFileService {
   /** 内存缓存每个路径最近一次落盘的文本指纹（长度 + FNV-1a），避免每次写盘都读盘并二次 JSON.parse */
   private readonly lastWrittenFingerprintByPath = new Map<string, string>()
@@ -45,18 +48,20 @@ export class SessionFileService {
     if (this.lastWrittenFingerprintByPath.get(fullPath) === nextFp) {
       return fullPath
     }
-    try {
-      const prevRaw = await this.fileSystem.readFile(fullPath, 'utf8')
-      // 内容语义相同则跳过写盘，避免 mtime/hash 抖动导致下次又被判定 upload
-      if (
-        prevRaw === next ||
-        (prevRaw.includes('\n') && JSON.stringify(JSON.parse(prevRaw)) === next)
-      ) {
-        this.lastWrittenFingerprintByPath.set(fullPath, nextFp)
-        return fullPath
+    if (next.length <= SKIP_READ_BEFORE_WRITE_MIN_CHARS) {
+      try {
+        const prevRaw = await this.fileSystem.readFile(fullPath, 'utf8')
+        // 内容语义相同则跳过写盘，避免 mtime/hash 抖动导致下次又被判定 upload
+        if (
+          prevRaw === next ||
+          (prevRaw.includes('\n') && JSON.stringify(JSON.parse(prevRaw)) === next)
+        ) {
+          this.lastWrittenFingerprintByPath.set(fullPath, nextFp)
+          return fullPath
+        }
+      } catch {
+        // 文件不存在或损坏时继续写入
       }
-    } catch {
-      // 文件不存在或损坏时继续写入
     }
     if (this.rawDataSourceManager) {
       await this.rawDataSourceManager.writeFile('session', `${sessionId}.json`, next)

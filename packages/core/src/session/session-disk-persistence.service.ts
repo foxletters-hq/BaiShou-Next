@@ -107,6 +107,28 @@ export class SessionDiskPersistenceService {
     void this.flushNow(sessionId)
   }
 
+  private getBackgroundRepo(): SessionRepository {
+    const withPriority = (
+      this.sessionRepo as SessionRepository & {
+        withLockPriority?: (priority: 'high' | 'low') => SessionRepository
+      }
+    ).withLockPriority
+    return typeof withPriority === 'function'
+      ? withPriority.call(this.sessionRepo, 'low')
+      : this.sessionRepo
+  }
+
+  /** 仅当会话存在未落盘变更（dirty / 防抖等待 / 写盘中）时才落盘，避免重复全量读库与序列化 */
+  async flushIfDirty(sessionId: string, options?: { vaultName?: string | null }): Promise<void> {
+    if (!sessionId || !this.hasPendingPersistence(sessionId)) return
+    const pending = this.inFlight.get(sessionId)
+    if (pending && !this.dirty.has(sessionId) && !this.debounceTimers.has(sessionId)) {
+      await pending
+      return
+    }
+    await this.flushNow(sessionId, options)
+  }
+
   async flushNow(sessionId: string, options?: { vaultName?: string | null }): Promise<void> {
     if (!sessionId) return
     this.cancelScheduledFlush(sessionId)
@@ -154,8 +176,9 @@ export class SessionDiskPersistenceService {
       return
     }
 
+    const bgRepo = this.getBackgroundRepo()
     try {
-      const aggregate = await this.sessionRepo.getSessionAggregate(sessionId)
+      const aggregate = await bgRepo.getSessionAggregate(sessionId)
       // 在快照读取完成后清除 dirty；并发进入的 flushNow 合并为本次写盘，而写盘 I/O 期间的新变更会重新标记 dirty 并由外层循环补刷
       this.dirty.delete(sessionId)
       if (!aggregate) {
@@ -169,8 +192,8 @@ export class SessionDiskPersistenceService {
       }
 
       const { aggregate: cleaned, partUpdates } = sanitizeSessionAggregateForDisk(aggregate)
-      if (partUpdates.length > 0 && typeof this.sessionRepo.updatePartsDataById === 'function') {
-        await this.sessionRepo.updatePartsDataById(partUpdates)
+      if (partUpdates.length > 0 && typeof bgRepo.updatePartsDataById === 'function') {
+        await bgRepo.updatePartsDataById(partUpdates)
       }
 
       if (this.discarded.has(sessionId)) {

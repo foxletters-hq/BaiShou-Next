@@ -224,4 +224,31 @@ describe('SessionDiskPersistenceService', () => {
       ]
     })
   })
+
+  it('flushIfDirty skips clean sessions and flushNow uses low-priority repo view when available', async () => {
+    const lowRepo = {
+      getSessionAggregate: vi.fn().mockResolvedValue({ session: { id: 's1' }, messages: [] }),
+      updatePartsDataById: vi.fn().mockResolvedValue(undefined)
+    }
+    const withLockPriority = vi.fn().mockReturnValue(lowRepo)
+    const prioritizedService = new SessionDiskPersistenceService(
+      { ...mockRepo, withLockPriority } as any,
+      mockFileService as any
+    )
+
+    // 未标记 dirty 时 flushIfDirty 不应触发任何读库或写盘
+    await prioritizedService.flushIfDirty('s1')
+    expect(lowRepo.getSessionAggregate).not.toHaveBeenCalled()
+    expect(mockFileService.writeSession).not.toHaveBeenCalled()
+
+    // 标记 dirty 后 flushIfDirty 走低优 repo 落盘一次，落盘后再次调用不重复读库
+    prioritizedService.markDirty('s1')
+    await prioritizedService.flushIfDirty('s1')
+    await prioritizedService.flushIfDirty('s1')
+
+    expect(withLockPriority).toHaveBeenCalledWith('low')
+    expect(lowRepo.getSessionAggregate).toHaveBeenCalledTimes(1)
+    expect(mockRepo.getSessionAggregate).not.toHaveBeenCalled()
+    expect(mockFileService.writeSession).toHaveBeenCalledTimes(1)
+  })
 })

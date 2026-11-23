@@ -236,9 +236,10 @@ describe('SessionSyncService', () => {
 
     await prioritizedService.reconcileFromDisks({ activeVaultName: 'Personal' })
     await prioritizedService.fullScanArchives({ activeVaultName: 'Personal' })
+    await prioritizedService.syncSessionFile('s-bg', 'Personal')
 
     expect(withLockPriority).toHaveBeenCalledWith('low')
-    expect(lowRepo.upsertAggregate).toHaveBeenCalledTimes(2)
+    expect(lowRepo.upsertAggregate).toHaveBeenCalledTimes(3)
     expect(mockRepo.upsertAggregate).not.toHaveBeenCalled()
   })
 })

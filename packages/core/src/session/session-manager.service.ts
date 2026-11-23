@@ -154,6 +154,14 @@ export class SessionManagerService {
     )
   }
 
+  /** 仅在会话存在未落盘变更时才写盘，避免同一轮收尾重复全量读库与序列化 */
+  public flushSessionToDiskIfDirty(sessionId: string, vaultName?: string | null): Promise<void> {
+    return this.persistence.flushIfDirty(
+      sessionId,
+      vaultName?.trim() ? { vaultName: vaultName.trim() } : undefined
+    )
+  }
+
   /**
    * 批量落盘指定会话（伙伴重绑 / 归属修复后使用）。
    * 必须带目标工作区名，否则多仓场景会把 JSON 写到当前活跃仓。
