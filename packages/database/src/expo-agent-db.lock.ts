@@ -10,8 +10,12 @@
  * 注意（防重入死锁红线）：严禁在已持有锁的回调内部再次请求本锁。
  */
 
+import { logger } from '@baishou/shared'
+
 export type SqliteDriverKind = 'better-sqlite' | 'expo-sync' | 'async'
 export type ExpoDbLockPriority = 'high' | 'low'
+
+const SLOW_LOCK_THRESHOLD_MS = 1000
 
 export function detectSqliteDriver(db: unknown): SqliteDriverKind {
   const client = (db as { session?: { client?: Record<string, unknown> } })?.session?.client
@@ -68,13 +72,30 @@ function releaseLock(): void {
 
 async function runWithPriorityLock<T>(
   priority: ExpoDbLockPriority,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
+  label?: string
 ): Promise<T> {
+  const queuedAt = Date.now()
   await acquireLock(priority)
+  const acquiredAt = Date.now()
+  const waitMs = acquiredAt - queuedAt
   try {
     return await fn()
   } finally {
+    const holdMs = Date.now() - acquiredAt
+    const highQueued = highWaiters.length
+    const lowQueued = lowWaiters.length
     releaseLock()
+    if (waitMs >= SLOW_LOCK_THRESHOLD_MS || holdMs >= SLOW_LOCK_THRESHOLD_MS) {
+      logger.warn('[ExpoAgentDbLock] slow lock', {
+        label: label ?? 'anonymous',
+        priority,
+        waitMs,
+        holdMs,
+        highQueued,
+        lowQueued
+      })
+    }
   }
 }
 
@@ -91,18 +112,20 @@ export async function waitForExpoAgentDatabaseIdle(): Promise<void> {
 export function withExpoAgentDatabaseLock<T>(
   db: unknown,
   fn: () => Promise<T>,
-  priority: ExpoDbLockPriority = 'high'
+  priority: ExpoDbLockPriority = 'high',
+  label?: string
 ): Promise<T> {
   if (!shouldSerializeExpoAgentDatabase(db)) {
     return fn()
   }
-  return runWithPriorityLock(priority, fn)
+  return runWithPriorityLock(priority, fn, label)
 }
 
 /** 无 drizzle 句柄时，对同一 Agent 主库 raw expo-sqlite 访问串行化 */
 export function withExpoAgentRawSqliteLock<T>(
   fn: () => Promise<T>,
-  priority: ExpoDbLockPriority = 'high'
+  priority: ExpoDbLockPriority = 'high',
+  label?: string
 ): Promise<T> {
-  return runWithPriorityLock(priority, fn)
+  return runWithPriorityLock(priority, fn, label)
 }

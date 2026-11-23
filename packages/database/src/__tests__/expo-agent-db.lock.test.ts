@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { logger } from '@baishou/shared'
 import {
   withExpoAgentDatabaseLock,
   withExpoAgentRawSqliteLock,
@@ -212,5 +213,33 @@ describe('expo-agent-db.lock', () => {
     await Promise.all([low1, high1, low2, chained])
 
     expect(executed).toEqual(['low-1', 'high-1', 'low-2', 'round-2'])
+  })
+
+  it('should emit sanitized slow lock warning when holdMs >= 1000ms', async () => {
+    const mockDb = { session: { client: { prepareSync: vi.fn() } } }
+    let now = 10_000
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+    try {
+      await withExpoAgentDatabaseLock(
+        mockDb,
+        async () => {
+          now += 1500
+        },
+        'low',
+        'SessionRepo.upsertAggregate'
+      )
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[ExpoAgentDbLock] slow lock',
+        expect.objectContaining({
+          label: 'SessionRepo.upsertAggregate',
+          priority: 'low',
+          holdMs: 1500
+        })
+      )
+    } finally {
+      nowSpy.mockRestore()
+      warnSpy.mockRestore()
+    }
   })
 })

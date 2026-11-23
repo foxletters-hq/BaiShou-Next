@@ -34,32 +34,46 @@ export class SessionRepository {
     return new SessionRepository(this.db, { lockPriority: priority })
   }
 
-  private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn), this.lockPriority)
+  private run<T>(fn: () => Promise<T>, label?: string): Promise<T> {
+    return withExpoAgentDatabaseLock(
+      this.db,
+      () => runWithSqliteBusyRetry(fn),
+      this.lockPriority,
+      label
+    )
   }
 
   upsertSession(...args: Parameters<SessionCrudOps['upsertSession']>) {
-    return this.run(() => this.crudOps.upsertSession(...args))
+    return this.run(() => this.crudOps.upsertSession(...args), 'SessionRepo.upsertSession')
   }
 
   insertMessageWithParts(...args: Parameters<SessionMessageOps['insertMessageWithParts']>) {
-    return this.run(() => this.messageOps.insertMessageWithParts(...args))
+    return this.run(
+      () => this.messageOps.insertMessageWithParts(...args),
+      'SessionRepo.insertMessageWithParts'
+    )
   }
 
   replaceMessageParts(...args: Parameters<SessionMessageOps['replaceMessageParts']>) {
-    return this.run(() => this.messageOps.replaceMessageParts(...args))
+    return this.run(
+      () => this.messageOps.replaceMessageParts(...args),
+      'SessionRepo.replaceMessageParts'
+    )
   }
 
   updateTokenUsage(...args: Parameters<SessionCrudOps['updateTokenUsage']>) {
-    return this.run(() => this.crudOps.updateTokenUsage(...args))
+    return this.run(() => this.crudOps.updateTokenUsage(...args), 'SessionRepo.updateTokenUsage')
   }
 
   getMessagesBySession(...args: Parameters<SessionMessageOps['getMessagesBySession']>) {
-    return this.run(() => this.messageOps.getMessagesBySession(...args))
+    return this.run(
+      () => this.messageOps.getMessagesBySession(...args),
+      'SessionRepo.getMessagesBySession'
+    )
   }
 
   findAllSessions(...args: Parameters<SessionCrudOps['findAllSessions']>) {
-    return this.run(() => this.crudOps.findAllSessions(...args))
+    return this.run(() => this.crudOps.findAllSessions(...args), 'SessionRepo.findAllSessions')
   }
 
   findAllSessionsAcrossVaults(...args: Parameters<SessionCrudOps['findAllSessionsAcrossVaults']>) {
@@ -163,10 +177,16 @@ export class SessionRepository {
   }
 
   getSessionAggregate(...args: Parameters<SessionAggregateSync['getSessionAggregate']>) {
-    return this.run(() => this.aggregateSync.getSessionAggregate(...args))
+    return this.run(
+      () => this.aggregateSync.getSessionAggregate(...args),
+      'SessionRepo.getSessionAggregate'
+    )
   }
 
   upsertAggregate(...args: Parameters<SessionAggregateSync['upsertAggregate']>) {
-    return this.run(() => this.aggregateSync.upsertAggregate(...args))
+    return this.run(
+      () => this.aggregateSync.upsertAggregate(...args),
+      'SessionRepo.upsertAggregate'
+    )
   }
 }
