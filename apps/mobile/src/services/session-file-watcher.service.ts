@@ -76,6 +76,8 @@ export class SessionFileWatcherService {
   private suppressedSessions = new Map<string, number>()
   private deps: WatcherDeps | null = null
   private tickInFlight = false
+  /** 首次扫描仅采集磁盘现有文件 mtime 基线（对齐桌面 chokidar ignoreInitial: true），禁止把存量历史文件全量当新改动重写进 SQLite */
+  private baselineSeeded = false
   /** 每次 start/stop 递增，用于丢弃陈旧异步 tick / 延迟 start */
   private generation = 0
   private pausedForDeadDb = false
@@ -86,6 +88,9 @@ export class SessionFileWatcherService {
     this.generation += 1
     this.pausedForDeadDb = false
     this.unavailableLoggedForGeneration = -1
+    this.baselineSeeded = false
+    this.mtimes.clear()
+    this.skippedOversized.clear()
     this.sessionsDir = sessionsBaseDir
     this.deps = deps
     this.appStateSub?.remove()
@@ -97,6 +102,7 @@ export class SessionFileWatcherService {
   stop() {
     this.generation += 1
     this.pausedForDeadDb = false
+    this.baselineSeeded = false
     this.stopTimerOnly()
     this.appStateSub?.remove()
     this.appStateSub = null
@@ -197,6 +203,7 @@ export class SessionFileWatcherService {
       if (generation !== this.generation || this.deps !== deps || this.pausedForDeadDb) return
 
       const pending: Array<{ name: string; fp: string; mtime: number; sessionId: string }> = []
+      const isInitialBaselineTick = !this.baselineSeeded
 
       for (const name of files) {
         if (!name.endsWith('.json')) continue
@@ -239,7 +246,18 @@ export class SessionFileWatcherService {
           continue
         }
 
+        // 启动后的首次基线扫描：仅登记现有文件的 mtime 基线，不把冷启动存量历史会话当作外部修改全量重写入 SQLite
+        if (isInitialBaselineTick) {
+          this.mtimes.set(fp, mtime)
+          continue
+        }
+
         pending.push({ name, fp, mtime, sessionId })
+      }
+
+      if (isInitialBaselineTick) {
+        this.baselineSeeded = true
+        return
       }
 
       let synced = 0
@@ -293,6 +311,9 @@ export class SessionFileWatcherService {
           this.mtimes.set(item.fp, item.mtime)
           logger.warn(`[SessionFileWatcher] sync failed for ${item.name}:`, e as Error)
         }
+      }
+      if (synced > 0) {
+        logger.info(`[SessionFileWatcher] synced ${synced} session(s)`)
       }
     } catch (e) {
       if (generation === this.generation) {

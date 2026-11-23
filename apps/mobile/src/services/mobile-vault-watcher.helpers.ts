@@ -77,7 +77,8 @@ export async function restartVaultWatchers(
   void startSessionFileWatcherWhenStorageQuiet(sessionsDir, {
     sessionFileService: watcherDeps.sessionFileService,
     sessionSyncService: watcherDeps.sessionSyncService,
-    fileSystem: watcherDeps.fileSystem
+    fileSystem: watcherDeps.fileSystem,
+    sessionManager: watcherDeps.sessionManager
   })
 
   void startSummaryFileWatcherWhenStorageQuiet(watcherDeps.summarySyncService)
@@ -101,6 +102,7 @@ async function startSessionFileWatcherWhenStorageQuiet(
     sessionFileService: SessionFileService
     sessionSyncService: SessionSyncService
     fileSystem: IFileSystem
+    sessionManager: SessionManagerService
   }
 ): Promise<void> {
   const generationAtSchedule = sessionFileWatcher.getGeneration()

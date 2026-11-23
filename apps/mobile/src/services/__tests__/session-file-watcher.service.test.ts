@@ -89,27 +89,74 @@ describe('SessionFileWatcherService', () => {
     watcher.stop()
   })
 
-  it('re-checks suppression and pending persistence after waitForExpoAgentDatabaseIdle before syncing', async () => {
+  it('seeds existing files as baseline on first tick without resyncing unchanged archives', async () => {
     const watcher = new SessionFileWatcherService()
     const syncSessionFile = vi.fn().mockResolvedValue(undefined)
-    let tickWaitCalls = 0
+    let mtimeB = 2000
 
     const deps = {
       sessionFileService: {} as never,
       sessionSyncService: { syncSessionFile } as never,
       fileSystem: {
-        readdir: vi.fn().mockResolvedValue(['sess-2.json']),
-        stat: vi.fn().mockResolvedValue({
-          mtimeMs: 3000,
-          size: 256
-        })
+        readdir: vi.fn().mockResolvedValue(['legacy-a.json', 'legacy-b.json']),
+        stat: vi.fn().mockImplementation(async (fp: string) => ({
+          mtimeMs: fp.endsWith('legacy-b.json') ? mtimeB : 1000,
+          size: 4096
+        }))
       } as never,
       sessionManager: {
         hasPendingDiskPersistence: vi.fn(() => false)
       }
     }
 
-    // 模拟在 syncSessionFileQuiet 等待数据库空闲期间，本端触发了写盘抑制
+    watcher.start('/vault/Sessions', deps)
+
+    // 首轮 tick 仅记录基线 mtime，不触发任何存量会话全量同步
+    await (watcher as unknown as { tick: () => Promise<void> }).tick()
+    expect(syncSessionFile).not.toHaveBeenCalled()
+
+    // 第 2 轮未变化仍不触发
+    await (watcher as unknown as { tick: () => Promise<void> }).tick()
+    expect(syncSessionFile).not.toHaveBeenCalled()
+
+    // 仅当后续外部修改了某个文件 mtime，才只同步那 1 个会话
+    mtimeB = 3000
+    await (watcher as unknown as { tick: () => Promise<void> }).tick()
+    expect(syncSessionFile).toHaveBeenCalledTimes(1)
+    expect(syncSessionFile).toHaveBeenCalledWith('legacy-b')
+
+    watcher.stop()
+  })
+
+  it('re-checks suppression and pending persistence after waitForExpoAgentDatabaseIdle before syncing', async () => {
+    const watcher = new SessionFileWatcherService()
+    const syncSessionFile = vi.fn().mockResolvedValue(undefined)
+    let tickWaitCalls = 0
+    let currentMtime = 3000
+
+    const deps = {
+      sessionFileService: {} as never,
+      sessionSyncService: { syncSessionFile } as never,
+      fileSystem: {
+        readdir: vi.fn().mockResolvedValue(['sess-2.json']),
+        stat: vi.fn().mockImplementation(async () => ({
+          mtimeMs: currentMtime,
+          size: 256
+        }))
+      } as never,
+      sessionManager: {
+        hasPendingDiskPersistence: vi.fn(() => false)
+      }
+    }
+
+    watcher.start('/vault/Sessions', deps)
+    // 首轮先建立基线
+    await (watcher as unknown as { tick: () => Promise<void> }).tick()
+    expect(syncSessionFile).not.toHaveBeenCalled()
+
+    // 第 2 轮文件 mtime 变化，模拟在 syncSessionFileQuiet 等待数据库空闲期间，本端触发了写盘抑制
+    currentMtime = 4000
+    tickWaitCalls = 0
     mockWaitForExpoAgentDatabaseIdle.mockImplementation(async () => {
       tickWaitCalls += 1
       if (tickWaitCalls === 2) {
@@ -117,7 +164,6 @@ describe('SessionFileWatcherService', () => {
       }
     })
 
-    watcher.start('/vault/Sessions', deps)
     await (watcher as unknown as { tick: () => Promise<void> }).tick()
 
     expect(syncSessionFile).not.toHaveBeenCalled()

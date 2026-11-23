@@ -202,7 +202,11 @@ export function useAgentStreamFinish({
 
         try {
           if (services?.sessionManager) {
-            void services.sessionManager.flushSessionToDisk(sessionId).catch(() => undefined)
+            const flushFn =
+              typeof services.sessionManager.flushSessionToDiskIfDirty === 'function'
+                ? services.sessionManager.flushSessionToDiskIfDirty.bind(services.sessionManager)
+                : services.sessionManager.flushSessionToDisk.bind(services.sessionManager)
+            void flushFn(sessionId).catch(() => undefined)
           }
 
           if (!isActiveSession(sessionId)) return
