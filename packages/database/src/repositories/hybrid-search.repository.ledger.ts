@@ -17,6 +17,8 @@ import {
   EMBED_LEDGER_TABLE,
   HYBRID_SEARCH_TABLE
 } from './hybrid-search.repository.constants'
+import { executeSqlWithPriority } from '../sql-executor.factory'
+import type { ExpoDbLockPriority } from '../expo-agent-db.lock'
 
 export class HybridSearchLedgerStore {
   constructor(private readonly db: ISqlExecutor) {}
@@ -50,13 +52,16 @@ export class HybridSearchLedgerStore {
     })
   }
 
-  async recordEmbedded(params: EmbedLedgerRecordParams): Promise<void> {
+  async recordEmbedded(
+    params: EmbedLedgerRecordParams,
+    priority?: ExpoDbLockPriority
+  ): Promise<void> {
     const vaultId = params.vaultId.trim()
     if (!vaultId) {
       throw new Error('recordEmbedded: vaultId is required')
     }
     const now = Date.now()
-    await this.db.execute({
+    const query = {
       sql: `
         INSERT INTO ${EMBED_LEDGER_TABLE}
         (vault_id, source_type, source_id, content_hash, chunk_count,
@@ -84,7 +89,12 @@ export class HybridSearchLedgerStore {
         now,
         now
       ]
-    })
+    }
+    if (priority) {
+      await executeSqlWithPriority(this.db, query, priority)
+      return
+    }
+    await this.db.execute(query)
   }
 
   async reconcileEmbedLedger(

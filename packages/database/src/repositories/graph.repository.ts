@@ -6,7 +6,7 @@ import { GraphQueryOps } from './graph.repository.query'
 import { GraphReviewOps } from './graph.repository.review'
 import { GraphSyncOps } from './graph.repository.sync'
 import { GraphTraverseOps } from './graph.repository.traverse'
-import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
+import { withExpoAgentDatabaseLock, type ExpoDbLockPriority } from '../expo-agent-db.lock'
 import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 
 export type {
@@ -28,18 +28,27 @@ export class GraphRepository implements GraphRepositoryPort {
   private readonly sync: GraphSyncOps
   private readonly embed: GraphEmbedOps
   private readonly review: GraphReviewOps
+  private readonly lockPriority: ExpoDbLockPriority
 
-  constructor(private readonly database: AppDatabase) {
+  constructor(
+    private readonly database: AppDatabase,
+    options?: { lockPriority?: ExpoDbLockPriority }
+  ) {
     this.query = new GraphQueryOps(database)
     this.traverseOps = new GraphTraverseOps(database)
     this.mutate = new GraphMutateOps(database, this.query)
     this.sync = new GraphSyncOps(this.query, this.mutate)
     this.embed = new GraphEmbedOps(database)
     this.review = new GraphReviewOps(database, this.query)
+    this.lockPriority = options?.lockPriority ?? 'high'
   }
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.database, () => runWithSqliteBusyRetry(fn))
+    return withExpoAgentDatabaseLock(
+      this.database,
+      () => runWithSqliteBusyRetry(fn),
+      this.lockPriority
+    )
   }
 
   findNodesByNameOrAlias(...args: Parameters<GraphQueryOps['findNodesByNameOrAlias']>) {

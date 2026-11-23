@@ -3,6 +3,7 @@ import { SessionAggregateSync } from './session.repository.aggregate'
 import { SessionMessageOps } from './session.repository.messages'
 import { SessionCrudOps } from './session.repository.sessions'
 import { withExpoAgentDatabaseLock } from './session.repository.utils'
+import type { ExpoDbLockPriority } from '../expo-agent-db.lock'
 import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 
 export type {
@@ -15,15 +16,26 @@ export class SessionRepository {
   private readonly crudOps: SessionCrudOps
   private readonly messageOps: SessionMessageOps
   private readonly aggregateSync: SessionAggregateSync
+  private readonly lockPriority: ExpoDbLockPriority
 
-  constructor(public readonly db: AppDatabase) {
+  constructor(
+    public readonly db: AppDatabase,
+    options?: { lockPriority?: ExpoDbLockPriority }
+  ) {
     this.crudOps = new SessionCrudOps(db)
     this.messageOps = new SessionMessageOps(db)
     this.aggregateSync = new SessionAggregateSync(db)
+    this.lockPriority = options?.lockPriority ?? 'high'
+  }
+
+  /** 返回以指定锁优先级运行的轻量视图，供后台同步显式降级为 `'low'` 且不影响前台实例 */
+  withLockPriority(priority: ExpoDbLockPriority): SessionRepository {
+    if (priority === this.lockPriority) return this
+    return new SessionRepository(this.db, { lockPriority: priority })
   }
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn))
+    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn), this.lockPriority)
   }
 
   upsertSession(...args: Parameters<SessionCrudOps['upsertSession']>) {

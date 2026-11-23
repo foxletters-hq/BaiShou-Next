@@ -17,6 +17,7 @@ import {
   HYBRID_SEARCH_TABLE
 } from './hybrid-search.repository.constants'
 import { HybridSearchLedgerStore } from './hybrid-search.repository.ledger'
+import { executeSqlWithPriority } from '../sql-executor.factory'
 
 export { HybridSearchMigrationStore } from './hybrid-search.repository.migration'
 
@@ -25,6 +26,10 @@ export class HybridSearchEmbeddingStore {
 
   constructor(private readonly db: ISqlExecutor) {
     this.ledger = new HybridSearchLedgerStore(db)
+  }
+
+  private executeLow(query: Parameters<ISqlExecutor['execute']>[0]) {
+    return executeSqlWithPriority(this.db, query, 'low')
   }
 
   async initVectorIndex(dimension: number): Promise<void> {
@@ -171,12 +176,12 @@ export class HybridSearchEmbeddingStore {
           conditions.push('chunk_text LIKE ?')
           deleteArgs.push(`[${diaryDate} 日记:]%`)
         }
-        await this.db.execute({
+        await this.executeLow({
           sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND vault_id = ? AND (${conditions.join(' OR ')})`,
           args: deleteArgs
         })
       } else {
-        await this.db.execute({
+        await this.executeLow({
           sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND (source_id = ? OR embedding_id = ?)`,
           args: [params.sourceType, params.sourceId, params.sourceId]
         })
@@ -208,7 +213,7 @@ export class HybridSearchEmbeddingStore {
           sourceCreatedAtSec
         )
       }
-      await this.db.execute({
+      await this.executeLow({
         sql: `
           INSERT INTO ${HYBRID_SEARCH_TABLE}
           (embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
@@ -228,18 +233,21 @@ export class HybridSearchEmbeddingStore {
     }
 
     if (params.recordLedger) {
-      await this.ledger.recordEmbedded({
-        vaultId,
-        sourceType: params.sourceType,
-        sourceId: params.sourceId,
-        contentHash: params.contentHash,
-        chunkCount: params.chunks.length,
-        modelId: params.modelId,
-        dimension: params.dimension
-      })
+      await this.ledger.recordEmbedded(
+        {
+          vaultId,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          contentHash: params.contentHash,
+          chunkCount: params.chunks.length,
+          modelId: params.modelId,
+          dimension: params.dimension
+        },
+        'low'
+      )
       if (params.replaceExisting && params.sourceType === 'diary') {
         try {
-          await this.db.execute({
+          await this.executeLow({
             sql: `
               DELETE FROM ${EMBED_LEDGER_TABLE}
               WHERE vault_id = ?
@@ -408,39 +416,14 @@ export class HybridSearchEmbeddingStore {
   }): Promise<number> {
     const groupId = MEMORY_EMBED_GROUP_ID
     const vaultId = params.vaultId.trim()
-    if (params.sourceIds && params.sourceIds.length > 0) {
-      const placeholders = params.sourceIds.map(() => '?').join(', ')
-      const before = await this.db.execute({
-        sql: `
-          SELECT COUNT(DISTINCT source_id) AS c FROM ${HYBRID_SEARCH_TABLE}
-          WHERE source_type = 'manual' AND source_id IN (${placeholders})
-        `,
-        args: [...params.sourceIds]
-      })
-      const count = Number((before.rows[0] as { c?: unknown } | undefined)?.c ?? 0)
-      if (count === 0) return 0
-      await this.db.execute({
-        sql: `
-          UPDATE ${HYBRID_SEARCH_TABLE}
-          SET source_type = 'memory',
-              vault_id = CASE
-                WHEN vault_id IS NOT NULL AND vault_id != '' THEN vault_id
-                ELSE ?
-              END,
-              group_id = CASE
-                WHEN group_id = ? OR group_id LIKE 'memory:%' THEN group_id
-                ELSE ?
-              END
-          WHERE source_type = 'manual' AND source_id IN (${placeholders})
-        `,
-        args: [vaultId, MEMORY_EMBED_GROUP_ID, groupId, ...params.sourceIds]
-      })
-      return count
-    }
-
+    const hasSourceIds = Boolean(params.sourceIds && params.sourceIds.length > 0)
+    const sourceFilter = hasSourceIds
+      ? ` AND source_id IN (${params.sourceIds!.map(() => '?').join(', ')})`
+      : ''
+    const sourceArgs = hasSourceIds ? [...params.sourceIds!] : []
     const before = await this.db.execute({
-      sql: `SELECT COUNT(DISTINCT source_id) AS c FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'manual'`,
-      args: []
+      sql: `SELECT COUNT(DISTINCT source_id) AS c FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'manual'${sourceFilter}`,
+      args: sourceArgs
     })
     const count = Number((before.rows[0] as { c?: unknown } | undefined)?.c ?? 0)
     if (count === 0) return 0
@@ -456,9 +439,9 @@ export class HybridSearchEmbeddingStore {
               WHEN group_id = ? OR group_id LIKE 'memory:%' THEN group_id
               ELSE ?
             END
-        WHERE source_type = 'manual'
+        WHERE source_type = 'manual'${sourceFilter}
       `,
-      args: [vaultId, MEMORY_EMBED_GROUP_ID, groupId]
+      args: [vaultId, MEMORY_EMBED_GROUP_ID, groupId, ...sourceArgs]
     })
     return count
   }
@@ -476,13 +459,14 @@ export class HybridSearchEmbeddingStore {
 
   async clearEmbeddings(): Promise<void> {
     await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
-    // 账本必须跟着清，否则清空后账本仍声称全部已嵌入，要等下一次计数自检才纠正，
-    // 而那一次纠正是整本账的全量重建。
+    // 账本同步清空，避免计数自检误判已全部嵌入而触发全量重建
     try {
       await this.db.execute(`DELETE FROM ${EMBED_LEDGER_TABLE}`)
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[VectorSearch] 清空 embed_ledger 失败（非阻塞）:', message)
+      logger.warn(
+        '[VectorSearch] 清空 embed_ledger 失败（非阻塞）:',
+        e instanceof Error ? e.message : String(e)
+      )
     }
   }
 
