@@ -12,6 +12,13 @@ import type {
   MigrationSqlExecutor
 } from './migration.service.types'
 import {
+  AGENT_FTS_ROWID_SYNC_VERSION,
+  AGENT_FTS_ROWID_SYNC_VERSION_KEY,
+  AGENT_MESSAGES_FTS_BACKFILL_SQL,
+  ensureAgentMessagesFtsRowidAligned,
+  markAgentMessagesFtsRowidAligned
+} from './agent-fts-migration'
+import {
   backfillAgentMessagesOrderIndex,
   backfillMemoryEmbeddingsVaultNameColumn,
   ensureAgentSchemaColumns,
@@ -28,6 +35,7 @@ import {
 } from './migration.service.schema'
 
 export type { EmbeddedMigrations, MigrationJournal } from './migration.service.types'
+export { AGENT_FTS_ROWID_SYNC_VERSION, AGENT_FTS_ROWID_SYNC_VERSION_KEY }
 
 export const AGENT_SCHEMA_COMPAT_VERSION_KEY = '__agent_schema_compat_version'
 /** v3：补跑日记向量旧 group_id / 裸 source_id 规范化与重复向量自愈去重 */
@@ -66,7 +74,12 @@ export class MigrationService {
   }
 
   public async runMigrations(): Promise<void> {
-    return withExpoAgentDatabaseLock(this.db, () => this.runMigrationsUnlocked())
+    return withExpoAgentDatabaseLock(
+      this.db,
+      () => this.runMigrationsUnlocked(),
+      'high',
+      'MigrationService.runMigrations'
+    )
   }
 
   private async runMigrationsUnlocked(): Promise<void> {
@@ -134,6 +147,7 @@ export class MigrationService {
         if (!isAgentMigrationArchiveImport() && (await this._isSchemaCompatCurrent())) {
           await ensureMemoryEmbeddingsVaultIndex(this.sqlExec())
           await migrateLegacyDefaultAssistantInDb(this.sqlExec())
+          await ensureAgentMessagesFtsRowidAligned(this.sqlExec())
           logger.info(
             '[MigrationService] Agent DB Schema 兼容性与 FTS 索引均为最新，跳过重复回填与重建。'
           )
@@ -180,7 +194,10 @@ export class MigrationService {
 
           // 归档导入期间跳过全量 FTS 回填，避免与 legacy 导出查询争抢堆内存导致 OOM
           if (!isAgentMigrationArchiveImport()) {
-            await this._backfillAgentMessagesFts()
+            const rebuilt = await ensureAgentMessagesFtsRowidAligned(this.sqlExec())
+            if (!rebuilt) {
+              await this._backfillAgentMessagesFts()
+            }
             logger.info('[MigrationService] Agent 消息 FTS 触发器与索引回填完成。')
           } else {
             logger.info(
@@ -204,7 +221,12 @@ export class MigrationService {
 
   /** 归档导入完成后补建历史 Agent 消息 FTS 索引（异步调用，不阻塞 UI） */
   public async backfillAgentMessagesFts(): Promise<void> {
-    return withExpoAgentDatabaseLock(this.db, () => this._backfillAgentMessagesFtsUnlocked())
+    return withExpoAgentDatabaseLock(
+      this.db,
+      () => this._backfillAgentMessagesFtsUnlocked(),
+      'low',
+      'MigrationService.backfillAgentMessagesFts'
+    )
   }
 
   private async _backfillAgentMessagesFtsUnlocked(): Promise<void> {
@@ -216,6 +238,7 @@ export class MigrationService {
       return
     }
     await this._backfillAgentMessagesFts()
+    await markAgentMessagesFtsRowidAligned(this.sqlExec())
     await this._markSchemaCompatCurrent()
     logger.info('[MigrationService] Agent 消息 FTS 历史索引补建完成。')
   }
@@ -225,19 +248,7 @@ export class MigrationService {
     if (existing.rows.length > 0) {
       return
     }
-    await this._executeSql(`
-      INSERT OR IGNORE INTO agent_messages_fts(part_id, message_id, session_id, content)
-      SELECT
-        p.id,
-        p.message_id,
-        p.session_id,
-        json_extract(p.data, '$.text')
-      FROM agent_parts p
-      WHERE p.type = 'text'
-        AND COALESCE(json_extract(p.data, '$.isReasoning'), 0) IN (0, false)
-        AND json_extract(p.data, '$.text') IS NOT NULL
-        AND LENGTH(TRIM(json_extract(p.data, '$.text'))) > 0
-    `)
+    await this._executeSql(AGENT_MESSAGES_FTS_BACKFILL_SQL)
   }
 
   private async migrationsTableExists(): Promise<boolean> {

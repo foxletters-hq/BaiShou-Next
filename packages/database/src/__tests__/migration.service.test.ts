@@ -608,5 +608,151 @@ describe('MigrationService', () => {
         { id: 's-default', assistant_id: 'latte' }
       ])
     })
+
+    it('ensureAgentMessagesFtsRowidAligned should align legacy FTS rowids and upgrade triggers to rowid-based O(log N) sync', async () => {
+      const db = dbManager.getDb()
+      const { ensureAgentMessagesFtsRowidAligned } = await import('../agent-fts-migration')
+
+      await db.run(sql`
+        CREATE TABLE agent_parts (
+          id TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL,
+          session_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          data TEXT,
+          created_at INTEGER NOT NULL
+        );
+      `)
+      await db.run(sql`
+        CREATE VIRTUAL TABLE agent_messages_fts USING fts5(
+          part_id UNINDEXED,
+          message_id UNINDEXED,
+          session_id UNINDEXED,
+          content,
+          tokenize='unicode61'
+        );
+      `)
+      // 模拟存量老库：agent_parts.rowid 为 10 / 20，但历史 FTS 的 rowid 为 1 / 2（未对齐）
+      await db.run(sql`
+        INSERT INTO agent_parts(rowid, id, message_id, session_id, type, data, created_at)
+        VALUES
+          (10, 'p-keep', 'm-1', 's-1', 'text', '{"text":"保留搜索词alpha"}', 1),
+          (20, 'p-del', 'm-2', 's-1', 'text', '{"text":"待删除搜索词beta"}', 2)
+      `)
+      await db.run(sql`
+        INSERT INTO agent_messages_fts(rowid, part_id, message_id, session_id, content)
+        VALUES
+          (1, 'p-keep', 'm-1', 's-1', '保留搜索词alpha'),
+          (2, 'p-del', 'm-2', 's-1', '待删除搜索词beta')
+      `)
+
+      const rebuiltFirst = await ensureAgentMessagesFtsRowidAligned((service as any).sqlExec())
+      expect(rebuiltFirst).toBe(true)
+
+      // 二次调用因版本号印记命中应直接幂等跳过
+      const rebuiltSecond = await ensureAgentMessagesFtsRowidAligned((service as any).sqlExec())
+      expect(rebuiltSecond).toBe(false)
+
+      const alignedRows = (await db.all(
+        sql`SELECT rowid, part_id, content FROM agent_messages_fts ORDER BY rowid`
+      )) as Array<{ rowid: number; part_id: string; content: string }>
+      expect(alignedRows).toEqual([
+        { rowid: 10, part_id: 'p-keep', content: '保留搜索词alpha' },
+        { rowid: 20, part_id: 'p-del', content: '待删除搜索词beta' }
+      ])
+
+      // 验证新触发器按 rowid 同步 DELETE / UPDATE（含切为 reasoning 自动移除索引）/ INSERT
+      await db.run(sql`DELETE FROM agent_parts WHERE id = 'p-del'`)
+      await db.run(sql`UPDATE agent_parts SET data = '{"text":"已更新gamma"}' WHERE id = 'p-keep'`)
+      await db.run(sql`
+        INSERT INTO agent_parts(id, message_id, session_id, type, data, created_at)
+        VALUES ('p-new', 'm-3', 's-1', 'text', '{"text":"新增delta"}', 3)
+      `)
+
+      const afterCrud = (await db.all(
+        sql`SELECT part_id, content FROM agent_messages_fts ORDER BY part_id`
+      )) as Array<{ part_id: string; content: string }>
+      expect(afterCrud).toEqual([
+        { part_id: 'p-keep', content: '已更新gamma' },
+        { part_id: 'p-new', content: '新增delta' }
+      ])
+
+      // 更新为 reasoning 后应从 FTS 清除
+      await db.run(
+        sql`UPDATE agent_parts SET data = '{"text":"思考过程","isReasoning":true}' WHERE id = 'p-keep'`
+      )
+      const afterReasoning = (await db.all(
+        sql`SELECT part_id FROM agent_messages_fts ORDER BY part_id`
+      )) as Array<{ part_id: string }>
+      expect(afterReasoning).toEqual([{ part_id: 'p-new' }])
+    })
+
+    it('ensureAgentMessagesFtsRowidAligned should atomically roll back triggers, FTS rows, and version stamp on mid-migration failure', async () => {
+      const db = dbManager.getDb()
+      const { ensureAgentMessagesFtsRowidAligned, AGENT_FTS_ROWID_SYNC_VERSION_KEY } =
+        await import('../agent-fts-migration')
+
+      await db.run(sql`
+        CREATE TABLE agent_parts (
+          id TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL,
+          session_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          data TEXT,
+          created_at INTEGER NOT NULL
+        );
+      `)
+      await db.run(sql`
+        CREATE VIRTUAL TABLE agent_messages_fts USING fts5(
+          part_id UNINDEXED,
+          message_id UNINDEXED,
+          session_id UNINDEXED,
+          content,
+          tokenize='unicode61'
+        );
+      `)
+      await db.run(sql`
+        CREATE TRIGGER agent_parts_fts_delete AFTER DELETE ON agent_parts
+        BEGIN
+          DELETE FROM agent_messages_fts WHERE part_id = OLD.id;
+        END;
+      `)
+      await db.run(sql`
+        INSERT INTO agent_parts(rowid, id, message_id, session_id, type, data, created_at)
+        VALUES (10, 'p-keep', 'm-1', 's-1', 'text', '{"text":"保留内容"}', 1)
+      `)
+      await db.run(sql`
+        INSERT INTO agent_messages_fts(rowid, part_id, message_id, session_id, content)
+        VALUES (1, 'p-keep', 'm-1', 's-1', '保留内容')
+      `)
+
+      const rawExec = (service as any).sqlExec()
+      const failingExec = async (statement: string, args?: any[]) => {
+        if (statement.includes('INSERT OR REPLACE INTO agent_messages_fts')) {
+          throw new Error('simulated mid-migration crash')
+        }
+        return rawExec(statement, args)
+      }
+
+      const migrated = await ensureAgentMessagesFtsRowidAligned(failingExec)
+      expect(migrated).toBe(false)
+
+      // 触发器、旧 FTS 行、版本印记均应随事务完整回滚，且 agent_parts 丝毫无损
+      const triggers = (await db.all(
+        sql`SELECT name, sql FROM sqlite_master WHERE type='trigger' AND name='agent_parts_fts_delete'`
+      )) as Array<{ name: string; sql: string }>
+      expect(triggers).toHaveLength(1)
+      expect(triggers[0]?.sql).toContain('WHERE part_id = OLD.id')
+
+      const ftsRows = (await db.all(
+        sql`SELECT rowid, part_id, content FROM agent_messages_fts`
+      )) as Array<{ rowid: number; part_id: string; content: string }>
+      expect(ftsRows).toEqual([{ rowid: 1, part_id: 'p-keep', content: '保留内容' }])
+
+      const stamps = (await db.all(
+        sql`SELECT value FROM system_settings WHERE key = ${AGENT_FTS_ROWID_SYNC_VERSION_KEY}`
+      )) as Array<{ value: string }>
+      expect(stamps).toEqual([])
+    })
   })
 })
