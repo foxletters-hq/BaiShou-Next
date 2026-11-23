@@ -358,6 +358,10 @@ async function refreshVaultIndexes(exec: SqlExecFn): Promise<void> {
       CREATE INDEX IF NOT EXISTS memory_embeddings_vault_id_source
       ON memory_embeddings (vault_id, source_type)
     `)
+    await tryIndex(`
+      CREATE INDEX IF NOT EXISTS memory_embeddings_vault_id_dim_source
+      ON memory_embeddings (vault_id, dimension, source_type)
+    `)
   }
   if (await tableExists(exec, 'diary_embed_jobs')) {
     await tryIndex(`

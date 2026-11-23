@@ -82,8 +82,8 @@ export class MemoryRepository {
       const vectorBuffer = this.serializeVector(params.queryVector)
       const topK = params.limit ?? 5
 
-      // 构建非常基础的 WHERE 预过滤条件 (过滤模型防止维度报错)
-      let whereCondition = sql`${memoryEmbeddingsTable.modelId} = ${params.modelId}`
+      // 构建预过滤条件（同时过滤 modelId 与 dimension 防止异构维度行触发 vec_distance_cosine 抛错）
+      let whereCondition = sql`${memoryEmbeddingsTable.modelId} = ${params.modelId} AND ${memoryEmbeddingsTable.dimension} = ${params.queryVector.length}`
 
       if (params.sourceType) {
         whereCondition = sql`${whereCondition} AND ${memoryEmbeddingsTable.sourceType} = ${params.sourceType}`

@@ -132,6 +132,7 @@ export class MigrationService {
       if (pendingMigrations.length === 0) {
         logger.info('[MigrationService] Agent DB Schema 已是最新版本。')
         if (!isAgentMigrationArchiveImport() && (await this._isSchemaCompatCurrent())) {
+          await ensureMemoryEmbeddingsVaultIndex(this.sqlExec())
           await migrateLegacyDefaultAssistantInDb(this.sqlExec())
           logger.info(
             '[MigrationService] Agent DB Schema 兼容性与 FTS 索引均为最新，跳过重复回填与重建。'

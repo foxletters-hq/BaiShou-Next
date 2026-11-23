@@ -15,7 +15,9 @@ import {
   type HybridSearchRuntimeState
 } from './hybrid-search.repository.constants'
 
-type QueryFilter = Pick<VectorSearchQueryFilter, 'sourceType' | 'startMs' | 'endMs' | 'vaultId'>
+type QueryFilter = Pick<VectorSearchQueryFilter, 'sourceType' | 'startMs' | 'endMs' | 'vaultId'> & {
+  dimension?: number
+}
 type SqlBindValue = string | number | null | Uint8Array | ArrayBuffer
 
 /** LIKE 兜底检索按空白/标点拆词，避免「工具测试 记忆 日记」这类整句永远匹配不到。 */
@@ -53,6 +55,12 @@ export class HybridSearchVectorQuery {
     } else {
       // 未传仓库 → fail-closed，避免漏传退化成跨仓库检索
       conditions.push('1 = 0')
+    }
+
+    if (filter?.dimension != null && filter.dimension > 0) {
+      // 显式过滤维度，防止库内残留异构维度行触发 vec_distance_cosine 抛错而静默退化为全表 JS 扫描
+      conditions.push(`${columnPrefix}dimension = ?`)
+      args.push(filter.dimension)
     }
 
     if (filter?.sourceType) {
@@ -125,13 +133,15 @@ export class HybridSearchVectorQuery {
     limit: number,
     filter?: VectorSearchQueryFilter
   ): Promise<ISearchResult[]> {
+    if (vector.length === 0) return []
     const threshold = filter?.threshold
     const vectorBuffer = embeddingVectorToBytes(vector)
     const queryFilter: QueryFilter = {
       sourceType: filter?.sourceType,
       startMs: filter?.startMs,
       endMs: filter?.endMs,
-      vaultId: filter?.vaultId
+      vaultId: filter?.vaultId,
+      dimension: vector.length
     }
 
     if (this.runtime.vecDistanceCosineAvailable !== false) {

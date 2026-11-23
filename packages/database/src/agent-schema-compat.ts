@@ -44,6 +44,11 @@ export const MEMORY_EMBEDDINGS_VAULT_INDEX_SQL = `
   ON memory_embeddings (vault_id, source_type)
 `
 
+export const MEMORY_EMBEDDINGS_VAULT_DIM_SOURCE_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS memory_embeddings_vault_id_dim_source
+  ON memory_embeddings (vault_id, dimension, source_type)
+`
+
 /** 日记 RAG 嵌入欠账表；成功后删行，不保留永久历史 */
 export const DIARY_EMBED_JOBS_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS diary_embed_jobs (

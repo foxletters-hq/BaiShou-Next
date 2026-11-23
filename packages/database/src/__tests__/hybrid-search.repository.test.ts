@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createClient, Client } from '@libsql/client'
 import { SqliteHybridSearchRepository } from '../repositories/hybrid-search.repository'
+import { HybridSearchVectorQuery } from '../repositories/hybrid-search.repository.vector-search'
+import { createHybridSearchRuntimeState } from '../repositories/hybrid-search.repository.constants'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import * as os from 'node:os'
@@ -343,6 +345,79 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
       // 按 embedding_id 删除测试
       await repo.deleteEmbeddingsBySource('memory', 'emb-1')
       expect(await repo.getBySource('memory', 'mem-1', { vaultId: 'vault-a' })).toBeNull()
+    })
+  })
+
+  describe('Dimension Filtering', () => {
+    it('should include dimension = ? filter in vec_distance_cosine query and bind vector.length', async () => {
+      const execute = vi.fn().mockResolvedValue({
+        rows: [
+          {
+            embedding_id: 'e1',
+            source_id: 's1',
+            sessionId: 'diary',
+            chunkText: 'hello',
+            createdAt: 1000,
+            sourceType: 'diary',
+            distance: 0.1
+          }
+        ]
+      })
+      const runtime = createHybridSearchRuntimeState()
+      const vectorQuery = new HybridSearchVectorQuery({ execute }, runtime)
+
+      const queryVector = [0.25, 0.5, 0.75, 0.1]
+      const results = await vectorQuery.queryNativeVector(queryVector, 5, {
+        vaultId: 'vlt_demo',
+        sourceType: 'diary'
+      })
+
+      expect(results).toHaveLength(1)
+      expect(execute).toHaveBeenCalledTimes(1)
+      const callArg = execute.mock.calls[0]?.[0] as { sql: string; args: unknown[] }
+      expect(callArg.sql).toContain('vec_distance_cosine(embedding, ?)')
+      expect(callArg.sql).toContain('dimension = ?')
+      // args: [vectorBuffer, vaultId, dimension, sourceType, limit]
+      expect(callArg.args[1]).toBe('vlt_demo')
+      expect(callArg.args[2]).toBe(4)
+      expect(callArg.args[3]).toBe('diary')
+      expect(callArg.args[4]).toBe(5)
+    })
+
+    it('should ignore heterogeneous dimension rows during vector search', async () => {
+      await repo.insertEmbedding({
+        id: 'dim-3-match',
+        sourceType: 'diary',
+        sourceId: 'd1',
+        groupId: 'diary',
+        vaultId: 'Personal',
+        chunkIndex: 0,
+        chunkText: '3D vector row',
+        embedding: [1, 0, 0],
+        modelId: 'm-3d'
+      })
+      await repo.insertEmbedding({
+        id: 'dim-4-stale',
+        sourceType: 'diary',
+        sourceId: 'd2',
+        groupId: 'diary',
+        vaultId: 'Personal',
+        chunkIndex: 0,
+        chunkText: '4D stale vector row',
+        embedding: [1, 0, 0, 0],
+        modelId: 'm-4d'
+      })
+
+      const results = await repo.queryNativeVector([1, 0, 0], 5, { vaultId: 'Personal' })
+      expect(results.map((r) => r.messageId)).toEqual(['dim-3-match'])
+    })
+
+    it('should return empty array immediately for empty query vector', async () => {
+      const execute = vi.fn()
+      const vectorQuery = new HybridSearchVectorQuery({ execute }, createHybridSearchRuntimeState())
+      const results = await vectorQuery.queryNativeVector([], 5, { vaultId: 'Personal' })
+      expect(results).toEqual([])
+      expect(execute).not.toHaveBeenCalled()
     })
   })
 })

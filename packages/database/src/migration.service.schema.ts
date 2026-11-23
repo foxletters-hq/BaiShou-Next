@@ -11,6 +11,7 @@ import {
   GRAPH_PURGE_SOFT_DELETED_SQL,
   MEMORY_EMBEDDINGS_CREATE_SQL,
   MEMORY_EMBEDDINGS_INDEX_SQL,
+  MEMORY_EMBEDDINGS_VAULT_DIM_SOURCE_INDEX_SQL,
   MEMORY_EMBEDDINGS_VAULT_INDEX_SQL,
   SYSTEM_SETTINGS_CREATE_SQL
 } from './agent-schema-compat'
@@ -46,6 +47,7 @@ export async function ensureMemoryEmbeddingsTable(executeSql: MigrationSqlExecut
     await executeSql(MEMORY_EMBEDDINGS_CREATE_SQL)
     await executeSql(MEMORY_EMBEDDINGS_INDEX_SQL)
     await executeSql(MEMORY_EMBEDDINGS_VAULT_INDEX_SQL)
+    await executeSql(MEMORY_EMBEDDINGS_VAULT_DIM_SOURCE_INDEX_SQL)
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
     logger.warn('[MigrationService] memory_embeddings 表检查失败（非阻塞）:', message)
@@ -60,7 +62,16 @@ export async function ensureMemoryEmbeddingsVaultIndex(
       `SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'`
     )
     if (table.rows.length === 0) return
-    await executeSql(MEMORY_EMBEDDINGS_VAULT_INDEX_SQL)
+    const tableInfo = await executeSql(`PRAGMA table_info(memory_embeddings)`)
+    const columns = new Set(
+      tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
+    )
+    if (columns.has('vault_id') && columns.has('source_type')) {
+      await executeSql(MEMORY_EMBEDDINGS_VAULT_INDEX_SQL)
+      if (columns.has('dimension')) {
+        await executeSql(MEMORY_EMBEDDINGS_VAULT_DIM_SOURCE_INDEX_SQL)
+      }
+    }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
     logger.warn('[MigrationService] memory_embeddings vault 索引检查失败（非阻塞）:', message)
