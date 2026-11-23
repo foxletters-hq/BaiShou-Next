@@ -68,4 +68,22 @@ describe('mobile-diagnostic-log.util', () => {
     expect(remaining.lines[1]).toContain('after-flush-start')
     expect(logBuffer.unflushedSize()).toBe(2)
   })
+
+  it('should redact raw float embedding arrays and oversized embedding responseBody payloads', () => {
+    const rawVector = Array.from({ length: 4096 }, (_, i) => i * 0.0001)
+    expect(serializeDiagnosticArg(rawVector)).toBe('[number[4096]]')
+
+    const apiErrorLike = {
+      name: 'AI_TypeValidationError',
+      message: 'Type validation failed',
+      responseBody: JSON.stringify({
+        data: [{ embedding: rawVector, index: 0, object: 'embedding' }],
+        model: 'Qwen/Qwen3-Embedding-8B'
+      }),
+      isRetryable: false
+    }
+    const serialized = serializeDiagnosticArg({ error: apiErrorLike })
+    expect(serialized).toContain('[redacted embedding payload')
+    expect(serialized).not.toContain('0.0001,0.0002')
+  })
 })

@@ -300,9 +300,9 @@ export async function runMobileDerivedIndexHydration(options: {
     return
   }
   try {
-    const clientExecutor = createSqlExecutorFromDrizzleDb(options.drizzleDb)
+    const clientExecutor = createSqlExecutorFromDrizzleDb(options.drizzleDb, { priority: 'low' })
     const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
-    const graphRepo = new GraphRepository(options.drizzleDb)
+    const graphRepo = new GraphRepository(options.drizzleDb, { lockPriority: 'low' })
 
     let embeddingAdapter: EmbeddingAdapter | null = null
     if (options.embeddingProvider && options.embeddingModelId) {

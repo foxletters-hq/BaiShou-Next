@@ -148,7 +148,9 @@ export async function resolveMobileGraphExtractAlignDeps(options: {
   try {
     const { EmbeddingAdapter } = await import('@baishou/ai')
     const emb = await resolveMobileEmbeddingForHydration(options.settingsManager)
-    hsRepo = new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(options.drizzleDb))
+    hsRepo = new SqliteHybridSearchRepository(
+      createSqlExecutorFromDrizzleDb(options.drizzleDb, { priority: 'low' })
+    )
     if (emb.embeddingProvider && emb.embeddingModelId) {
       const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId, hsRepo)
       if (adapter.isConfigured) {
@@ -293,7 +295,8 @@ async function buildMobileExtractionService(options: {
       )
     )
   }
-  const repo = new GraphRepository(options.drizzleDb)
+  // 后台抽图落库走 low 优先级锁，确保用户前台查看图谱与 UI 读写永远优先插队
+  const repo = new GraphRepository(options.drizzleDb, { lockPriority: 'low' })
   let embedder: {
     embedQuery?: (text: string) => Promise<number[] | null>
     modelId?: string

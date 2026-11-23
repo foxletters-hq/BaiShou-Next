@@ -10,6 +10,7 @@ import {
   isRagMemoryEnabled,
   limitExecute,
   logger,
+  toSafeAiErrorLogMeta,
   overallFromPhaseCounts,
   phaseCountsFromPending,
   probeEmbeddingApi,
@@ -196,7 +197,9 @@ export async function runControlledDiaryBatchEmbedCore(
       await prepareMobileEmbeddingIndex(deps, adapter)
     } catch (error) {
       if (error instanceof MobileRagAbortError) throw error
-      logger.error('[MobileRag] prepare embedding index failed', { error })
+      logger.error('[MobileRag] prepare embedding index failed', {
+        error: toSafeAiErrorLogMeta(error)
+      })
       await finalizeBatchEmbedRagConfig(deps, true)
       return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'prepare-failed' }
     }
@@ -434,7 +437,7 @@ export async function runControlledDiaryBatchEmbedCore(
                 vaultName,
                 diaryId: meta.id,
                 date: dateLabel,
-                error
+                error: toSafeAiErrorLogMeta(error)
               })
             } finally {
               if (!itemFailed) progress.completed++

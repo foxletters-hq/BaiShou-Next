@@ -292,7 +292,9 @@ export async function runMobileManualPendingEmbedFill(
     await assertMobileRagCanContinue()
     const drizzleDb = agentDbRuntimeRef.current?.drizzleDb
     const liveUnembedded = drizzleDb
-      ? await new GraphRepository(drizzleDb).listUnembeddedLiveNodes(vaultId)
+      ? await new GraphRepository(drizzleDb, { lockPriority: 'low' }).listUnembeddedLiveNodes(
+          vaultId
+        )
       : []
     if (liveUnembedded.length > 0) {
       phases = patchPhaseCounts(phases, 'graph_node', {
@@ -313,7 +315,7 @@ export async function runMobileManualPendingEmbedFill(
       )
     }
     if (drizzleDb) {
-      const graphRepo = new GraphRepository(drizzleDb)
+      const graphRepo = new GraphRepository(drizzleDb, { lockPriority: 'low' })
       graphResult = await backfillUnembeddedGraphNodes({
         vaultId,
         concurrency: 4,

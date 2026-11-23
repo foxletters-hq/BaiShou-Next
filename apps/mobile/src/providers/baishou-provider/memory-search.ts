@@ -1,5 +1,5 @@
 import { EmbeddingAdapter } from '@baishou/ai'
-import { deriveLegacyVaultId, logger } from '@baishou/shared'
+import { deriveLegacyVaultId, logger, toSafeAiErrorLogMeta } from '@baishou/shared'
 import type { VaultService } from '@baishou/core-mobile'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 import type { AIProviderRegistry } from '@baishou/ai'
@@ -79,7 +79,9 @@ export function createMemorySearch(deps: {
       const embAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, runtime.hsRepo)
 
       // 生成查询向量
+      const embedStartedAt = Date.now()
       const queryVector = await embAdapter.embedQuery(query)
+      const embedApiMs = Date.now() - embedStartedAt
       if (!queryVector) {
         logger.warn('[MemorySearch] 查询向量生成失败，降级为 FTS 搜索')
         const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
@@ -97,12 +99,13 @@ export function createMemorySearch(deps: {
         queryText: query,
         topK,
         similarityThreshold: minScore,
-        filter: { vaultId: activeVaultId }
+        filter: { vaultId: activeVaultId },
+        embedApiMs
       })
 
       return mapResults(results)
     } catch (e) {
-      logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', e as Error)
+      logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', { error: toSafeAiErrorLogMeta(e) })
       const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
         vaultId: activeVaultId
       })

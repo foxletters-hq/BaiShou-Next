@@ -4,6 +4,7 @@ import {
   logger,
   SEMANTIC_SEARCH_TIMEOUT_MS,
   timestampToMillis,
+  toSafeAiErrorLogMeta,
   withPromiseTimeout,
   type RagVectorKindFilter
 } from '@baishou/shared'
@@ -110,7 +111,7 @@ export async function queryMobileRagEntries(
         'semantic search'
       )
     } catch (error) {
-      logger.warn('[mobile-rag] semantic search failed', { error })
+      logger.warn('[mobile-rag] semantic search failed', { error: toSafeAiErrorLogMeta(error) })
       throw error
     }
   }
