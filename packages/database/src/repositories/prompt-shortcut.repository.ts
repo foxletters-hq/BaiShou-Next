@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
+import { notifySystemSettingsExternalMutation } from './settings.repository'
 import {
   SHORTCUT_TRACE_CHAIN,
   traceCall,
@@ -98,6 +99,7 @@ export class PromptShortcutRepository {
                 updatedAt: new Date()
               }
             })
+          notifySystemSettingsExternalMutation(KEY)
         })
       },
       { payload: normalized }

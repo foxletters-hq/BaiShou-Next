@@ -19,11 +19,27 @@ function toEpochMs(value: unknown): number | undefined {
   return undefined
 }
 
+const yieldMacroTask = (): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
+
 export class SessionSyncService {
   constructor(
     private readonly sessionRepo: SessionRepository,
     private readonly fileService: SessionFileService
   ) {}
+
+  private getBackgroundRepo(): SessionRepository {
+    const withPriority = (
+      this.sessionRepo as SessionRepository & {
+        withLockPriority?: (priority: 'high' | 'low') => SessionRepository
+      }
+    ).withLockPriority
+    return typeof withPriority === 'function'
+      ? withPriority.call(this.sessionRepo, 'low')
+      : this.sessionRepo
+  }
 
   /**
    * 同步指定的 JSON Session 到 DB 影子表中。
@@ -48,6 +64,7 @@ export class SessionSyncService {
    * 传入 diskVaultNames 时扫描全部工作区 Sessions/（跨 vault），否则仅扫活跃 vault。
    */
   async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
+    const bgRepo = this.getBackgroundRepo()
     const vaultNames = [
       ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
     ]
@@ -55,7 +72,7 @@ export class SessionSyncService {
       vaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(vaultNames)
         : await this.fileService.listAllSessions()
-    const allDbSessions = await this.sessionRepo.findAllSessionsAcrossVaults(-1)
+    const allDbSessions = await bgRepo.findAllSessionsAcrossVaults(-1)
     const maxBytes = options?.maxSessionJsonReadBytes
 
     console.warn('[SessionSync][FullScan]', {
@@ -83,8 +100,10 @@ export class SessionSyncService {
         }
         const sessionData = await this.fileService.readSession(f.id, vaultName)
         if (sessionData) {
-          await this.sessionRepo.upsertAggregate(sessionData)
+          await bgRepo.upsertAggregate(sessionData)
           upserted++
+          // 每落库 1 个会话主动让出宏任务，让挂起的前台 UI 事件与 high 优先级 DB 请求立即插队拿锁
+          await yieldMacroTask()
         }
       } catch (e: any) {
         skipped++
@@ -92,7 +111,7 @@ export class SessionSyncService {
       }
     }
 
-    const deletedGhosts = await this.cleanupGhostSessions(allFiles, allDbSessions, options)
+    const deletedGhosts = await this.cleanupGhostSessions(allFiles, allDbSessions, options, bgRepo)
 
     console.warn('[SessionSync][FullScan] done', {
       upserted,
@@ -106,6 +125,7 @@ export class SessionSyncService {
    * 仍对已扫描 vault 做幽灵清理。
    */
   async reconcileFromDisks(options?: DiskResyncOptions): Promise<void> {
+    const bgRepo = this.getBackgroundRepo()
     const vaultNames = [
       ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
     ]
@@ -113,7 +133,7 @@ export class SessionSyncService {
       vaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(vaultNames)
         : await this.fileService.listAllSessions()
-    const allDbSessions = await this.sessionRepo.findAllSessionsAcrossVaults(-1)
+    const allDbSessions = await bgRepo.findAllSessionsAcrossVaults(-1)
     const dbById = new Map(allDbSessions.map((s) => [s.id, s]))
     const maxBytes = options?.maxSessionJsonReadBytes
 
@@ -154,8 +174,10 @@ export class SessionSyncService {
 
         const sessionData = await this.fileService.readSession(f.id, vaultName)
         if (sessionData) {
-          await this.sessionRepo.upsertAggregate(sessionData)
+          await bgRepo.upsertAggregate(sessionData)
           upserted++
+          // 每落库 1 个会话主动让出宏任务，让挂起的前台 UI 事件与 high 优先级 DB 请求立即插队拿锁
+          await yieldMacroTask()
         }
       } catch (e: any) {
         skipped++
@@ -163,7 +185,7 @@ export class SessionSyncService {
       }
     }
 
-    const deletedGhosts = await this.cleanupGhostSessions(allFiles, allDbSessions, options)
+    const deletedGhosts = await this.cleanupGhostSessions(allFiles, allDbSessions, options, bgRepo)
 
     console.warn('[SessionSync][Reconcile] done', {
       upserted,
@@ -180,7 +202,8 @@ export class SessionSyncService {
       vaultName?: string | null
       vaultId?: string | null
     }>,
-    options?: DiskResyncOptions
+    options?: DiskResyncOptions,
+    repo: SessionRepository = this.sessionRepo
   ): Promise<number> {
     // 兜底：全盘一个会话文件都没读到，但库里仍有会话时，几乎一定是工作区目录未挂载 /
     // 路径异常 / 权限失败，而不是用户真的把所有会话删光了。此时禁止按“幽灵”清库。
@@ -256,7 +279,7 @@ export class SessionSyncService {
       toDeleteIds.push(dbRecord.id)
     }
     if (toDeleteIds.length > 0) {
-      await this.sessionRepo.deleteSessions(toDeleteIds)
+      await repo.deleteSessions(toDeleteIds)
     }
     return toDeleteIds.length
   }

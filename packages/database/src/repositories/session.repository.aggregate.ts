@@ -47,6 +47,13 @@ function resolveSessionVaultId(session: {
   return deriveLegacyVaultId(vaultName)
 }
 
+// 严守 SQLite SQLITE_MAX_VARIABLE_NUMBER (32766) 上限，显著降低移动端 runAsync 跨 JNI 桥往返次数：
+// agent_messages: 14 列/行 × 200 = 2800 参数；agent_parts: 6 列/行 × 400 = 2400 参数
+const MSG_BATCH = 200
+const PART_BATCH = 400
+const MSG_ROW_PLACEHOLDER = '(?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+const PART_ROW_PLACEHOLDER = '(?,?,?,?,?,?)'
+
 export class SessionAggregateSync {
   private static writeMutex: Promise<void> = Promise.resolve()
 
@@ -231,27 +238,60 @@ export class SessionAggregateSync {
     })
 
     if (messages && messages.length > 0) {
-      for (const m of messages) {
+      // 先按批写入全部 agent_messages，再按批写入全部 agent_parts，满足 message_id 外键约束
+      for (let i = 0; i < messages.length; i += MSG_BATCH) {
+        const chunk = messages.slice(i, i + MSG_BATCH)
+        const placeholders = chunk.map(() => MSG_ROW_PLACEHOLDER).join(',')
+        const args: unknown[] = []
+        for (const m of chunk) {
+          args.push(...this._buildMessageInsertArgs(m, toUnixSec))
+        }
         stmts.push({
           sql: `INSERT OR IGNORE INTO agent_messages
                     (id, session_id, role, is_summary, order_index,
                      input_tokens, output_tokens, cache_read_input_tokens, cache_write_input_tokens,
                      cost_micros, provider_id, model_id, ask_id, created_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          args: this._buildMessageInsertArgs(m, toUnixSec)
+                    VALUES ${placeholders}`,
+          args
         })
+      }
 
+      const allParts: Array<{
+        id: unknown
+        messageId: unknown
+        sessionId: unknown
+        type: unknown
+        dataStr: string
+        createdAtSec: number
+      }> = []
+      for (const m of messages) {
         if (m.parts && m.parts.length > 0) {
           for (const p of m.parts) {
-            const dataStr = typeof p.data === 'string' ? p.data : JSON.stringify(p.data ?? null)
-            stmts.push({
-              sql: `INSERT OR IGNORE INTO agent_parts
-                          (id, message_id, session_id, type, data, created_at)
-                          VALUES (?,?,?,?,?,?)`,
-              args: [p.id, p.messageId, p.sessionId, p.type, dataStr, toUnixSec(p.createdAt)]
+            allParts.push({
+              id: p.id,
+              messageId: p.messageId ?? p.message_id ?? m.id,
+              sessionId: p.sessionId ?? p.session_id ?? session.id,
+              type: p.type,
+              dataStr: typeof p.data === 'string' ? p.data : JSON.stringify(p.data ?? null),
+              createdAtSec: toUnixSec(p.createdAt ?? p.created_at)
             })
           }
         }
+      }
+
+      for (let i = 0; i < allParts.length; i += PART_BATCH) {
+        const chunk = allParts.slice(i, i + PART_BATCH)
+        const placeholders = chunk.map(() => PART_ROW_PLACEHOLDER).join(',')
+        const args: unknown[] = []
+        for (const p of chunk) {
+          args.push(p.id, p.messageId, p.sessionId, p.type, p.dataStr, p.createdAtSec)
+        }
+        stmts.push({
+          sql: `INSERT OR IGNORE INTO agent_parts
+                      (id, message_id, session_id, type, data, created_at)
+                      VALUES ${placeholders}`,
+          args
+        })
       }
     }
 

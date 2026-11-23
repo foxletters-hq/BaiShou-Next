@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
+import { notifySystemSettingsExternalMutation } from './settings.repository'
 import {
   USER_DEFAULT_AVATAR_SENTINEL,
   isCustomUserAvatar,
@@ -94,6 +95,7 @@ export class UserProfileRepository {
           updatedAt: new Date()
         }
       })
+    notifySystemSettingsExternalMutation(KEY)
   }
 
   /**

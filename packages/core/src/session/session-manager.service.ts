@@ -427,6 +427,10 @@ export class SessionManagerService {
       return { hydrated: false, reason: 'db-caught-up', dbCount, diskCount, missingCount: 0 }
     }
 
+    const bgRepo =
+      typeof this.sessionRepo.withLockPriority === 'function'
+        ? this.sessionRepo.withLockPriority('low')
+        : this.sessionRepo
     const maxBytes = options?.maxSessionJsonReadBytes
     let upserted = 0
     let skipped = 0
@@ -441,8 +445,9 @@ export class SessionManagerService {
         }
         const sessionData = await this.fileService.readSession(item.id, item.vaultName)
         if (sessionData) {
-          await this.sessionRepo.upsertAggregate(sessionData)
+          await bgRepo.upsertAggregate(sessionData)
           upserted++
+          await new Promise<void>((resolve) => setTimeout(resolve, 0))
         } else {
           skipped++
         }

@@ -217,4 +217,28 @@ describe('SessionSyncService', () => {
     expect(mockRepo.upsertAggregate).toHaveBeenCalledTimes(2)
     expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost'])
   })
+
+  it('reconcileFromDisks and fullScanArchives request low-priority repo view when available', async () => {
+    const lowRepo = {
+      findAllSessionsAcrossVaults: vi.fn().mockResolvedValue([]),
+      upsertAggregate: vi.fn().mockResolvedValue(undefined),
+      deleteSessions: vi.fn().mockResolvedValue(undefined)
+    }
+    const withLockPriority = vi.fn().mockReturnValue(lowRepo)
+    const prioritizedRepo = {
+      ...mockRepo,
+      withLockPriority
+    } as any
+    const prioritizedService = new SessionSyncService(prioritizedRepo, mockFileService)
+
+    mockFileService.listAllSessions.mockResolvedValue([{ id: 's-bg' }] as any)
+    mockFileService.readSession.mockResolvedValue({ session: { id: 's-bg' }, messages: [] } as any)
+
+    await prioritizedService.reconcileFromDisks({ activeVaultName: 'Personal' })
+    await prioritizedService.fullScanArchives({ activeVaultName: 'Personal' })
+
+    expect(withLockPriority).toHaveBeenCalledWith('low')
+    expect(lowRepo.upsertAggregate).toHaveBeenCalledTimes(2)
+    expect(mockRepo.upsertAggregate).not.toHaveBeenCalled()
+  })
 })

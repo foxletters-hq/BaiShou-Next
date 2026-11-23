@@ -167,4 +167,64 @@ describe('SessionAggregateSync', () => {
     expect(sessionInsert?.args?.[2]).toBe(deriveLegacyVaultId('Personal45'))
     expect(sessionInsert?.args?.[2]).not.toBe(deriveLegacyVaultId('Personal'))
   })
+
+  it('batches agent_messages by 200 and agent_parts by 400 while preserving FK insert order', async () => {
+    const messages = Array.from({ length: 450 }, (_, i) => ({
+      id: `m-${i}`,
+      sessionId: 's-big',
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      isSummary: false,
+      orderIndex: i,
+      createdAt: 1_700_000_000_000 + i * 1000,
+      parts: [
+        {
+          id: `p-${i}-a`,
+          messageId: `m-${i}`,
+          sessionId: 's-big',
+          type: 'text',
+          data: { text: `hello ${i}` },
+          createdAt: 1_700_000_000_000 + i * 1000
+        },
+        {
+          id: `p-${i}-b`,
+          messageId: `m-${i}`,
+          sessionId: 's-big',
+          type: 'text',
+          data: { text: `world ${i}` },
+          createdAt: 1_700_000_000_000 + i * 1000
+        }
+      ]
+    }))
+
+    await sync.upsertAggregate({
+      session: {
+        id: 's-big',
+        vaultId: 'vlt_test',
+        createdAt: 1_700_000_000_000,
+        updatedAt: 1_700_000_500_000
+      },
+      messages
+    })
+
+    const stmts = batchMock.mock.calls[0]?.[0] as Array<{ sql: string; args?: unknown[] }>
+    const msgStmts = stmts.filter((s) => s.sql.includes('INSERT OR IGNORE INTO agent_messages'))
+    const partStmts = stmts.filter((s) => s.sql.includes('INSERT OR IGNORE INTO agent_parts'))
+
+    // 450 条消息 -> 200 + 200 + 50 = 3 批
+    expect(msgStmts).toHaveLength(3)
+    expect(msgStmts[0]!.args).toHaveLength(200 * 14)
+    expect(msgStmts[1]!.args).toHaveLength(200 * 14)
+    expect(msgStmts[2]!.args).toHaveLength(50 * 14)
+
+    // 900 条 parts -> 400 + 400 + 100 = 3 批
+    expect(partStmts).toHaveLength(3)
+    expect(partStmts[0]!.args).toHaveLength(400 * 6)
+    expect(partStmts[1]!.args).toHaveLength(400 * 6)
+    expect(partStmts[2]!.args).toHaveLength(100 * 6)
+
+    // 所有消息插入必须先于任意 part 插入，保证外键有效
+    const lastMsgIdx = stmts.lastIndexOf(msgStmts[msgStmts.length - 1]!)
+    const firstPartIdx = stmts.indexOf(partStmts[0]!)
+    expect(lastMsgIdx).toBeLessThan(firstPartIdx)
+  })
 })

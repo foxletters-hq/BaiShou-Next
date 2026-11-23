@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { SettingsRepository } from '../settings.repository'
+import { DEFAULT_PROFILE, UserProfileRepository } from '../user-profile.repository'
 import { systemSettingsTable } from '../../schema/system-settings'
 import {
   DEFAULT_AI_PROVIDERS,
@@ -128,6 +129,90 @@ describe('SettingsRepository', () => {
       // 确保存储项不相互覆盖
       const behaviorAgain = await repo.getAgentBehaviorConfig()
       expect(behaviorAgain.agentContextWindowSize).toBe(50)
+    })
+  })
+
+  describe('Write-Through Read Cache', () => {
+    it('should serve cached value without hitting db again and isolate returned object references', async () => {
+      await repo.set('cached_obj', { nested: { count: 1 } })
+      const selectSpy = vi.spyOn(db, 'select')
+
+      const first = await repo.get<{ nested: { count: number } }>('cached_obj')
+      expect(first).toEqual({ nested: { count: 1 } })
+      expect(selectSpy).not.toHaveBeenCalled()
+
+      // 篡改返回对象不能污染缓存内 JSON 字符串
+      first!.nested.count = 999
+      const second = await repo.get<{ nested: { count: number } }>('cached_obj')
+      expect(second).toEqual({ nested: { count: 1 } })
+      expect(selectSpy).not.toHaveBeenCalled()
+    })
+
+    it('should cache null results to prevent repeated db reads for missing keys', async () => {
+      const selectSpy = vi.spyOn(db, 'select')
+
+      expect(await repo.get('prompt_shortcuts_v2')).toBeNull()
+      expect(selectSpy).toHaveBeenCalledTimes(1)
+
+      expect(await repo.get('prompt_shortcuts_v2')).toBeNull()
+      expect(await repo.get('prompt_shortcuts_v2')).toBeNull()
+      expect(selectSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('should update cache on set and delete', async () => {
+      const selectSpy = vi.spyOn(db, 'select')
+
+      expect(await repo.get('dynamic_key')).toBeNull()
+      expect(selectSpy).toHaveBeenCalledTimes(1)
+
+      await repo.set('dynamic_key', { v: 1 })
+      expect(await repo.get<{ v: number }>('dynamic_key')).toEqual({ v: 1 })
+      expect(selectSpy).toHaveBeenCalledTimes(1)
+
+      await repo.delete('dynamic_key')
+      expect(await repo.get('dynamic_key')).toBeNull()
+      expect(selectSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('should prewarm cache on getAll and re-read from db after invalidateCache', async () => {
+      await db.insert(systemSettingsTable).values([
+        { key: 'k1', value: JSON.stringify({ a: 1 }), updatedAt: new Date() },
+        { key: 'k2', value: JSON.stringify('hello'), updatedAt: new Date() }
+      ])
+
+      const selectSpy = vi.spyOn(db, 'select')
+      const all = await repo.getAll()
+      expect(all).toEqual({ k1: { a: 1 }, k2: 'hello' })
+      expect(selectSpy).toHaveBeenCalledTimes(1)
+
+      expect(await repo.get<{ a: number }>('k1')).toEqual({ a: 1 })
+      expect(await repo.get<string>('k2')).toBe('hello')
+      expect(selectSpy).toHaveBeenCalledTimes(1)
+
+      // 单键失效只清该键
+      repo.invalidateCache('k1')
+      expect(await repo.get<{ a: number }>('k1')).toEqual({ a: 1 })
+      expect(selectSpy).toHaveBeenCalledTimes(2)
+      expect(await repo.get<string>('k2')).toBe('hello')
+      expect(selectSpy).toHaveBeenCalledTimes(2)
+
+      // 全量失效后全部重新查库
+      repo.invalidateCache()
+      expect(await repo.get<string>('k2')).toBe('hello')
+      expect(selectSpy).toHaveBeenCalledTimes(3)
+    })
+
+    it('should invalidate cached key when UserProfileRepository writes system_settings directly', async () => {
+      expect(await repo.get('user_profile_data')).toBeNull()
+
+      const profileRepo = new UserProfileRepository(db)
+      await profileRepo.saveProfile({
+        ...DEFAULT_PROFILE,
+        nickname: 'Alice'
+      })
+
+      const fresh = await repo.get<{ nickname: string }>('user_profile_data')
+      expect(fresh?.nickname).toBe('Alice')
     })
   })
 })
