@@ -6,6 +6,7 @@ import {
   hashEmbedSourceContent,
   logger,
   mergeEmbedContentHashIntoMetadata,
+  toSafeAiErrorLogMeta,
   toSerializableAiError
 } from '@baishou/shared'
 import { normalizeEmbeddingVector, splitTextIntoChunks } from '../../rag/embedding-chunk'
@@ -67,7 +68,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
       )
       return embedding?.length ? normalizeEmbeddingVector(embedding) : null
     } catch (e) {
-      logger.warn('[EmbeddingAdapter] 查询特征抽取失败', { error: e })
+      logger.warn('[EmbeddingAdapter] 查询特征抽取失败', { error: toSafeAiErrorLogMeta(e) })
       throw toSerializableAiError(e)
     }
   }
@@ -96,7 +97,9 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         if (!isTransientEmbeddingError(e)) {
           this.batchUnsupported = true
         }
-        logger.warn('[EmbeddingAdapter] embedMany fallback to concurrent embedQuery', { error: e })
+        logger.warn('[EmbeddingAdapter] embedMany fallback to concurrent embedQuery', {
+          error: toSafeAiErrorLogMeta(e)
+        })
       }
     }
     const out: Array<number[] | null> = new Array(texts.length).fill(null)
@@ -132,13 +135,13 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         if (attempt < EMBED_MAX_ATTEMPTS) {
           const delayMs = attempt * 1000
           logger.warn(`[EmbeddingAdapter] ${label} retry ${attempt}/${EMBED_MAX_ATTEMPTS}`, {
-            error: e
+            error: toSafeAiErrorLogMeta(e)
           })
           await new Promise((resolve) => setTimeout(resolve, delayMs))
         }
       }
     }
-    logger.error(`[EmbeddingAdapter] ${label} failed`, { error: lastError })
+    logger.error(`[EmbeddingAdapter] ${label} failed`, { error: toSafeAiErrorLogMeta(lastError) })
     return null
   }
 
@@ -211,7 +214,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         const msg = String((e as { message?: string } | null)?.message ?? e ?? '')
         if (!msg.includes('No "embedMany" export')) {
           logger.warn('[EmbeddingAdapter] embedText embedMany fallback to per-chunk embed', {
-            error: e
+            error: toSafeAiErrorLogMeta(e)
           })
         }
       }

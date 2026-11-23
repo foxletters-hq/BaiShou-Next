@@ -8,7 +8,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext, VectorSearchTimeFilter } from './agent.tool'
-import { clampRagTopK, formatAiApiCallError, formatStoredTimestamp } from '@baishou/shared'
+import { clampRagTopK, formatAiApiCallError, formatStoredTimestamp, logger } from '@baishou/shared'
 import { HybridSearchUtils } from '../rag/hybrid-search'
 import type { ISearchResult } from '../rag/hybrid-search.types'
 import {
@@ -106,7 +106,9 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
     )
 
     try {
+      const embedStartedAt = Date.now()
       const queryEmbedding = await embeddingService.embedQuery(args.query)
+      const embedApiMs = Date.now() - embedStartedAt
       if (!queryEmbedding) {
         return '查询嵌入失败：未得到向量。请检查嵌入模型服务是否可用。'
       }
@@ -120,10 +122,12 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
       let results: ISearchResult[] = []
       const vaultId = context.vaultId
 
+      const vectorStartedAt = Date.now()
       const vectorRaw = await vectorStore.searchSimilar(queryEmbedding, maxResults, {
         ...timeFilter,
         vaultId
       })
+      const vectorQueryMs = Date.now() - vectorStartedAt
       const vectorResults: ISearchResult[] = vectorRaw.map((r) => ({
         messageId: r.sourceId,
         sessionId: r.groupId,
@@ -147,11 +151,14 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
         )
       }
 
+      let ftsQueryMs = 0
       if (mode === 'hybrid' && vectorStore.searchFts) {
+        const ftsStartedAt = Date.now()
         const ftsRaw = await vectorStore.searchFts(args.query, maxResults, {
           ...timeFilter,
           vaultId
         })
+        ftsQueryMs = Date.now() - ftsStartedAt
         pipeline.push(`📝 FTS关键词搜索: ${ftsRaw.length} 条命中`)
 
         const ftsResults: ISearchResult[] = ftsRaw.map((r) => ({
@@ -170,6 +177,16 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
       } else {
         results = vectorCandidates
       }
+
+      // 脱敏性能日志：仅记录分段耗时、向量维度与命中数，严禁输出 query 明文或原始浮点数组
+      logger.info('[VectorSearchTool] search metrics', {
+        mode,
+        embedApiMs,
+        vectorQueryMs,
+        ftsQueryMs,
+        dimension: queryEmbedding.length,
+        resultCount: results.length
+      })
 
       if (results.length === 0) {
         const rangeHint = rangeLabel ? `（时间范围: ${rangeLabel}）` : ''

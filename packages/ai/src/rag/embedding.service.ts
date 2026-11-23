@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { embed, embedMany } from 'ai'
 import {
   formatAiApiCallError,
+  toSafeAiErrorLogMeta,
   toSerializableAiError,
   deriveLegacyVaultId,
   isVaultId,
@@ -77,7 +78,7 @@ export class EmbeddingService {
       return dimension
     } catch (e: unknown) {
       logger.error('EmbeddingService: Dimension detection failed', {
-        error: e
+        error: toSafeAiErrorLogMeta(e)
       })
       throw new Error(`连接或鉴权失败: ${formatAiApiCallError(e)}`)
     }
@@ -130,7 +131,7 @@ export class EmbeddingService {
         }, `embedMessage chunk ${chunk.index}`)
       }
     } catch (e) {
-      logger.error('Embedding failed', { error: e })
+      logger.error('Embedding failed', { error: toSafeAiErrorLogMeta(e) })
     }
   }
 
@@ -153,7 +154,7 @@ export class EmbeddingService {
 
       return this.normalize(embedding)
     } catch (e) {
-      logger.error('Query embedding failed', { error: e })
+      logger.error('Query embedding failed', { error: toSafeAiErrorLogMeta(e) })
       throw toSerializableAiError(e)
     }
   }
@@ -329,7 +330,9 @@ export class EmbeddingService {
           }
           const msg = String((err as { message?: string } | null)?.message ?? err ?? '')
           if (!msg.includes('No "embedMany" export')) {
-            logger.warn('[EmbeddingService] embedMany fallback to per-chunk embed', { error: err })
+            logger.warn('[EmbeddingService] embedMany fallback to per-chunk embed', {
+              error: toSafeAiErrorLogMeta(err)
+            })
           }
         }
       }
@@ -425,7 +428,7 @@ export class EmbeddingService {
         })
       }
     } catch (e) {
-      logger.error('embedText failed', { error: e })
+      logger.error('embedText failed', { error: toSafeAiErrorLogMeta(e) })
       await this.writeEmbedLedgerFailure({
         vaultId,
         sourceType: params.sourceType,
@@ -584,11 +587,11 @@ export class EmbeddingService {
           const delayMs = attempt * 1000
           logger.warn(
             `${label} fallback (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms:`,
-            { error }
+            { error: toSafeAiErrorLogMeta(error) }
           )
           await abortableDelay(delayMs, migrationControl)
         } else {
-          logger.error(`${label} failed completely:`, { error })
+          logger.error(`${label} failed completely:`, { error: toSafeAiErrorLogMeta(error) })
           throw error
         }
       }

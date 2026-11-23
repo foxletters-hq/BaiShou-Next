@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { logger } from '@baishou/shared'
 import { HybridSearchService } from '../hybrid-search.service'
 import { IHybridSearchStorage, ISearchResult } from '../hybrid-search.types'
 
@@ -161,5 +162,53 @@ describe('HybridSearchService RRF Engine', () => {
     expect(mockStorage.fetchAllEmbeddingsForDecoupledSearch).not.toHaveBeenCalled()
     expect(results.length).toBe(1)
     expect(results[0]?.messageId).toBe('d-1')
+  })
+
+  it('should emit sanitized performance metrics without logging query plaintext or raw vectors', async () => {
+    const infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {})
+    const mockStorage: IHybridSearchStorage = {
+      supportsNativeVectorSearch: () => true,
+      queryFTS: vi.fn().mockResolvedValue([]),
+      queryNativeVector: vi.fn().mockResolvedValue([
+        {
+          messageId: 'd-1',
+          sessionId: 's1',
+          chunkText: '隐私正文内容',
+          score: 0.91,
+          source: 'vector'
+        }
+      ] as ISearchResult[]),
+      fetchAllEmbeddingsForDecoupledSearch: vi.fn().mockResolvedValue([])
+    }
+
+    const service = new HybridSearchService(mockStorage)
+    const secretQuery = '高度敏感的私人搜索词'
+    const queryVector = [0.123456, 0.654321, 0.111111, 0.222222]
+
+    await service.search({
+      queryText: secretQuery,
+      queryVector,
+      topK: 10,
+      embedApiMs: 42
+    })
+
+    const metricCall = infoSpy.mock.calls.find(
+      (call) => call[0] === '[HybridSearch] search metrics'
+    )
+    expect(metricCall).toBeDefined()
+    const meta = metricCall?.[1] as Record<string, unknown>
+    expect(meta).toEqual(
+      expect.objectContaining({
+        embedApiMs: 42,
+        dimension: 4,
+        resultCount: 1
+      })
+    )
+    expect(typeof meta.vectorQueryMs).toBe('number')
+    expect(typeof meta.ftsQueryMs).toBe('number')
+    const serialized = JSON.stringify(metricCall)
+    expect(serialized).not.toContain(secretQuery)
+    expect(serialized).not.toContain('0.123456')
+    infoSpy.mockRestore()
   })
 })

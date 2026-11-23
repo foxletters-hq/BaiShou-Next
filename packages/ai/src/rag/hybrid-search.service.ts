@@ -1,3 +1,4 @@
+import { logger } from '@baishou/shared'
 import { IHybridSearchStorage, ISearchQueryOptions, ISearchResult } from './hybrid-search.types'
 import { HybridSearchUtils } from './hybrid-search'
 
@@ -20,27 +21,52 @@ export class HybridSearchService {
       threshold: opts.similarityThreshold ?? opts.filter?.threshold
     }
 
+    let ftsQueryMs = 0
     const ftsPromise = opts.queryText.trim()
-      ? this.storage.queryFTS(opts.queryText, topK, {
-          startMs: filter.startMs,
-          endMs: filter.endMs,
-          vaultId: filter.vaultId
-        })
+      ? (async () => {
+          const startedAt = Date.now()
+          const rows = await this.storage.queryFTS(opts.queryText, topK, {
+            startMs: filter.startMs,
+            endMs: filter.endMs,
+            vaultId: filter.vaultId
+          })
+          ftsQueryMs = Date.now() - startedAt
+          return rows
+        })()
       : Promise.resolve([])
 
-    const vectorPromise = this.storage.queryNativeVector(opts.queryVector, topK, filter)
+    let vectorQueryMs = 0
+    const vectorPromise = (async () => {
+      const startedAt = Date.now()
+      const rows = await this.storage.queryNativeVector(opts.queryVector, topK, filter)
+      vectorQueryMs = Date.now() - startedAt
+      return rows
+    })()
 
     const [ftsResults, vectorResults] = await Promise.all([ftsPromise, vectorPromise])
 
-    if (ftsResults.length === 0) return vectorResults
-    if (vectorResults.length === 0) return ftsResults
+    const finalResults =
+      ftsResults.length === 0
+        ? vectorResults
+        : vectorResults.length === 0
+          ? ftsResults
+          : HybridSearchUtils.mergeRRF(
+              ftsResults,
+              vectorResults,
+              topK,
+              opts.ftsWeight,
+              opts.vectorWeight
+            )
 
-    return HybridSearchUtils.mergeRRF(
-      ftsResults,
-      vectorResults,
-      topK,
-      opts.ftsWeight,
-      opts.vectorWeight
-    )
+    // 脱敏性能日志：仅记录分段耗时、向量维度与命中数，严禁输出 query 明文或原始浮点数组
+    logger.info('[HybridSearch] search metrics', {
+      embedApiMs: opts.embedApiMs ?? null,
+      vectorQueryMs,
+      ftsQueryMs,
+      dimension: opts.queryVector.length,
+      resultCount: finalResults.length
+    })
+
+    return finalResults
   }
 }
