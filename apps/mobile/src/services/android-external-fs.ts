@@ -5,20 +5,33 @@ import {
   externalCopyAsync,
   externalCopyFileAsync,
   externalDelete,
+  externalDeleteAsync,
   externalGetInfo,
+  externalGetInfoAsync,
   externalMakeDirectory,
+  externalMakeDirectoryAsync,
   externalMove,
+  externalMoveAsync,
   externalReadBase64,
+  externalReadBase64Async,
   externalReadDirectory,
+  externalReadDirectoryAsync,
   externalReadString,
+  externalReadStringAsync,
   externalWriteBase64,
+  externalWriteBase64Async,
   externalWriteString,
+  externalWriteStringAsync,
   externalAppendString,
+  externalAppendStringAsync,
   localAppendString,
+  localAppendStringAsync,
   isExternalStorageNativeAvailable,
   isLocalFsNativeAvailable,
   localGetInfo,
+  localGetInfoAsync,
   localReadDirectory,
+  localReadDirectoryAsync,
   localMd5Hex,
   externalMd5Hex
 } from 'expo-baishou-server'
@@ -214,6 +227,80 @@ export function externalMd5HexSafe(uriOrPath: string): string | null {
 export function externalMoveSafe(from: string, to: string): void {
   ensureNativeModule()
   externalMove(toFileUri(from), toFileUri(to))
+}
+
+export async function externalGetInfoAsyncSafe(uriOrPath: string): Promise<ExternalPathInfo> {
+  ensureNativeModule()
+  return externalGetInfoAsync(toFileUri(uriOrPath))
+}
+
+export async function externalMkdirAsyncSafe(
+  uriOrPath: string,
+  intermediates = true
+): Promise<void> {
+  ensureNativeModule()
+  await externalMakeDirectoryAsync(toFileUri(uriOrPath), intermediates)
+}
+
+export async function externalWriteTextAsyncSafe(
+  uriOrPath: string,
+  content: string
+): Promise<void> {
+  ensureNativeModule()
+  await externalWriteStringAsync(toFileUri(uriOrPath), content)
+}
+
+export async function externalAppendTextAsyncSafe(
+  uriOrPath: string,
+  content: string
+): Promise<void> {
+  ensureNativeModule()
+  await externalAppendStringAsync(toFileUri(uriOrPath), content)
+}
+
+export async function localAppendTextAsyncSafe(uriOrPath: string, content: string): Promise<void> {
+  ensureNativeModule()
+  await localAppendStringAsync(normalizeStoragePath(uriOrPath), content)
+}
+
+export async function externalWriteB64AsyncSafe(uriOrPath: string, base64: string): Promise<void> {
+  ensureNativeModule()
+  await externalWriteBase64Async(toFileUri(uriOrPath), base64)
+}
+
+export async function externalReadTextAsyncSafe(uriOrPath: string): Promise<string> {
+  ensureNativeModule()
+  return externalReadStringAsync(toFileUri(uriOrPath))
+}
+
+export async function externalReadB64AsyncSafe(uriOrPath: string): Promise<string> {
+  ensureNativeModule()
+  return externalReadBase64Async(toFileUri(uriOrPath))
+}
+
+export async function externalDeleteAsyncSafe(uriOrPath: string, idempotent = true): Promise<void> {
+  ensureNativeModule()
+  await externalDeleteAsync(toFileUri(uriOrPath), idempotent)
+}
+
+export async function externalListDirAsyncSafe(uriOrPath: string): Promise<string[]> {
+  ensureNativeModule()
+  return externalReadDirectoryAsync(toFileUri(uriOrPath))
+}
+
+export async function localGetInfoAsyncSafe(uriOrPath: string): Promise<ExternalPathInfo> {
+  ensureNativeModule()
+  return localGetInfoAsync(normalizeStoragePath(uriOrPath))
+}
+
+export async function localListDirAsyncSafe(uriOrPath: string): Promise<string[]> {
+  ensureNativeModule()
+  return localReadDirectoryAsync(normalizeStoragePath(uriOrPath))
+}
+
+export async function externalMoveAsyncSafe(from: string, to: string): Promise<void> {
+  ensureNativeModule()
+  await externalMoveAsync(toFileUri(from), toFileUri(to))
 }
 
 export function externalCopySafe(from: string, to: string): void {

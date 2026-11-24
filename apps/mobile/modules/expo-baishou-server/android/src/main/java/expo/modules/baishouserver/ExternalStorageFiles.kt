@@ -323,7 +323,7 @@ object ExternalStorageFiles {
         }
     }
 
-    private val STORAGE_MIGRATION_SKIP_DIRS = setOf("snapshots", "temp")
+    private val STORAGE_MIGRATION_SKIP_DIRS = setOf("snapshots", "temp", ".nomedia")
     private const val STORAGE_MIGRATION_STAGING_DIR = ".baishou_migrate_staging"
 
     private fun normalizeStorageRootPath(path: String): String {
@@ -532,7 +532,7 @@ object ExternalStorageFiles {
     )
 
     private val ARCHIVE_SKIP_TOP_LEVEL =
-        setOf("AI", "database", "config", "manifest.json", "user-data") + ARCHIVE_RUNTIME_SQLITE_DB_NAMES
+        setOf("AI", "database", "config", "manifest.json", "user-data", ".nomedia") + ARCHIVE_RUNTIME_SQLITE_DB_NAMES
 
     private val ARCHIVE_SKIP_DIR_NAMES = setOf("snapshots", "temp", ".snapshots")
 
@@ -549,7 +549,8 @@ object ExternalStorageFiles {
         ".baishou",
         ".baishou-s3.json",
         ".git",
-        ".baishou-git.json"
+        ".baishou-git.json",
+        ".nomedia"
     ) + ARCHIVE_RUNTIME_SQLITE_DB_NAMES
 
     private val STORE_EXTENSIONS = setOf(

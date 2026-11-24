@@ -7,6 +7,7 @@ import {
 } from './expo-baishou-server.events'
 import {
   callNativeExternal,
+  callNativeExternalAsync,
   getNative,
   NATIVE_REBUILD_HINT,
   requireNative
@@ -130,6 +131,14 @@ export async function uploadLanFileAsync(
 
 export function externalMove(fromPath: string, toPath: string): void {
   callNativeExternal('externalMove', (mod) => mod.externalMove(fromPath, toPath))
+}
+
+export function externalMoveAsync(fromPath: string, toPath: string): Promise<void> {
+  return callNativeExternalAsync('externalMoveAsync', (mod) =>
+    typeof mod.externalMoveAsync === 'function'
+      ? mod.externalMoveAsync(fromPath, toPath)
+      : mod.externalMove(fromPath, toPath)
+  )
 }
 
 export function externalCopy(fromPath: string, toPath: string): void {

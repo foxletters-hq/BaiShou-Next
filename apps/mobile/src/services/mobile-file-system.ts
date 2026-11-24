@@ -2,24 +2,23 @@ import type { FileEncoding, FileStat, IFileSystem } from '@baishou/core-mobile'
 import { Platform } from 'react-native'
 import { isLocalFsNativeAvailable } from 'expo-baishou-server'
 import {
-  externalCopySafe,
   externalCopyAsyncSafe,
   externalCopyFileAsyncSafe,
-  externalDeleteSafe,
-  externalGetInfoSafe,
-  externalListDirSafe,
-  externalMkdirSafe,
-  externalMoveSafe,
-  externalReadB64Safe,
-  externalReadTextSafe,
-  externalWriteB64Safe,
-  externalWriteTextSafe,
-  externalAppendTextSafe,
-  localAppendTextSafe,
+  externalDeleteAsyncSafe,
+  externalGetInfoAsyncSafe,
+  externalListDirAsyncSafe,
+  externalMkdirAsyncSafe,
+  externalMoveAsyncSafe,
+  externalReadB64AsyncSafe,
+  externalReadTextAsyncSafe,
+  externalWriteB64AsyncSafe,
+  externalWriteTextAsyncSafe,
+  externalAppendTextAsyncSafe,
+  localAppendTextAsyncSafe,
   isAndroidAppSandboxPath,
   isExternalStoragePath,
-  localGetInfoSafe,
-  localListDirSafe,
+  localGetInfoAsyncSafe,
+  localListDirAsyncSafe,
   toFileUri,
   type ExternalPathInfo
 } from './android-external-fs'
@@ -40,6 +39,14 @@ function enoentError(filePath: string, syscall: string): Error & { code: string 
   }
   err.code = 'ENOENT'
   return err
+}
+
+function isNativeNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const code = (error as { code?: unknown }).code
+  if (code === 'ENOENT') return true
+  const msg = error instanceof Error ? error.message : String(error)
+  return /FileNotFoundException|\bENOENT\b|No such file/i.test(msg)
 }
 
 /** Android 沙盒路径用 java.io.File，避免 expo-file-system 对 Unicode 文件名的 stat/readdir 失败 */
@@ -71,10 +78,10 @@ function fileStatFromNativeInfo(
 export class MobileFileSystem implements IFileSystem {
   async exists(filePath: string): Promise<boolean> {
     if (isExternalStoragePath(filePath)) {
-      return externalGetInfoSafe(filePath).exists
+      return (await externalGetInfoAsyncSafe(filePath)).exists
     }
     if (shouldUseAndroidNativeLocalFs(filePath)) {
-      return localGetInfoSafe(filePath).exists
+      return (await localGetInfoAsyncSafe(filePath)).exists
     }
     const info = await SandboxFS.getInfoAsync(toFileUri(filePath))
     return info.exists
@@ -82,7 +89,7 @@ export class MobileFileSystem implements IFileSystem {
 
   async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
     if (isExternalStoragePath(dirPath)) {
-      externalMkdirSafe(dirPath, options?.recursive ?? true)
+      await externalMkdirAsyncSafe(dirPath, options?.recursive ?? true)
       return
     }
     const uri = toFileUri(dirPath)
@@ -96,7 +103,7 @@ export class MobileFileSystem implements IFileSystem {
 
   async readFile(filePath: string, encoding: FileEncoding = 'utf8'): Promise<string> {
     if (isExternalStoragePath(filePath)) {
-      const info = externalGetInfoSafe(filePath)
+      const info = await externalGetInfoAsyncSafe(filePath)
       if (!info.exists || info.isDirectory) {
         throw enoentError(filePath, 'open')
       }
@@ -106,7 +113,16 @@ export class MobileFileSystem implements IFileSystem {
           throw formatOversizedFileError(filePath, byteSize!)
         }
       }
-      return encoding === 'base64' ? externalReadB64Safe(filePath) : externalReadTextSafe(filePath)
+      try {
+        return encoding === 'base64'
+          ? await externalReadB64AsyncSafe(filePath)
+          : await externalReadTextAsyncSafe(filePath)
+      } catch (e) {
+        if (isNativeNotFoundError(e)) {
+          throw enoentError(filePath, 'open')
+        }
+        throw e
+      }
     }
     const uri = toFileUri(filePath)
     const info = await SandboxFS.getInfoAsync(uri)
@@ -126,18 +142,12 @@ export class MobileFileSystem implements IFileSystem {
 
   async writeFile(filePath: string, data: string, encoding: FileEncoding = 'utf8'): Promise<void> {
     if (isExternalStoragePath(filePath)) {
-      const fileUri = toFileUri(filePath)
-      const parentUri = fileUri.replace(/\/[^/]+$/, '')
-      if (parentUri && parentUri !== fileUri && isExternalStoragePath(parentUri)) {
-        const pi = externalGetInfoSafe(parentUri)
-        if (!pi.exists) {
-          externalMkdirSafe(parentUri, true)
-        }
-      }
+      // 原生 ExternalStorageFiles.writeString/writeBase64 内部已调用 parentFile.mkdirs()，
+      // 跳过冗余父目录 stat 可减少一次慢速外部存储 FUSE 往返。
       if (encoding === 'base64') {
-        externalWriteB64Safe(filePath, data)
+        await externalWriteB64AsyncSafe(filePath, data)
       } else {
-        externalWriteTextSafe(filePath, data)
+        await externalWriteTextAsyncSafe(filePath, data)
       }
       return
     }
@@ -158,27 +168,21 @@ export class MobileFileSystem implements IFileSystem {
     if (!data) return
 
     if (encoding === 'utf8' && Platform.OS === 'android' && isLocalFsNativeAvailable()) {
+      // 原生 appendString/appendStringAny 内部已执行 parentFile.mkdirs() 与 FileOutputStream(file, true)，
+      // 文件不存在时会自动创建；跳过 JS 侧 exists→writeFile 两步分支以消除 TOCTOU 竞态。
       if (isExternalStoragePath(filePath)) {
-        if (!(await this.exists(filePath))) {
-          await this.writeFile(filePath, data, encoding)
-          return
-        }
-        externalAppendTextSafe(filePath, data)
+        await externalAppendTextAsyncSafe(filePath, data)
         return
       }
       if (shouldUseAndroidNativeLocalFs(filePath) || isAndroidAppSandboxPath(filePath)) {
-        if (!(await this.exists(filePath))) {
-          await this.writeFile(filePath, data, encoding)
-          return
-        }
-        localAppendTextSafe(filePath, data)
+        await localAppendTextAsyncSafe(filePath, data)
         return
       }
     }
 
     if (isExternalStoragePath(filePath)) {
       if (await this.exists(filePath)) {
-        const info = externalGetInfoSafe(filePath)
+        const info = await externalGetInfoAsyncSafe(filePath)
         if (encoding !== 'base64') {
           const byteSize = normalizeExternalFileByteSize(info.size)
           if (shouldBlockMobileExternalTextRead(byteSize)) {
@@ -186,11 +190,13 @@ export class MobileFileSystem implements IFileSystem {
           }
         }
         const existing =
-          encoding === 'base64' ? externalReadB64Safe(filePath) : externalReadTextSafe(filePath)
+          encoding === 'base64'
+            ? await externalReadB64AsyncSafe(filePath)
+            : await externalReadTextAsyncSafe(filePath)
         if (encoding === 'base64') {
-          externalWriteB64Safe(filePath, existing + data)
+          await externalWriteB64AsyncSafe(filePath, existing + data)
         } else {
-          externalWriteTextSafe(filePath, existing + data)
+          await externalWriteTextAsyncSafe(filePath, existing + data)
         }
       } else {
         await this.writeFile(filePath, data, encoding)
@@ -215,12 +221,7 @@ export class MobileFileSystem implements IFileSystem {
     const destExternal = isExternalStoragePath(dest)
 
     if (srcExternal && destExternal) {
-      const srcInfo = externalGetInfoSafe(src)
-      if (srcInfo.isDirectory) {
-        await externalCopyAsyncSafe(src, dest)
-        return
-      }
-      externalCopySafe(src, dest)
+      await externalCopyAsyncSafe(src, dest)
       return
     }
 
@@ -254,9 +255,9 @@ export class MobileFileSystem implements IFileSystem {
       await externalCopyFileAsyncSafe(src, dest)
     } catch (error) {
       const srcInfo = isExternalStoragePath(src)
-        ? externalGetInfoSafe(src)
+        ? await externalGetInfoAsyncSafe(src)
         : shouldUseAndroidNativeLocalFs(src)
-          ? localGetInfoSafe(src)
+          ? await localGetInfoAsyncSafe(src)
           : await SandboxFS.getInfoAsync(toFileUri(src))
       if (srcInfo.isDirectory) {
         throw new Error(`Cannot copy directory across storage boundaries: ${src}`)
@@ -272,7 +273,7 @@ export class MobileFileSystem implements IFileSystem {
 
   async unlink(filePath: string): Promise<void> {
     if (isExternalStoragePath(filePath)) {
-      externalDeleteSafe(filePath, true)
+      await externalDeleteAsyncSafe(filePath, true)
       return
     }
     await SandboxFS.deleteAsync(toFileUri(filePath), { idempotent: true })
@@ -280,18 +281,32 @@ export class MobileFileSystem implements IFileSystem {
 
   async readdir(dirPath: string): Promise<string[]> {
     if (isExternalStoragePath(dirPath)) {
-      const info = externalGetInfoSafe(dirPath)
+      const info = await externalGetInfoAsyncSafe(dirPath)
       if (!info.exists || !info.isDirectory) {
         throw enoentError(dirPath, 'scandir')
       }
-      return externalListDirSafe(dirPath)
+      try {
+        return await externalListDirAsyncSafe(dirPath)
+      } catch (e) {
+        if (isNativeNotFoundError(e)) {
+          throw enoentError(dirPath, 'scandir')
+        }
+        throw e
+      }
     }
     if (shouldUseAndroidNativeLocalFs(dirPath)) {
-      const info = localGetInfoSafe(dirPath)
+      const info = await localGetInfoAsyncSafe(dirPath)
       if (!info.exists || !info.isDirectory) {
         throw enoentError(dirPath, 'scandir')
       }
-      return localListDirSafe(dirPath)
+      try {
+        return await localListDirAsyncSafe(dirPath)
+      } catch (e) {
+        if (isNativeNotFoundError(e)) {
+          throw enoentError(dirPath, 'scandir')
+        }
+        throw e
+      }
     }
     const uri = toFileUri(dirPath)
     const info = await SandboxFS.getInfoAsync(uri)
@@ -303,10 +318,10 @@ export class MobileFileSystem implements IFileSystem {
 
   async stat(filePath: string): Promise<FileStat> {
     if (isExternalStoragePath(filePath)) {
-      return fileStatFromNativeInfo(filePath, externalGetInfoSafe(filePath))
+      return fileStatFromNativeInfo(filePath, await externalGetInfoAsyncSafe(filePath))
     }
     if (shouldUseAndroidNativeLocalFs(filePath)) {
-      return fileStatFromNativeInfo(filePath, localGetInfoSafe(filePath))
+      return fileStatFromNativeInfo(filePath, await localGetInfoAsyncSafe(filePath))
     }
     const uri = toFileUri(filePath)
     const info = await SandboxFS.getInfoAsync(uri)
@@ -323,7 +338,7 @@ export class MobileFileSystem implements IFileSystem {
 
   async rename(oldPath: string, newPath: string): Promise<void> {
     if (isExternalStoragePath(oldPath) && isExternalStoragePath(newPath)) {
-      externalMoveSafe(oldPath, newPath)
+      await externalMoveAsyncSafe(oldPath, newPath)
       return
     }
     await SandboxFS.moveAsync({
@@ -335,7 +350,7 @@ export class MobileFileSystem implements IFileSystem {
   async rm(targetPath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
     const force = options?.force ?? true
     if (isExternalStoragePath(targetPath)) {
-      externalDeleteSafe(targetPath, force)
+      await externalDeleteAsyncSafe(targetPath, force)
       return
     }
     try {

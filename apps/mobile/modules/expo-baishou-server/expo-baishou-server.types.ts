@@ -118,17 +118,28 @@ export declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> 
   readLegacyFlutterSharedPreferencesXml(): string | null
   getLegacyFlutterAvatarsDirectory(): string | null
   externalGetInfo(path: string): ExternalPathInfo
+  externalGetInfoAsync?(path: string): Promise<ExternalPathInfo>
   externalMakeDirectory(path: string, intermediates: boolean): void
+  externalMakeDirectoryAsync?(path: string, intermediates: boolean): Promise<void>
   externalWriteString(path: string, content: string): void
+  externalWriteStringAsync?(path: string, content: string): Promise<void>
   externalAppendString(path: string, content: string): void
+  externalAppendStringAsync?(path: string, content: string): Promise<void>
   externalWriteBase64(path: string, base64: string): void
+  externalWriteBase64Async?(path: string, base64: string): Promise<void>
   externalReadString(path: string): string
+  externalReadStringAsync?(path: string): Promise<string>
   externalReadBase64(path: string): string
+  externalReadBase64Async?(path: string): Promise<string>
   externalDelete(path: string, idempotent: boolean): void
+  externalDeleteAsync?(path: string, idempotent: boolean): Promise<void>
   externalReadDirectory(path: string): string[]
+  externalReadDirectoryAsync?(path: string): Promise<string[]>
   externalScanIncrementalSyncFiles(path: string): ExternalIncrementalSyncScanEntry[]
   localGetInfo(path: string): ExternalPathInfo
+  localGetInfoAsync?(path: string): Promise<ExternalPathInfo>
   localReadDirectory(path: string): string[]
+  localReadDirectoryAsync?(path: string): Promise<string[]>
   localScanIncrementalSyncFiles(path: string): ExternalIncrementalSyncScanEntry[]
   localMd5Hex(path: string): string
   externalMd5Hex(path: string): string
@@ -141,6 +152,7 @@ export declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> 
     headers: Record<string, string>
   ): Promise<{ status: number }>
   localAppendString(path: string, content: string): void
+  localAppendStringAsync?(path: string, content: string): Promise<void>
   nativeUnzipArchive(zipPath: string, destDir: string): Promise<void>
   nativeZipArchiveExport(
     storageRoot: string,
@@ -156,6 +168,7 @@ export declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> 
   nativeCopyStorageRootAsync(sourceRoot: string, targetRoot: string): Promise<void>
   uploadLanFileAsync(url: string, filePath: string): Promise<{ status: number }>
   externalMove(fromPath: string, toPath: string): void
+  externalMoveAsync?(fromPath: string, toPath: string): Promise<void>
   externalCopy(fromPath: string, toPath: string): void
   externalCopyAsync(fromPath: string, toPath: string): Promise<void>
   externalCopyFileAsync(fromPath: string, toPath: string): Promise<void>

@@ -26,6 +26,8 @@ import java.util.HashMap
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
@@ -421,6 +423,37 @@ class ExpoBaishouServerModule : Module() {
     private val pendingMcpRequests = ConcurrentHashMap<String, PendingMcpRequest>()
     private val activeMcpStreams = ConcurrentHashMap<String, ActiveMcpStream>()
     private var pendingDirectoryPromise: Promise? = null
+    /**
+     * 单线程 FIFO 后台 I/O 执行器：
+     * 1) 将慢速 FUSE/隐私空间文件操作完全移出 RN JS 线程与 Android 主线程，避免 UI 冻结；
+     * 2) 严格保持与旧版同步调用一致的 FIFO 串行时序，杜绝同路径读写截断、双写交错与 SAF 追加覆盖。
+     * 大目录复制、ZIP 打包/解压、HTTP 上传仍使用独立线程，不占用此队列。
+     */
+    private val fsExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "baishou-fs-io").apply { isDaemon = true }
+    }
+
+    private fun runFsAsync(
+        promise: Promise,
+        errorCode: String,
+        fallbackMessage: String,
+        block: (Context) -> Any?
+    ) {
+        val context = appContext.reactContext
+        if (context == null) {
+            promise.reject("E_NO_CONTEXT", "React context is null", null)
+            return
+        }
+        fsExecutor.execute {
+            try {
+                promise.resolve(block(context))
+            } catch (e: java.io.FileNotFoundException) {
+                promise.reject("ENOENT", e.message ?: fallbackMessage, e)
+            } catch (e: Exception) {
+                promise.reject(errorCode, e.message ?: fallbackMessage, e)
+            }
+        }
+    }
 
     private fun parseMcpResponseHeaders(json: org.json.JSONObject): Map<String, String> {
         val headers = mutableMapOf<String, String>()
@@ -759,6 +792,84 @@ class ExpoBaishouServerModule : Module() {
             ExternalStorageFiles.readDirectory(context, path)
         }
 
+        AsyncFunction("externalGetInfoAsync") { path: String, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_INFO", "externalGetInfo failed") { ctx ->
+                ExternalStorageFiles.getInfo(ctx, path)
+            }
+        }
+
+        AsyncFunction("externalMakeDirectoryAsync") { path: String, intermediates: Boolean, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_MKDIR", "externalMakeDirectory failed") { ctx ->
+                ExternalStorageFiles.makeDirectory(ctx, path, intermediates)
+                null
+            }
+        }
+
+        AsyncFunction("externalWriteStringAsync") { path: String, content: String, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_WRITE", "externalWriteString failed") { ctx ->
+                ExternalStorageFiles.writeString(ctx, path, content)
+                null
+            }
+        }
+
+        AsyncFunction("externalAppendStringAsync") { path: String, content: String, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_APPEND", "externalAppendString failed") { ctx ->
+                ExternalStorageFiles.appendString(ctx, path, content)
+                null
+            }
+        }
+
+        AsyncFunction("externalWriteBase64Async") { path: String, base64: String, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_WRITE_B64", "externalWriteBase64 failed") { ctx ->
+                ExternalStorageFiles.writeBase64(ctx, path, base64)
+                null
+            }
+        }
+
+        AsyncFunction("externalReadStringAsync") { path: String, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_READ", "externalReadString failed") { ctx ->
+                ExternalStorageFiles.readString(ctx, path)
+            }
+        }
+
+        AsyncFunction("externalReadBase64Async") { path: String, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_READ_B64", "externalReadBase64 failed") { ctx ->
+                ExternalStorageFiles.readBase64(ctx, path)
+            }
+        }
+
+        AsyncFunction("externalDeleteAsync") { path: String, idempotent: Boolean, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_DELETE", "externalDelete failed") { ctx ->
+                ExternalStorageFiles.deletePath(ctx, path, idempotent)
+                null
+            }
+        }
+
+        AsyncFunction("externalReadDirectoryAsync") { path: String, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_READDIR", "externalReadDirectory failed") { ctx ->
+                ExternalStorageFiles.readDirectory(ctx, path)
+            }
+        }
+
+        AsyncFunction("localGetInfoAsync") { path: String, promise: Promise ->
+            runFsAsync(promise, "E_LOCAL_INFO", "localGetInfo failed") { ctx ->
+                ExternalStorageFiles.getInfoAny(ctx, path)
+            }
+        }
+
+        AsyncFunction("localReadDirectoryAsync") { path: String, promise: Promise ->
+            runFsAsync(promise, "E_LOCAL_READDIR", "localReadDirectory failed") { ctx ->
+                ExternalStorageFiles.readDirectoryAny(ctx, path)
+            }
+        }
+
+        AsyncFunction("localAppendStringAsync") { path: String, content: String, promise: Promise ->
+            runFsAsync(promise, "E_LOCAL_APPEND", "localAppendString failed") { ctx ->
+                ExternalStorageFiles.appendStringAny(ctx, path, content)
+                null
+            }
+        }
+
         Function("externalScanIncrementalSyncFiles") { path: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
             ExternalStorageFiles.scanIncrementalSyncFiles(context, path)
@@ -901,6 +1012,13 @@ class ExpoBaishouServerModule : Module() {
         Function("externalMove") { fromPath: String, toPath: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
             ExternalStorageFiles.movePath(context, fromPath, toPath)
+        }
+
+        AsyncFunction("externalMoveAsync") { fromPath: String, toPath: String, promise: Promise ->
+            runFsAsync(promise, "E_EXTERNAL_MOVE", "externalMove failed") { ctx ->
+                ExternalStorageFiles.movePath(ctx, fromPath, toPath)
+                null
+            }
         }
 
         Function("externalCopy") { fromPath: String, toPath: String ->

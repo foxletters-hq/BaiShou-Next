@@ -1,5 +1,6 @@
 import {
   callNativeExternal,
+  callNativeExternalAsync,
   NATIVE_REBUILD_HINT,
   requireNative
 } from './expo-baishou-server.native'
@@ -91,4 +92,100 @@ export function readFileChunkBase64(path: string, position: number, length: numb
 
 export function localAppendString(path: string, content: string): void {
   callNativeExternal('localAppendString', (mod) => mod.localAppendString(path, content))
+}
+
+export function externalGetInfoAsync(path: string): Promise<ExternalPathInfo> {
+  return callNativeExternalAsync('externalGetInfoAsync', (mod) =>
+    typeof mod.externalGetInfoAsync === 'function'
+      ? mod.externalGetInfoAsync(path)
+      : mod.externalGetInfo(path)
+  )
+}
+
+export function externalMakeDirectoryAsync(path: string, intermediates = true): Promise<void> {
+  return callNativeExternalAsync('externalMakeDirectoryAsync', (mod) =>
+    typeof mod.externalMakeDirectoryAsync === 'function'
+      ? mod.externalMakeDirectoryAsync(path, intermediates)
+      : mod.externalMakeDirectory(path, intermediates)
+  )
+}
+
+export function externalWriteStringAsync(path: string, content: string): Promise<void> {
+  return callNativeExternalAsync('externalWriteStringAsync', (mod) =>
+    typeof mod.externalWriteStringAsync === 'function'
+      ? mod.externalWriteStringAsync(path, content)
+      : mod.externalWriteString(path, content)
+  )
+}
+
+export function externalAppendStringAsync(path: string, content: string): Promise<void> {
+  return callNativeExternalAsync('externalAppendStringAsync', (mod) =>
+    typeof mod.externalAppendStringAsync === 'function'
+      ? mod.externalAppendStringAsync(path, content)
+      : mod.externalAppendString(path, content)
+  )
+}
+
+export function externalWriteBase64Async(path: string, base64: string): Promise<void> {
+  return callNativeExternalAsync('externalWriteBase64Async', (mod) =>
+    typeof mod.externalWriteBase64Async === 'function'
+      ? mod.externalWriteBase64Async(path, base64)
+      : mod.externalWriteBase64(path, base64)
+  )
+}
+
+export function externalReadStringAsync(path: string): Promise<string> {
+  return callNativeExternalAsync('externalReadStringAsync', (mod) =>
+    typeof mod.externalReadStringAsync === 'function'
+      ? mod.externalReadStringAsync(path)
+      : mod.externalReadString(path)
+  )
+}
+
+export function externalReadBase64Async(path: string): Promise<string> {
+  return callNativeExternalAsync('externalReadBase64Async', (mod) =>
+    typeof mod.externalReadBase64Async === 'function'
+      ? mod.externalReadBase64Async(path)
+      : mod.externalReadBase64(path)
+  )
+}
+
+export function externalDeleteAsync(path: string, idempotent = true): Promise<void> {
+  return callNativeExternalAsync('externalDeleteAsync', (mod) =>
+    typeof mod.externalDeleteAsync === 'function'
+      ? mod.externalDeleteAsync(path, idempotent)
+      : mod.externalDelete(path, idempotent)
+  )
+}
+
+export function externalReadDirectoryAsync(path: string): Promise<string[]> {
+  return callNativeExternalAsync('externalReadDirectoryAsync', (mod) =>
+    typeof mod.externalReadDirectoryAsync === 'function'
+      ? mod.externalReadDirectoryAsync(path)
+      : mod.externalReadDirectory(path)
+  )
+}
+
+export function localGetInfoAsync(path: string): Promise<ExternalPathInfo> {
+  return callNativeExternalAsync('localGetInfoAsync', (mod) =>
+    typeof mod.localGetInfoAsync === 'function'
+      ? mod.localGetInfoAsync(path)
+      : mod.localGetInfo(path)
+  )
+}
+
+export function localReadDirectoryAsync(path: string): Promise<string[]> {
+  return callNativeExternalAsync('localReadDirectoryAsync', (mod) =>
+    typeof mod.localReadDirectoryAsync === 'function'
+      ? mod.localReadDirectoryAsync(path)
+      : mod.localReadDirectory(path)
+  )
+}
+
+export function localAppendStringAsync(path: string, content: string): Promise<void> {
+  return callNativeExternalAsync('localAppendStringAsync', (mod) =>
+    typeof mod.localAppendStringAsync === 'function'
+      ? mod.localAppendStringAsync(path, content)
+      : mod.localAppendString(path, content)
+  )
 }

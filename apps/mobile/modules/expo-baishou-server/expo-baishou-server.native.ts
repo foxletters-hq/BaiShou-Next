@@ -46,3 +46,20 @@ export function callNativeExternal<T>(op: string, fn: (mod: ExpoBaishouServerMod
     throw new Error(`${op} failed: ${msg}`)
   }
 }
+
+/** 异步外部存储调用包装：优先走原生线程池 AsyncFunction，旧 APK 缺方法时可安全回退同步调用 */
+export async function callNativeExternalAsync<T>(
+  op: string,
+  fn: (mod: ExpoBaishouServerModule) => Promise<T> | T
+): Promise<T> {
+  const mod = requireNative()
+  if (typeof mod.externalMakeDirectory !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少外部存储 API：${op}）`)
+  }
+  try {
+    return await fn(mod)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    throw new Error(`${op} failed: ${msg}`)
+  }
+}
