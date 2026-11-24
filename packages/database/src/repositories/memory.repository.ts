@@ -28,7 +28,12 @@ export class MemoryRepository {
   constructor(private readonly database: AppDatabase) {}
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.database, () => runWithSqliteBusyRetry(fn))
+    return withExpoAgentDatabaseLock(
+      this.database,
+      () => runWithSqliteBusyRetry(fn),
+      'high',
+      'MemoryRepo'
+    )
   }
 
   /**

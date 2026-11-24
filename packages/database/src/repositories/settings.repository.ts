@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import {
+  logger,
   SHORTCUT_TRACE_CHAIN,
   traceCall,
   normalizeToolManagementConfig,
@@ -9,6 +10,7 @@ import {
 import { systemSettingsTable } from '../schema/system-settings'
 
 const TRACED_SETTINGS_KEYS = new Set(['prompt_shortcuts_v2', 'prompt_shortcuts'])
+const SLOW_SETTINGS_READ_MS = 500
 import type {
   AIProviderConfig,
   GlobalModelsConfig,
@@ -111,12 +113,23 @@ export class SettingsRepository {
       return this.parseCachedJson<T>(key, this.cache.get(key) ?? null)
     }
     if (!TRACED_SETTINGS_KEYS.has(key)) {
-      return withExpoAgentDatabaseLock(this.db, async () => this.getUnlocked<T>(key), 'high')
+      return withExpoAgentDatabaseLock(
+        this.db,
+        async () => this.getUnlocked<T>(key),
+        'high',
+        `SettingsRepo.get:${key}`
+      )
     }
     return traceCall(
       SHORTCUT_TRACE_CHAIN,
       'SettingsRepository.get',
-      () => withExpoAgentDatabaseLock(this.db, async () => this.getUnlocked<T>(key), 'high'),
+      () =>
+        withExpoAgentDatabaseLock(
+          this.db,
+          async () => this.getUnlocked<T>(key),
+          'high',
+          `SettingsRepo.get:${key}`
+        ),
       { key }
     )
   }
@@ -126,20 +139,36 @@ export class SettingsRepository {
       return this.parseCachedJson<T>(key, this.cache.get(key) ?? null)
     }
 
+    const sqlStart = Date.now()
     const result = await this.db
       .select({ value: systemSettingsTable.value })
       .from(systemSettingsTable)
       .where(eq(systemSettingsTable.key, key))
       .limit(1)
+    const sqlMs = Date.now() - sqlStart
 
     if (result.length === 0) {
+      if (sqlMs >= SLOW_SETTINGS_READ_MS) {
+        logger.warn('[SettingsRepo] slow get', { key, sqlMs, parseMs: 0, bytes: 0, hit: false })
+      }
       this.setCacheEntry(key, null)
       return null
     }
 
     const rawValue = String(result[0].value)
+    const parseStart = Date.now()
     try {
       const parsed = JSON.parse(rawValue) as T
+      const parseMs = Date.now() - parseStart
+      if (sqlMs + parseMs >= SLOW_SETTINGS_READ_MS) {
+        logger.warn('[SettingsRepo] slow get', {
+          key,
+          sqlMs,
+          parseMs,
+          bytes: rawValue.length,
+          hit: true
+        })
+      }
       this.setCacheEntry(key, rawValue)
       return parsed
     } catch (e) {
@@ -153,7 +182,12 @@ export class SettingsRepository {
    * 将全量配置抽出，并顺带预热写穿缓存
    */
   async getAll(): Promise<Record<string, any>> {
-    return withExpoAgentDatabaseLock(this.db, () => this.getAllUnlocked(), 'high')
+    return withExpoAgentDatabaseLock(
+      this.db,
+      () => this.getAllUnlocked(),
+      'high',
+      'SettingsRepo.getAll'
+    )
   }
 
   private hydrateCacheFromRows(rows: Array<{ key: string; value: string }>): void {
@@ -188,7 +222,12 @@ export class SettingsRepository {
 
   /** 含 updatedAt，供设置磁盘重同步时与域文件 mtime 比较 */
   async getAllEntriesMeta(): Promise<Record<string, { value: unknown; updatedAt: Date }>> {
-    return withExpoAgentDatabaseLock(this.db, () => this.getAllEntriesMetaUnlocked(), 'high')
+    return withExpoAgentDatabaseLock(
+      this.db,
+      () => this.getAllEntriesMetaUnlocked(),
+      'high',
+      'SettingsRepo.getAllEntriesMeta'
+    )
   }
 
   private async getAllEntriesMetaUnlocked(): Promise<
@@ -215,12 +254,23 @@ export class SettingsRepository {
    */
   async set<T>(key: string, value: T): Promise<void> {
     if (!TRACED_SETTINGS_KEYS.has(key)) {
-      return withExpoAgentDatabaseLock(this.db, () => this.setUnlocked(key, value), 'high')
+      return withExpoAgentDatabaseLock(
+        this.db,
+        () => this.setUnlocked(key, value),
+        'high',
+        `SettingsRepo.set:${key}`
+      )
     }
     return traceCall(
       SHORTCUT_TRACE_CHAIN,
       'SettingsRepository.set',
-      () => withExpoAgentDatabaseLock(this.db, () => this.setUnlocked(key, value), 'high'),
+      () =>
+        withExpoAgentDatabaseLock(
+          this.db,
+          () => this.setUnlocked(key, value),
+          'high',
+          `SettingsRepo.set:${key}`
+        ),
       { key, payload: value }
     )
   }
@@ -259,7 +309,8 @@ export class SettingsRepository {
         await this.db.delete(systemSettingsTable).where(eq(systemSettingsTable.key, key))
         this.setCacheEntry(key, null)
       },
-      'high'
+      'high',
+      `SettingsRepo.delete:${key}`
     )
   }
 

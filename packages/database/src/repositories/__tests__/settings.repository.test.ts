@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { logger } from '@baishou/shared'
 import { SettingsRepository } from '../settings.repository'
 import { DEFAULT_PROFILE, UserProfileRepository } from '../user-profile.repository'
 import { systemSettingsTable } from '../../schema/system-settings'
@@ -213,6 +214,47 @@ describe('SettingsRepository', () => {
 
       const fresh = await repo.get<{ nickname: string }>('user_profile_data')
       expect(fresh?.nickname).toBe('Alice')
+    })
+
+    it('should log slow get diagnostic breakdown only when sqlMs + parseMs >= 500ms', async () => {
+      await db.insert(systemSettingsTable).values({
+        key: 'ai_providers',
+        value: JSON.stringify([{ id: 'openai' }]),
+        updatedAt: new Date()
+      })
+
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+      try {
+        // 正常快速读取不输出慢日志
+        const fast = await repo.get<Array<{ id: string }>>('ai_providers')
+        expect(fast).toEqual([{ id: 'openai' }])
+        expect(warnSpy).not.toHaveBeenCalled()
+
+        // 模拟慢读（SQL 耗时 420ms + parse 耗时 120ms = 540ms）
+        repo.invalidateCache('ai_providers')
+        const timestamps = [1000, 1420, 1420, 1540]
+        let idx = 0
+        const dateNowSpy = vi.spyOn(Date, 'now').mockImplementation(() => {
+          const val = timestamps[Math.min(idx, timestamps.length - 1)]!
+          idx += 1
+          return val
+        })
+        try {
+          const slow = await repo.get<Array<{ id: string }>>('ai_providers')
+          expect(slow).toEqual([{ id: 'openai' }])
+          expect(warnSpy).toHaveBeenCalledWith('[SettingsRepo] slow get', {
+            key: 'ai_providers',
+            sqlMs: 420,
+            parseMs: 120,
+            bytes: JSON.stringify([{ id: 'openai' }]).length,
+            hit: true
+          })
+        } finally {
+          dateNowSpy.mockRestore()
+        }
+      } finally {
+        warnSpy.mockRestore()
+      }
     })
   })
 })

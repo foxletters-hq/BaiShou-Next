@@ -20,7 +20,12 @@ export class SnapshotRepository {
   constructor(private readonly db: AppDatabase) {}
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
-    return withExpoAgentDatabaseLock(this.db, () => runWithSqliteBusyRetry(fn))
+    return withExpoAgentDatabaseLock(
+      this.db,
+      () => runWithSqliteBusyRetry(fn),
+      'high',
+      'SnapshotRepo'
+    )
   }
 
   /**
