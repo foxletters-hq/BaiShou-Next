@@ -105,7 +105,7 @@ export class MemoryJsonlBackfillService {
       sourceIds.length > 0 ? await sink.normalizeManualToMemory({ vaultName, sourceIds }) : 0
 
     let metadataPatched = 0
-    if (sink.updateMetadataBySource) {
+    if (sink.updateMetadataBySource && (backfill.written > 0 || normalized > 0)) {
       metadataPatched = await this.patchMetadataFromJsonl(sink.updateMetadataBySource)
     }
 

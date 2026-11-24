@@ -106,6 +106,8 @@ export class MemorySyncService {
     embedMissing?: boolean
     /** 嵌入每条记忆前调用的钩子（用于取消/暂停检查） */
     onBeforeItem?: () => Promise<void>
+    /** 无 pending 分片时跳过全量 JSONL 孤立清扫（冷启动稳态提速，避免反复解析未变更分片） */
+    skipOrphanSweepWhenClean?: boolean
   }): Promise<{ shards: number; upserted: number; deleted: number }> {
     const embedMissing = options?.embedMissing !== false
     const pending = await this.memoryManager.listPendingIndex()
@@ -209,12 +211,14 @@ export class MemorySyncService {
     }
 
     await options?.onBeforeItem?.()
-    const orphansCleaned = await this.sweepOrphans({
-      inferredVaultName: inferredVault,
-      vaultId: options?.vaultId,
-      vaultName: options?.vaultName
-    })
-    deleted += orphansCleaned
+    if (!options?.skipOrphanSweepWhenClean || pending.length > 0) {
+      const orphansCleaned = await this.sweepOrphans({
+        inferredVaultName: inferredVault,
+        vaultId: options?.vaultId,
+        vaultName: options?.vaultName
+      })
+      deleted += orphansCleaned
+    }
 
     return { shards: pending.length, upserted, deleted }
   }

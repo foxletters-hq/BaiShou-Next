@@ -98,8 +98,16 @@ describe('MemoryJsonlBackfillService manual migration', () => {
     const second = await service.migrateManualAndPatchMetadata(chunks, 'Personal', sink)
 
     expect(first.written).toBe(1)
+    expect(first.metadataPatched).toBe(1)
     expect(second.written).toBe(0)
     expect(second.skipped).toBe(1)
+    expect(second.metadataPatched).toBe(0)
+    // 第二次幂等执行未写入也未规范化任何行，不得再全量回刷 metadata_json
+    expect(sink.updateMetadataBySource).toHaveBeenCalledTimes(1)
+
+    const empty = await service.migrateManualAndPatchMetadata([], 'Personal', sink)
+    expect(empty).toEqual({ written: 0, skipped: 0, normalized: 0, metadataPatched: 0 })
+    expect(sink.updateMetadataBySource).toHaveBeenCalledTimes(1)
 
     const shards = await memoryManager.listShards()
     const rows = await memoryManager.readCollapsedShard(shards[0]!.shardMonth)

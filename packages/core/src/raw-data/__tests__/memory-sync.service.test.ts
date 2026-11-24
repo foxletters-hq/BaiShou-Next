@@ -318,4 +318,38 @@ describe('MemorySyncService', () => {
     expect(listPendingIndex).toHaveBeenCalled()
     expect(listShards).not.toHaveBeenCalled()
   })
+
+  it('skips full shard orphan sweep when skipOrphanSweepWhenClean is true and no shards are pending', async () => {
+    const indexedAt = new Date('2026-08-01T00:00:00.000Z').getTime()
+    const written = await memoryManager.writeRecord({
+      id: 'already-indexed',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'indexed fact',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: indexedAt,
+      updatedAt: indexedAt,
+      deletedAt: null
+    })
+    await memoryManager.commitIndexed(written.relativePath, written.contentHash)
+
+    const listShards = vi.spyOn(memoryManager, 'listShards')
+    const listSourceIdsByType = vi.fn().mockResolvedValue([])
+    const sync = new MemorySyncService(memoryManager, {
+      embedText: vi.fn(),
+      listSourceIdsByType,
+      deleteBySource: vi.fn()
+    })
+
+    const result = await sync.syncPendingIndex({
+      vaultName: 'Personal',
+      embedMissing: false,
+      skipOrphanSweepWhenClean: true
+    })
+
+    expect(result).toEqual({ shards: 0, upserted: 0, deleted: 0 })
+    expect(listShards).not.toHaveBeenCalled()
+    expect(listSourceIdsByType).not.toHaveBeenCalled()
+  })
 })
