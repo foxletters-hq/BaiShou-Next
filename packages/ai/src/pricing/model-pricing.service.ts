@@ -60,6 +60,12 @@ export class ModelPrice {
   }
 }
 
+const PRICING_PARSE_YIELD_PROVIDER_BATCH = 15
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 export class ModelPricingService {
   private static instance: ModelPricingService
   private prices: Map<string, ModelPrice> = new Map()
@@ -191,7 +197,9 @@ export class ModelPricingService {
         }
 
         const data = await response.json()
+        await yieldToEventLoop()
         applyReasoningCatalogFromModelsDevApi(data)
+        await yieldToEventLoop()
         try {
           applyVisionModelsRuntimeOverlay(extractVisionModelIdsFromModelsDev(data))
         } catch (visionError) {
@@ -200,6 +208,7 @@ export class ModelPricingService {
             visionError as Error
           )
         }
+        await yieldToEventLoop()
         try {
           applyModelContextWindowRuntimeOverlay(extractModelContextWindowsFromModelsDev(data))
         } catch (contextError) {
@@ -208,9 +217,16 @@ export class ModelPricingService {
             contextError as Error
           )
         }
-        this.prices.clear()
+        await yieldToEventLoop()
 
-        for (const providerId of Object.keys(data)) {
+        const nextPrices = new Map<string, ModelPrice>()
+        const providerIds = Object.keys(data)
+
+        for (let i = 0; i < providerIds.length; i += 1) {
+          if (i > 0 && i % PRICING_PARSE_YIELD_PROVIDER_BATCH === 0) {
+            await yieldToEventLoop()
+          }
+          const providerId = providerIds[i]!
           const providerData = data[providerId]
           const modelsData = providerData?.models
           if (!modelsData) continue
@@ -235,7 +251,7 @@ export class ModelPricingService {
               })
             }
 
-            this.prices.set(
+            nextPrices.set(
               `${providerId}/${modelId}`,
               new ModelPrice({
                 input: inputPrice,
@@ -248,6 +264,7 @@ export class ModelPricingService {
           }
         }
 
+        this.prices = nextPrices
         this._lastFetchTime = new Date()
         this._lastFetchFailed = false
       } catch (e: any) {

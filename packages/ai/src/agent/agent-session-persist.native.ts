@@ -7,6 +7,7 @@ import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-
 import { StreamAccumulator } from './stream-accumulator'
 import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
 import { assembleAssistantPersistParts } from './assemble-assistant-persist-parts'
+import { estimateTextTokens } from './call-chain-view-model.builder'
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 import {
   shouldReadStreamUsageAfterInterrupt,
@@ -133,34 +134,31 @@ export async function persistResult(params: PersistResultParams): Promise<{
       }
     }
 
-    // 极端情况兜底：本地量化预估
+    // 极端情况兜底：Hermes 不支持 tiktoken WASM，直接使用轻量字符估算，避免运行时 TypeError
     if (finalUsage.inputTokens === 0 && finalUsage.outputTokens === 0) {
       try {
-        if (accumulator.text.length > 0) {
-          const { get_encoding } = await import('tiktoken')
-          const enc = get_encoding('cl100k_base')
-          let estimatedInput = enc.encode(rawUserText).length
+        if (accumulator.text.length > 0 || accumulator.reasoning.length > 0) {
+          let estimatedInput = estimateTextTokens(rawUserText)
           if (params.systemPrompt) {
-            estimatedInput += enc.encode(params.systemPrompt).length
+            estimatedInput += estimateTextTokens(params.systemPrompt)
           }
           if (params.dbHistory && params.dbHistory.length > 0) {
             const { extractMessageText } = await import('./context-compression.utils')
             for (const msg of params.dbHistory) {
               const text = extractMessageText(msg)
               if (text) {
-                estimatedInput += enc.encode(text).length
+                estimatedInput += estimateTextTokens(text)
               }
             }
           }
           finalUsage.inputTokens = estimatedInput
-          finalUsage.outputTokens = enc.encode(accumulator.text + accumulator.reasoning).length
-          enc.free()
+          finalUsage.outputTokens = estimateTextTokens(accumulator.text + accumulator.reasoning)
           logger.info(
-            `[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略! 预估输入: ${finalUsage.inputTokens}`
+            `[AgentSessionService] 提示: 接口未返回 Token，已启用本地轻量预估策略! 预估输入: ${finalUsage.inputTokens}`
           )
         }
-      } catch (e: any) {
-        logger.warn('Fallback tiktoken estimation failed', e)
+      } catch (e: unknown) {
+        logger.warn('Fallback token estimation failed', e as Error)
       }
     }
 

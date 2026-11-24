@@ -45,4 +45,50 @@ describe('native persistResult checkpoint reuse', () => {
     )
     expect(flushSessionToDisk).toHaveBeenCalledWith('s1')
   })
+
+  it('estimates fallback tokens without tiktoken when API returns empty usage', async () => {
+    vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue([]),
+      insertMessageWithParts: vi.fn().mockResolvedValue(undefined),
+      updateTokenUsage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    const result = await persistResult({
+      sessionId: 's-est',
+      rawUserText: '这是一段测试用户输入内容',
+      systemPrompt: '你是白守日记助手',
+      streamResult: { totalUsage: Promise.resolve(undefined) } as any,
+      accumulator: {
+        timeline: [],
+        text: '这是一段没有返回 usage 的助手回复',
+        reasoning: '思考过程',
+        sanitizedText: '这是一段没有返回 usage 的助手回复',
+        toolCalls: [],
+        toolResults: [],
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadInputTokens: 0,
+          cacheWriteInputTokens: 0
+        }
+      } as any,
+      sessionRepo: sessionRepo as any,
+      snapshotRepo: { getLatestSnapshot: vi.fn().mockResolvedValue(null) } as any,
+      provider: { config: { id: 'mock', type: 'openai' } } as any,
+      modelId: 'mock-model',
+      streamError: null
+    })
+
+    expect(result.inputTokens).toBeGreaterThan(0)
+    expect(result.outputTokens).toBeGreaterThan(0)
+    expect(sessionRepo.updateTokenUsage).toHaveBeenCalledWith(
+      's-est',
+      result.inputTokens,
+      result.outputTokens,
+      0,
+      0,
+      0
+    )
+  })
 })
