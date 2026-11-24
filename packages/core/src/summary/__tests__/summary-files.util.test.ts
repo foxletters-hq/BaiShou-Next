@@ -1,9 +1,12 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
-import { countSummaryMarkdownInArchivesTreeByType } from '../summary-files.util'
+import {
+  countSummaryMarkdownInArchivesTreeByType,
+  listMarkdownInSummaryTypeDir
+} from '../summary-files.util'
 
 describe('summary-files.util', () => {
   let tempDir: string
@@ -31,5 +34,22 @@ describe('summary-files.util', () => {
       quarterly: 0,
       yearly: 1
     })
+  })
+
+  it('listMarkdownInSummaryTypeDir avoids per-file stat and ignores .nomedia and non-dir year files', async () => {
+    const weeklyDir = path.join(tempDir, 'Weekly')
+    await fs.writeFile(path.join(weeklyDir, '.nomedia'), '')
+    await fs.writeFile(path.join(weeklyDir, '2024'), 'not-a-directory')
+    await fs.writeFile(path.join(weeklyDir, '2025-12-29.md'), '# flat week')
+
+    const statSpy = vi.spyOn(fileSystem, 'stat')
+    try {
+      const entries = await listMarkdownInSummaryTypeDir(fileSystem, weeklyDir)
+      const names = entries.map((e) => e.fileName).sort()
+      expect(names).toEqual(['2025-12-29.md', '2026-01-05.md'])
+      expect(statSpy).not.toHaveBeenCalled()
+    } finally {
+      statSpy.mockRestore()
+    }
   })
 })

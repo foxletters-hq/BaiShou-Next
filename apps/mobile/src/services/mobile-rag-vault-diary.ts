@@ -2,8 +2,8 @@ import { ShadowIndexRepository } from '@baishou/database'
 import type { AppDatabase } from '@baishou/database'
 import {
   parseDateStr,
+  resolveDiaryEmbedDetectionRows,
   resolveDiaryTagsFromSources,
-  toDiaryEmbedDetectionRow,
   type DiaryEmbedDetectionRow
 } from '@baishou/shared'
 
@@ -32,8 +32,10 @@ export async function listVaultDiaryMetas(
   vaultId: string
 ): Promise<DiaryEmbedDetectionRow[]> {
   const repo = new ShadowIndexRepository(shadowDb, vaultId)
-  const rows = await repo.listForEmbedDetection()
-  return rows.map((row) => toDiaryEmbedDetectionRow(row))
+  const rows = await repo.listForEmbedDetection({ omitRawContentWhenHashed: true })
+  return resolveDiaryEmbedDetectionRows(rows, {
+    persistComputedHashes: (entries) => repo.updateEmbedContentHashes(entries)
+  })
 }
 
 export async function loadVaultDiariesForEmbedding(

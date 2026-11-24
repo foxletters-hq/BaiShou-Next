@@ -36,6 +36,7 @@ describe('storage-path.util', () => {
     expect(shouldSkipStorageMigrationEntry(STORAGE_MIGRATION_STAGING_DIR)).toBe(true)
     expect(shouldSkipStorageMigrationEntry('.git')).toBe(true)
     expect(shouldSkipStorageMigrationEntry('node_modules')).toBe(true)
+    expect(shouldSkipStorageMigrationEntry('.nomedia')).toBe(true)
     expect(shouldSkipStorageMigrationEntry('Personal')).toBe(false)
   })
 })

@@ -73,22 +73,16 @@ export async function listMarkdownInSummaryTypeDir(
   }
 
   for (const name of names) {
+    if (name === '.nomedia') continue
     const fullPath = path.join(typeDir, name)
     if (name.endsWith('.md')) {
-      try {
-        const stat = await fileSystem.stat(fullPath)
-        if (stat.isFile) entries.push({ fileName: name, fullPath })
-      } catch {
-        // skip
-      }
+      entries.push({ fileName: name, fullPath })
       continue
     }
 
     if (!YEAR_DIR_NAME.test(name)) continue
     let yearEntries: string[] = []
     try {
-      const stat = await fileSystem.stat(fullPath)
-      if (!stat.isDirectory) continue
       yearEntries = await fileSystem.readdir(fullPath)
     } catch {
       continue
@@ -96,13 +90,7 @@ export async function listMarkdownInSummaryTypeDir(
 
     for (const child of yearEntries) {
       if (!child.endsWith('.md')) continue
-      const childPath = path.join(fullPath, child)
-      try {
-        const stat = await fileSystem.stat(childPath)
-        if (stat.isFile) entries.push({ fileName: child, fullPath: childPath })
-      } catch {
-        // skip
-      }
+      entries.push({ fileName: child, fullPath: path.join(fullPath, child) })
     }
   }
 

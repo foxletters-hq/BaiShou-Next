@@ -163,16 +163,10 @@ export async function collectJournalPathsByDateInTree(
     }
 
     for (const name of entries) {
+      if (JOURNAL_TREE_SKIP_DIR_NAMES.has(name) || name === '.nomedia') continue
       const fullPath = path.join(dir, name)
       const dateMatch = JOURNAL_DATE_FILE.exec(name)
       if (dateMatch?.[1]) {
-        try {
-          const stat = await fileSystem.stat(fullPath)
-          if (!stat.isFile) continue
-        } catch {
-          continue
-        }
-
         const dateStr = dateMatch[1]
         fileCount += 1
         const canonicalPath = buildCanonicalJournalFilePath(journalsDir, dateStr)
@@ -186,7 +180,6 @@ export async function collectJournalPathsByDateInTree(
       try {
         const stat = await fileSystem.stat(fullPath)
         if (stat.isDirectory) {
-          if (JOURNAL_TREE_SKIP_DIR_NAMES.has(name)) continue
           await walk(fullPath)
         }
       } catch {
@@ -213,6 +206,7 @@ async function walkJournalsDir(
 
   let count = 0
   for (const name of entries) {
+    if (JOURNAL_TREE_SKIP_DIR_NAMES.has(name) || name === '.nomedia') continue
     const fullPath = path.join(dir, name)
     if (JOURNAL_DATE_FILE.test(name)) {
       count += 1
@@ -222,7 +216,6 @@ async function walkJournalsDir(
     try {
       const stat = await fileSystem.stat(fullPath)
       if (stat.isDirectory) {
-        if (JOURNAL_TREE_SKIP_DIR_NAMES.has(name)) continue
         count += await walkJournalsDir(fileSystem, fullPath, onMatch)
       }
     } catch {

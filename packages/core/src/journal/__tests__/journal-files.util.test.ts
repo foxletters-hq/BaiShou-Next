@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -108,5 +108,32 @@ describe('journal-files.util', () => {
     })
 
     expect(path.resolve(resolved)).toBe(path.resolve(targetFile))
+  })
+
+  it('collectJournalPathsByDateInTree skips stat on matched diary files, skipped dirs, and .nomedia', async () => {
+    const journalsRoot = path.join(tempDir, 'Journals')
+    await fs.mkdir(path.join(journalsRoot, '2026', '11'), { recursive: true })
+    await fs.writeFile(path.join(journalsRoot, '.nomedia'), '')
+    await fs.writeFile(path.join(journalsRoot, '2026', '11', '2026-11-24.md'), '# diary 1')
+    await fs.writeFile(path.join(journalsRoot, '2026', '11', '2026-11-25.md'), '# diary 2')
+    await fs.mkdir(path.join(journalsRoot, 'Archives', 'Weekly'), { recursive: true })
+    await fs.writeFile(path.join(journalsRoot, 'Archives', 'Weekly', '2026-11-24.md'), '# summary')
+
+    const statSpy = vi.spyOn(fileSystem, 'stat')
+    try {
+      const collected = await collectJournalPathsByDateInTree(fileSystem, journalsRoot)
+
+      expect(collected.fileCount).toBe(2)
+      expect(collected.pathsByDate.size).toBe(2)
+      const statPaths = statSpy.mock.calls.map(([p]) => String(p).replace(/\\/g, '/'))
+      expect(
+        statPaths.some((p) => p.endsWith('2026-11-24.md') || p.endsWith('2026-11-25.md'))
+      ).toBe(false)
+      expect(statPaths.some((p) => p.endsWith('/Archives') || p.endsWith('/.nomedia'))).toBe(false)
+      expect(statPaths.some((p) => p.endsWith('/2026'))).toBe(true)
+      expect(statPaths.some((p) => p.endsWith('/2026/11'))).toBe(true)
+    } finally {
+      statSpy.mockRestore()
+    }
   })
 })

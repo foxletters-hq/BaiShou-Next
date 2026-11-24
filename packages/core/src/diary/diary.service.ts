@@ -12,7 +12,7 @@ import {
   DiaryListFilter,
   formatLocalDate,
   parseDateStr,
-  toDiaryEmbedDetectionRow,
+  resolveDiaryEmbedDetectionRows,
   applyDiaryPersistTags
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
@@ -379,10 +379,15 @@ export class DiaryService {
     return shadows.map((s) => mapShadowRowToMeta(s))
   }
 
-  /** 待嵌入检测：无条数截断，正文哈希来自 raw_content，不用文件级 content_hash。 */
+  /** 待嵌入检测：无条数截断，优先复用已持久化的正文 embed_content_hash，缺失时分片计算并回填。 */
   async listForEmbedDetection(): Promise<DiaryEmbedDetectionRow[]> {
-    const rows = await this.shadowRepo.listForEmbedDetection()
-    return rows.map((row) => toDiaryEmbedDetectionRow(row))
+    const rows = await this.shadowRepo.listForEmbedDetection({ omitRawContentWhenHashed: true })
+    return resolveDiaryEmbedDetectionRows(rows, {
+      persistComputedHashes:
+        typeof this.shadowRepo.updateEmbedContentHashes === 'function'
+          ? (entries) => this.shadowRepo.updateEmbedContentHashes(entries)
+          : undefined
+    })
   }
 
   async listFiltered(filter: DiaryListFilter = {}): Promise<DiaryMeta[]> {

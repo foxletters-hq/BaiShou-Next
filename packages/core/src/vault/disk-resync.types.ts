@@ -22,4 +22,12 @@ export type DiskResyncOptions = {
    * 仅 Summary 等支持该选项的层使用。
    */
   skipUnchangedByMtime?: boolean
+  /**
+   * 每成功导入一条会话后的回调（供移动端在批量恢复期间增量刷新会话列表）。
+   */
+  onSessionImported?: (info: {
+    sessionId: string
+    vaultName?: string
+    importedCount: number
+  }) => void
 }
