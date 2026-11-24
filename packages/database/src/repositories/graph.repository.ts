@@ -43,201 +43,214 @@ export class GraphRepository implements GraphRepositoryPort {
     this.lockPriority = options?.lockPriority ?? 'high'
   }
 
-  private run<T>(fn: () => Promise<T>): Promise<T> {
+  private run<T>(label: string, fn: () => Promise<T>): Promise<T> {
     return withExpoAgentDatabaseLock(
       this.database,
       () => runWithSqliteBusyRetry(fn),
-      this.lockPriority
+      this.lockPriority,
+      `GraphRepo.${label}`
     )
   }
 
   findNodesByNameOrAlias(...args: Parameters<GraphQueryOps['findNodesByNameOrAlias']>) {
-    return this.run(() => this.query.findNodesByNameOrAlias(...args))
+    return this.run('findNodesByNameOrAlias', () => this.query.findNodesByNameOrAlias(...args))
   }
 
   findNodesByNamesOrAliasesBatch(
     ...args: Parameters<GraphQueryOps['findNodesByNamesOrAliasesBatch']>
   ) {
-    return this.run(() => this.query.findNodesByNamesOrAliasesBatch(...args))
+    return this.run('findNodesByNamesOrAliasesBatch', () =>
+      this.query.findNodesByNamesOrAliasesBatch(...args)
+    )
   }
 
   findNodeByNameOrAlias(...args: Parameters<GraphQueryOps['findNodeByNameOrAlias']>) {
-    return this.run(() => this.query.findNodeByNameOrAlias(...args))
+    return this.run('findNodeByNameOrAlias', () => this.query.findNodeByNameOrAlias(...args))
   }
 
   searchNodesByName(...args: Parameters<GraphQueryOps['searchNodesByName']>) {
-    return this.run(() => this.query.searchNodesByName(...args))
+    return this.run('searchNodesByName', () => this.query.searchNodesByName(...args))
   }
 
   getGlobalGraph(...args: Parameters<GraphQueryOps['getGlobalGraph']>) {
-    return this.run(() => this.query.getGlobalGraph(...args))
+    return this.run('getGlobalGraph', () => this.query.getGlobalGraph(...args))
   }
 
   listLiveNodesPage(...args: Parameters<GraphQueryOps['listLiveNodesPage']>) {
-    return this.run(() => this.query.listLiveNodesPage(...args))
+    return this.run('listLiveNodesPage', () => this.query.listLiveNodesPage(...args))
   }
 
   countLiveNodes(...args: Parameters<GraphQueryOps['countLiveNodes']>) {
-    return this.run(() => this.query.countLiveNodes(...args))
+    return this.run('countLiveNodes', () => this.query.countLiveNodes(...args))
   }
 
   countLiveCurrentEdges(...args: Parameters<GraphQueryOps['countLiveCurrentEdges']>) {
-    return this.run(() => this.query.countLiveCurrentEdges(...args))
+    return this.run('countLiveCurrentEdges', () => this.query.countLiveCurrentEdges(...args))
   }
 
   getNodesByIds(...args: Parameters<GraphQueryOps['getNodesByIds']>) {
-    return this.run(() => this.query.getNodesByIds(...args))
+    return this.run('getNodesByIds', () => this.query.getNodesByIds(...args))
   }
 
   getNodeById(...args: Parameters<GraphQueryOps['getNodeById']>) {
-    return this.run(() => this.query.getNodeById(...args))
+    return this.run('getNodeById', () => this.query.getNodeById(...args))
   }
 
   getEdgeById(...args: Parameters<GraphQueryOps['getEdgeById']>) {
-    return this.run(() => this.query.getEdgeById(...args))
+    return this.run('getEdgeById', () => this.query.getEdgeById(...args))
   }
 
   listEdgesTouching(...args: Parameters<GraphQueryOps['listEdgesTouching']>) {
-    return this.run(() => this.query.listEdgesTouching(...args))
+    return this.run('listEdgesTouching', () => this.query.listEdgesTouching(...args))
   }
 
   listNodeIds(...args: Parameters<GraphQueryOps['listNodeIds']>) {
-    return this.run(() => this.query.listNodeIds(...args))
+    return this.run('listNodeIds', () => this.query.listNodeIds(...args))
   }
 
   listEdgeIds(...args: Parameters<GraphQueryOps['listEdgeIds']>) {
-    return this.run(() => this.query.listEdgeIds(...args))
+    return this.run('listEdgeIds', () => this.query.listEdgeIds(...args))
+  }
+
+  hasAnyLiveNodeOrEdge(...args: Parameters<GraphQueryOps['hasAnyLiveNodeOrEdge']>) {
+    return this.run('hasAnyLiveNodeOrEdge', () => this.query.hasAnyLiveNodeOrEdge(...args))
   }
 
   listLiveNodeRefs(...args: Parameters<GraphQueryOps['listLiveNodeRefs']>) {
-    return this.run(() => this.query.listLiveNodeRefs(...args))
+    return this.run('listLiveNodeRefs', () => this.query.listLiveNodeRefs(...args))
   }
 
   listLiveEdgeRefs(...args: Parameters<GraphQueryOps['listLiveEdgeRefs']>) {
-    return this.run(() => this.query.listLiveEdgeRefs(...args))
+    return this.run('listLiveEdgeRefs', () => this.query.listLiveEdgeRefs(...args))
   }
 
   traverse(...args: Parameters<GraphTraverseOps['traverse']>) {
-    return this.run(() => this.traverseOps.traverse(...args))
+    return this.run('traverse', () => this.traverseOps.traverse(...args))
   }
 
   listEntityTimeline(...args: Parameters<GraphTraverseOps['listEntityTimeline']>) {
-    return this.run(() => this.traverseOps.listEntityTimeline(...args))
+    return this.run('listEntityTimeline', () => this.traverseOps.listEntityTimeline(...args))
   }
 
   findShortestPath(...args: Parameters<GraphTraverseOps['findShortestPath']>) {
-    return this.run(() => this.traverseOps.findShortestPath(...args))
+    return this.run('findShortestPath', () => this.traverseOps.findShortestPath(...args))
   }
 
   findPathsFrom(...args: Parameters<GraphTraverseOps['findPathsFrom']>) {
-    return this.run(() => this.traverseOps.findPathsFrom(...args))
+    return this.run('findPathsFrom', () => this.traverseOps.findPathsFrom(...args))
   }
 
   upsertNode(...args: Parameters<GraphMutateOps['upsertNode']>) {
-    return this.run(() => this.mutate.upsertNode(...args))
+    return this.run('upsertNode', () => this.mutate.upsertNode(...args))
   }
 
   upsertEdge(...args: Parameters<GraphMutateOps['upsertEdge']>) {
-    return this.run(() => this.mutate.upsertEdge(...args))
+    return this.run('upsertEdge', () => this.mutate.upsertEdge(...args))
   }
 
   supersedeEdge(...args: Parameters<GraphMutateOps['supersedeEdge']>) {
-    return this.run(() => this.mutate.supersedeEdge(...args))
+    return this.run('supersedeEdge', () => this.mutate.supersedeEdge(...args))
   }
 
   supersedeEdgesBySourceRef(...args: Parameters<GraphMutateOps['supersedeEdgesBySourceRef']>) {
-    return this.run(() => this.mutate.supersedeEdgesBySourceRef(...args))
+    return this.run('supersedeEdgesBySourceRef', () =>
+      this.mutate.supersedeEdgesBySourceRef(...args)
+    )
   }
 
   softDeleteNode(...args: Parameters<GraphMutateOps['softDeleteNode']>) {
-    return this.run(() => this.mutate.softDeleteNode(...args))
+    return this.run('softDeleteNode', () => this.mutate.softDeleteNode(...args))
   }
 
   remapEdgeEndpoints(...args: Parameters<GraphMutateOps['remapEdgeEndpoints']>) {
-    return this.run(() => this.mutate.remapEdgeEndpoints(...args))
+    return this.run('remapEdgeEndpoints', () => this.mutate.remapEdgeEndpoints(...args))
   }
 
   softDeleteEdge(...args: Parameters<GraphMutateOps['softDeleteEdge']>) {
-    return this.run(() => this.mutate.softDeleteEdge(...args))
+    return this.run('softDeleteEdge', () => this.mutate.softDeleteEdge(...args))
   }
 
   recountMentions(...args: Parameters<GraphMutateOps['recountMentions']>) {
-    return this.run(() => this.mutate.recountMentions(...args))
+    return this.run('recountMentions', () => this.mutate.recountMentions(...args))
   }
 
   deleteAllForVault(...args: Parameters<GraphMutateOps['deleteAllForVault']>) {
-    return this.run(() => this.mutate.deleteAllForVault(...args))
+    return this.run('deleteAllForVault', () => this.mutate.deleteAllForVault(...args))
   }
 
   applyRawNode(...args: Parameters<GraphSyncOps['applyRawNode']>) {
-    return this.run(() => this.sync.applyRawNode(...args))
+    return this.run('applyRawNode', () => this.sync.applyRawNode(...args))
   }
 
   applyRawNodesBatch(...args: Parameters<GraphSyncOps['applyRawNodesBatch']>) {
-    return this.run(() => this.sync.applyRawNodesBatch(...args))
+    return this.run('applyRawNodesBatch', () => this.sync.applyRawNodesBatch(...args))
   }
 
   applyRawEdge(...args: Parameters<GraphSyncOps['applyRawEdge']>) {
-    return this.run(() => this.sync.applyRawEdge(...args))
+    return this.run('applyRawEdge', () => this.sync.applyRawEdge(...args))
   }
 
   applyRawEdgesBatch(...args: Parameters<GraphSyncOps['applyRawEdgesBatch']>) {
-    return this.run(() => this.sync.applyRawEdgesBatch(...args))
+    return this.run('applyRawEdgesBatch', () => this.sync.applyRawEdgesBatch(...args))
   }
 
   searchNodesByVector(...args: Parameters<GraphEmbedOps['searchNodesByVector']>) {
-    return this.run(() => this.embed.searchNodesByVector(...args))
+    return this.run('searchNodesByVector', () => this.embed.searchNodesByVector(...args))
   }
 
   countUnembeddedLiveNodes(...args: Parameters<GraphEmbedOps['countUnembeddedLiveNodes']>) {
-    return this.run(() => this.embed.countUnembeddedLiveNodes(...args))
+    return this.run('countUnembeddedLiveNodes', () => this.embed.countUnembeddedLiveNodes(...args))
   }
 
   listEmbeddedLiveNodesPage(...args: Parameters<GraphEmbedOps['listEmbeddedLiveNodesPage']>) {
-    return this.run(() => this.embed.listEmbeddedLiveNodesPage(...args))
+    return this.run('listEmbeddedLiveNodesPage', () =>
+      this.embed.listEmbeddedLiveNodesPage(...args)
+    )
   }
 
   countEmbeddedLiveNodes(...args: Parameters<GraphEmbedOps['countEmbeddedLiveNodes']>) {
-    return this.run(() => this.embed.countEmbeddedLiveNodes(...args))
+    return this.run('countEmbeddedLiveNodes', () => this.embed.countEmbeddedLiveNodes(...args))
   }
 
   clearNodeEmbedding(...args: Parameters<GraphEmbedOps['clearNodeEmbedding']>) {
-    return this.run(() => this.embed.clearNodeEmbedding(...args))
+    return this.run('clearNodeEmbedding', () => this.embed.clearNodeEmbedding(...args))
   }
 
   listUnembeddedLiveNodes(...args: Parameters<GraphEmbedOps['listUnembeddedLiveNodes']>) {
-    return this.run(() => this.embed.listUnembeddedLiveNodes(...args))
+    return this.run('listUnembeddedLiveNodes', () => this.embed.listUnembeddedLiveNodes(...args))
   }
 
   updateNodeEmbedding(...args: Parameters<GraphEmbedOps['updateNodeEmbedding']>) {
-    return this.run(() => this.embed.updateNodeEmbedding(...args))
+    return this.run('updateNodeEmbedding', () => this.embed.updateNodeEmbedding(...args))
   }
 
   updateNodeEmbeddingsBatch(...args: Parameters<GraphEmbedOps['updateNodeEmbeddingsBatch']>) {
-    return this.run(() => this.embed.updateNodeEmbeddingsBatch(...args))
+    return this.run('updateNodeEmbeddingsBatch', () =>
+      this.embed.updateNodeEmbeddingsBatch(...args)
+    )
   }
 
   listPendingEdges(...args: Parameters<GraphReviewOps['listPendingEdges']>) {
-    return this.run(() => this.review.listPendingEdges(...args))
+    return this.run('listPendingEdges', () => this.review.listPendingEdges(...args))
   }
 
   listPendingNodes(...args: Parameters<GraphReviewOps['listPendingNodes']>) {
-    return this.run(() => this.review.listPendingNodes(...args))
+    return this.run('listPendingNodes', () => this.review.listPendingNodes(...args))
   }
 
   listSuspectNodes(...args: Parameters<GraphReviewOps['listSuspectNodes']>) {
-    return this.run(() => this.review.listSuspectNodes(...args))
+    return this.run('listSuspectNodes', () => this.review.listSuspectNodes(...args))
   }
 
   listSimilarPendingPairs(...args: Parameters<GraphReviewOps['listSimilarPendingPairs']>) {
-    return this.run(() => this.review.listSimilarPendingPairs(...args))
+    return this.run('listSimilarPendingPairs', () => this.review.listSimilarPendingPairs(...args))
   }
 
   listLiveScanGraph(...args: Parameters<GraphReviewOps['listLiveScanGraph']>) {
-    return this.run(() => this.review.listLiveScanGraph(...args))
+    return this.run('listLiveScanGraph', () => this.review.listLiveScanGraph(...args))
   }
 
   listPendingGraph(...args: Parameters<GraphReviewOps['listPendingGraph']>) {
-    return this.run(() => this.review.listPendingGraph(...args))
+    return this.run('listPendingGraph', () => this.review.listPendingGraph(...args))
   }
 }

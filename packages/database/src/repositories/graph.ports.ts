@@ -236,6 +236,7 @@ export interface GraphSyncApply {
   softDeleteEdge(id: string): Promise<void>
   listNodeIds(vaultId: string): Promise<string[]>
   listEdgeIds(vaultId: string): Promise<string[]>
+  hasAnyLiveNodeOrEdge?(vaultId: string): Promise<boolean>
   listLiveNodeRefs(vaultId: string): Promise<Array<{ id: string; shardMonth: string }>>
   listLiveEdgeRefs(vaultId: string): Promise<Array<{ id: string; shardMonth: string }>>
 }

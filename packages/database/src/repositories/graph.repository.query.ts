@@ -498,6 +498,21 @@ export class GraphQueryOps {
     return rows.map((r) => r.id)
   }
 
+  async hasAnyLiveNodeOrEdge(vaultId: string): Promise<boolean> {
+    const nodeRows = await this.database
+      .select({ id: graphNodesTable.id })
+      .from(graphNodesTable)
+      .where(and(eq(graphNodesTable.vaultId, vaultId), isNull(graphNodesTable.deletedAt)))
+      .limit(1)
+    if (nodeRows.length > 0) return true
+    const edgeRows = await this.database
+      .select({ id: graphEdgesTable.id })
+      .from(graphEdgesTable)
+      .where(and(eq(graphEdgesTable.vaultId, vaultId), isNull(graphEdgesTable.deletedAt)))
+      .limit(1)
+    return edgeRows.length > 0
+  }
+
   async listLiveNodeRefs(vaultId: string): Promise<Array<{ id: string; shardMonth: string }>> {
     const rows = await this.database
       .select({ id: graphNodesTable.id, shardMonth: graphNodesTable.shardMonth })

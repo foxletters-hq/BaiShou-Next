@@ -199,4 +199,24 @@ describe('GraphRepository graph reads', () => {
     expect(keyed.map((row) => row.id)).toEqual(['n-old'])
     expect(await repo.countLiveNodes(VAULT, '同事')).toBe(1)
   })
+
+  it('hasAnyLiveNodeOrEdge checks vault existence via lightweight queries and ignores soft-deleted rows', async () => {
+    expect(await repo.hasAnyLiveNodeOrEdge(VAULT)).toBe(false)
+
+    await seedNode('n-other', { vaultId: OTHER, name: '其他小窝' })
+    expect(await repo.hasAnyLiveNodeOrEdge(VAULT)).toBe(false)
+    expect(await repo.hasAnyLiveNodeOrEdge(OTHER)).toBe(true)
+
+    await seedNode('n-live', { name: '存活节点' })
+    expect(await repo.hasAnyLiveNodeOrEdge(VAULT)).toBe(true)
+
+    await repo.softDeleteNode('n-live')
+    expect(await repo.hasAnyLiveNodeOrEdge(VAULT)).toBe(false)
+
+    await seedEdge('e-only', 'n-a', 'n-b')
+    expect(await repo.hasAnyLiveNodeOrEdge(VAULT)).toBe(true)
+
+    await repo.softDeleteEdge('e-only')
+    expect(await repo.hasAnyLiveNodeOrEdge(VAULT)).toBe(false)
+  })
 })
