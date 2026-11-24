@@ -60,7 +60,8 @@ export async function enqueueDiaryEmbedJob(
           createdAt: now
         })
       }),
-    'low'
+    'low',
+    'DiaryEmbedJobs.enqueue'
   )
 }
 
@@ -79,7 +80,8 @@ export async function deleteDiaryEmbedJob(
             and(eq(diaryEmbedJobsTable.vaultId, vaultId), eq(diaryEmbedJobsTable.diaryId, diaryId))
           )
       }),
-    'low'
+    'low',
+    'DiaryEmbedJobs.delete'
   )
 }
 
@@ -94,7 +96,8 @@ export async function countDiaryEmbedJobs(database: AppDatabase): Promise<number
           .where(inArray(diaryEmbedJobsTable.status, ['pending', 'failed', 'running']))
         return Number(rows[0]?.c ?? 0)
       }),
-    'low'
+    'low',
+    'DiaryEmbedJobs.count'
   )
 }
 
@@ -155,7 +158,8 @@ export async function claimDiaryEmbedJobs(
 
         return claimed
       }),
-    'low'
+    'low',
+    'DiaryEmbedJobs.claim'
   )
 }
 
@@ -166,7 +170,8 @@ export async function completeDiaryEmbedJob(database: AppDatabase, id: number): 
       runWithSqliteBusyRetry(async () => {
         await database.delete(diaryEmbedJobsTable).where(eq(diaryEmbedJobsTable.id, id))
       }),
-    'low'
+    'low',
+    'DiaryEmbedJobs.complete'
   )
 }
 
@@ -192,6 +197,7 @@ export async function failDiaryEmbedJob(
           })
           .where(eq(diaryEmbedJobsTable.id, id))
       }),
-    'low'
+    'low',
+    'DiaryEmbedJobs.fail'
   )
 }

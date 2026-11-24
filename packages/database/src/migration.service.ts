@@ -24,6 +24,7 @@ import {
   ensureAgentSchemaColumns,
   ensureCompressionSnapshotsCompatibility,
   ensureEmbedLedgerTable,
+  ensureGraphLiveRefIndexes,
   ensureGraphTables,
   ensureMemoryEmbeddingsTable,
   ensureMemoryEmbeddingsVaultIndex,
@@ -146,6 +147,7 @@ export class MigrationService {
         logger.info('[MigrationService] Agent DB Schema 已是最新版本。')
         if (!isAgentMigrationArchiveImport() && (await this._isSchemaCompatCurrent())) {
           await ensureMemoryEmbeddingsVaultIndex(this.sqlExec())
+          await ensureGraphLiveRefIndexes(this.sqlExec())
           await migrateLegacyDefaultAssistantInDb(this.sqlExec())
           await ensureAgentMessagesFtsRowidAligned(this.sqlExec())
           logger.info(

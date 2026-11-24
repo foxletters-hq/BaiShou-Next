@@ -70,4 +70,44 @@ describe('graph_nodes_vault_embed_state', () => {
     })
     expect(Number((result.rows[0] as { c?: unknown }).c ?? 0)).toBe(1)
   })
+
+  it('creates partial covering indexes for listLiveNodeRefs and listLiveEdgeRefs', async () => {
+    const nodePlan = await db.execute({
+      sql: `EXPLAIN QUERY PLAN SELECT id, shard_month FROM graph_nodes WHERE vault_id = ? AND deleted_at IS NULL`,
+      args: ['vault-a']
+    })
+    const nodeDetails = nodePlan.rows
+      .map((row) => String((row as { detail?: unknown }).detail ?? ''))
+      .join(' | ')
+    expect(nodeDetails).toMatch(/COVERING INDEX graph_nodes_vault_live_ref/i)
+
+    const edgePlan = await db.execute({
+      sql: `EXPLAIN QUERY PLAN SELECT id, shard_month FROM graph_edges WHERE vault_id = ? AND deleted_at IS NULL`,
+      args: ['vault-a']
+    })
+    const edgeDetails = edgePlan.rows
+      .map((row) => String((row as { detail?: unknown }).detail ?? ''))
+      .join(' | ')
+    expect(edgeDetails).toMatch(/COVERING INDEX graph_edges_vault_live_ref/i)
+
+    const nodeLimitPlan = await db.execute({
+      sql: `EXPLAIN QUERY PLAN SELECT id FROM graph_nodes WHERE vault_id = ? AND deleted_at IS NULL LIMIT 1`,
+      args: ['vault-a']
+    })
+    expect(
+      nodeLimitPlan.rows
+        .map((row) => String((row as { detail?: unknown }).detail ?? ''))
+        .join(' | ')
+    ).toMatch(/COVERING INDEX graph_nodes_vault_live_ref/i)
+
+    const edgeLimitPlan = await db.execute({
+      sql: `EXPLAIN QUERY PLAN SELECT id FROM graph_edges WHERE vault_id = ? AND deleted_at IS NULL LIMIT 1`,
+      args: ['vault-a']
+    })
+    expect(
+      edgeLimitPlan.rows
+        .map((row) => String((row as { detail?: unknown }).detail ?? ''))
+        .join(' | ')
+    ).toMatch(/COVERING INDEX graph_edges_vault_live_ref/i)
+  })
 })

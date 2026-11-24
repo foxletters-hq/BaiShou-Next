@@ -81,7 +81,8 @@ export const graphNodesTable = sqliteTable(
       .where(sql`${t.deletedAt} is null and ${t.nodeType} != 'entry'`),
     index('graph_nodes_vault_embed_state')
       .on(t.vaultId, t.modelId, t.dimension)
-      .where(sql`${t.deletedAt} is null`)
+      .where(sql`${t.deletedAt} is null`),
+    index('graph_nodes_vault_live_ref').on(t.vaultId, t.deletedAt, t.shardMonth, t.id)
   ]
 )
 
@@ -129,6 +130,7 @@ export const graphEdgesTable = sqliteTable(
     index('graph_edges_to').on(t.toId),
     index('graph_edges_vault_id_type_current').on(t.vaultId, t.edgeType, t.isCurrent),
     index('graph_edges_vault_id_source_ref').on(t.vaultId, t.sourceRef),
-    index('graph_edges_vault_id_shard_month').on(t.vaultId, t.shardMonth)
+    index('graph_edges_vault_id_shard_month').on(t.vaultId, t.shardMonth),
+    index('graph_edges_vault_live_ref').on(t.vaultId, t.deletedAt, t.shardMonth, t.id)
   ]
 )

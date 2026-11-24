@@ -8,6 +8,21 @@ type SqlRow = Record<string, unknown>
 type SqlQueryInput = Parameters<ISqlExecutor['execute']>[0]
 type SqlQueryResult = Awaited<ReturnType<ISqlExecutor['execute']>>
 
+/** 从 SQL 抽取「动词:表名」作为锁诊断标签，避免慢锁日志显示 anonymous 且不泄露参数值 */
+export function deriveSqlLockLabel(sqlStr: string): string {
+  const normalized = sqlStr
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/--[^\n]*/g, ' ')
+    .trim()
+  const verbMatch = /^([A-Za-z]+)/.exec(normalized)
+  const verb = verbMatch ? verbMatch[1]!.toUpperCase() : 'SQL'
+  const tableMatch =
+    /\b(?:FROM|INTO|UPDATE|TABLE(?:\s+IF\s+NOT\s+EXISTS)?|INDEX(?:\s+IF\s+NOT\s+EXISTS)?)\s+[`"'\[]?([A-Za-z_][A-Za-z0-9_]*)[`"'\]]?/i.exec(
+      normalized
+    )
+  return tableMatch ? `SqlExecutor.${verb}:${tableMatch[1]}` : `SqlExecutor.${verb}`
+}
+
 export interface PrioritizedSqlExecutor extends ISqlExecutor {
   executeWithPriority?(query: SqlQueryInput, priority: ExpoDbLockPriority): Promise<SqlQueryResult>
 }
@@ -69,6 +84,7 @@ export function createSqlExecutor(
     }
 
     const isQuery = isRawSqlReadStatement(sqlStr)
+    const lockLabel = deriveSqlLockLabel(sqlStr)
 
     const rawClient = client as Record<string, unknown>
 
@@ -103,7 +119,8 @@ export function createSqlExecutor(
               )(sqlStr, sqlArgs)
               return { rows }
             }),
-          priority
+          priority,
+          lockLabel
         )
       }
       return withExpoAgentDatabaseLock(
@@ -115,7 +132,8 @@ export function createSqlExecutor(
             )(sqlStr, sqlArgs)
             return { rows: [], rowsAffected: res.changes }
           }),
-        priority
+        priority,
+        lockLabel
       )
     }
 
@@ -133,7 +151,8 @@ export function createSqlExecutor(
               const rows = await drizzleDb.all!(sql.raw(sqlStr), sqlArgs)
               return { rows }
             }),
-          priority
+          priority,
+          lockLabel
         )
       }
       return withExpoAgentDatabaseLock(
@@ -143,7 +162,8 @@ export function createSqlExecutor(
             const res = await drizzleDb.run!(sql.raw(sqlStr), sqlArgs)
             return { rows: [], rowsAffected: res.changes }
           }),
-        priority
+        priority,
+        lockLabel
       )
     }
 
@@ -156,7 +176,8 @@ export function createSqlExecutor(
             const rows = Array.isArray(res) ? (res as SqlRow[]) : []
             return { rows, rowsAffected: res?.changes }
           }),
-        priority
+        priority,
+        lockLabel
       )
     }
 

@@ -112,7 +112,12 @@ export async function installExpoDatabaseSchema(expoDb: ExpoSqliteDatabase): Pro
     logger.warn('[ExpoSchema] Agent DB PRAGMA 初始化失败，继续使用默认配置:', e as Error)
   }
   const { drizzleDb, driver } = initExpoDatabase(expoDb)
-  await withExpoAgentDatabaseLock(drizzleDb, () => dropLegacyAgentShadowTables(expoDb))
+  await withExpoAgentDatabaseLock(
+    drizzleDb,
+    () => dropLegacyAgentShadowTables(expoDb),
+    'high',
+    'ExpoSchema.dropLegacyShadowTables'
+  )
   return { drizzleDb, driver }
 }
 

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createSqlExecutor, createSqlExecutorFromDrizzleDb } from '../sql-executor.factory'
+import {
+  createSqlExecutor,
+  createSqlExecutorFromDrizzleDb,
+  deriveSqlLockLabel
+} from '../sql-executor.factory'
 
 describe('createSqlExecutor', () => {
   it('returns existing ISqlExecutor as-is', async () => {
@@ -123,5 +127,28 @@ describe('createSqlExecutor', () => {
 
     await Promise.all([p1, p2])
     expect(order).toEqual([1, 2])
+  })
+
+  it('derives concise lock labels from SQL without leaking values', () => {
+    expect(
+      deriveSqlLockLabel(
+        'UPDATE memory_embeddings SET metadata_json = ? WHERE source_type = ? AND source_id = ?'
+      )
+    ).toBe('SqlExecutor.UPDATE:memory_embeddings')
+    expect(
+      deriveSqlLockLabel(
+        '  /* note */ SELECT DISTINCT source_id FROM "memory_embeddings" WHERE x=1'
+      )
+    ).toBe('SqlExecutor.SELECT:memory_embeddings')
+    expect(deriveSqlLockLabel('DELETE FROM embed_ledger WHERE id = ?')).toBe(
+      'SqlExecutor.DELETE:embed_ledger'
+    )
+    expect(deriveSqlLockLabel('INSERT INTO `system_settings` (key, value) VALUES (?, ?)')).toBe(
+      'SqlExecutor.INSERT:system_settings'
+    )
+    expect(
+      deriveSqlLockLabel('CREATE INDEX IF NOT EXISTS memory_embeddings_source_type_id ON t(a)')
+    ).toBe('SqlExecutor.CREATE:memory_embeddings_source_type_id')
+    expect(deriveSqlLockLabel('PRAGMA journal_mode=WAL')).toBe('SqlExecutor.PRAGMA')
   })
 })

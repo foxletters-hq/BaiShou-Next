@@ -5,12 +5,15 @@ import {
   EMBED_LEDGER_CREATE_SQL,
   EMBED_LEDGER_INDEXES_SQL,
   GRAPH_EDGES_CREATE_SQL,
+  GRAPH_EDGES_LIVE_REF_INDEX_SQL,
   GRAPH_INDEXES_SQL,
   GRAPH_NODE_ALIASES_CREATE_SQL,
   GRAPH_NODES_CREATE_SQL,
+  GRAPH_NODES_LIVE_REF_INDEX_SQL,
   GRAPH_PURGE_SOFT_DELETED_SQL,
   MEMORY_EMBEDDINGS_CREATE_SQL,
   MEMORY_EMBEDDINGS_INDEX_SQL,
+  MEMORY_EMBEDDINGS_SOURCE_INDEX_SQL,
   MEMORY_EMBEDDINGS_VAULT_DIM_SOURCE_INDEX_SQL,
   MEMORY_EMBEDDINGS_VAULT_INDEX_SQL,
   SYSTEM_SETTINGS_CREATE_SQL
@@ -48,6 +51,7 @@ export async function ensureMemoryEmbeddingsTable(executeSql: MigrationSqlExecut
     await executeSql(MEMORY_EMBEDDINGS_INDEX_SQL)
     await executeSql(MEMORY_EMBEDDINGS_VAULT_INDEX_SQL)
     await executeSql(MEMORY_EMBEDDINGS_VAULT_DIM_SOURCE_INDEX_SQL)
+    await executeSql(MEMORY_EMBEDDINGS_SOURCE_INDEX_SQL)
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
     logger.warn('[MigrationService] memory_embeddings 表检查失败（非阻塞）:', message)
@@ -71,6 +75,9 @@ export async function ensureMemoryEmbeddingsVaultIndex(
       if (columns.has('dimension')) {
         await executeSql(MEMORY_EMBEDDINGS_VAULT_DIM_SOURCE_INDEX_SQL)
       }
+    }
+    if (columns.has('source_type') && columns.has('source_id')) {
+      await executeSql(MEMORY_EMBEDDINGS_SOURCE_INDEX_SQL)
     }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
@@ -197,6 +204,41 @@ export async function ensureGraphTables(executeSql: MigrationSqlExecutor): Promi
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
     logger.warn('[MigrationService] graph 表检查失败（非阻塞）:', message)
+  }
+}
+
+/**
+ * 存量库快路径补建 graph_nodes / graph_edges 存活引用覆盖索引，
+ * 让 listLiveNodeRefs / listLiveEdgeRefs 免扫 embedding 大 BLOB 溢出页。
+ */
+export async function ensureGraphLiveRefIndexes(executeSql: MigrationSqlExecutor): Promise<void> {
+  try {
+    const tables = [
+      { name: 'graph_nodes', ddl: GRAPH_NODES_LIVE_REF_INDEX_SQL },
+      { name: 'graph_edges', ddl: GRAPH_EDGES_LIVE_REF_INDEX_SQL }
+    ] as const
+    for (const item of tables) {
+      const exists = await executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+        [item.name]
+      )
+      if (exists.rows.length === 0) continue
+      const cols = await executeSql(`PRAGMA table_info(${item.name})`)
+      const names = new Set(
+        cols.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
+      )
+      if (
+        names.has('vault_id') &&
+        names.has('shard_month') &&
+        names.has('id') &&
+        names.has('deleted_at')
+      ) {
+        await executeSql(item.ddl)
+      }
+    }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e)
+    logger.warn('[MigrationService] graph live_ref 覆盖索引检查失败（非阻塞）:', message)
   }
 }
 

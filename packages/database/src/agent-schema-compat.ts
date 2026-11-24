@@ -49,6 +49,12 @@ export const MEMORY_EMBEDDINGS_VAULT_DIM_SOURCE_INDEX_SQL = `
   ON memory_embeddings (vault_id, dimension, source_type)
 `
 
+/** 按 source_type + source_id 更新元数据/删向量/规范化时走索引，避免全表扫描 BLOB */
+export const MEMORY_EMBEDDINGS_SOURCE_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS memory_embeddings_source_type_id
+  ON memory_embeddings (source_type, source_id)
+`
+
 /** 日记 RAG 嵌入欠账表；成功后删行，不保留永久历史 */
 export const DIARY_EMBED_JOBS_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS diary_embed_jobs (
@@ -208,6 +214,11 @@ export const GRAPH_PURGE_SOFT_DELETED_SQL = [
   `DELETE FROM graph_nodes WHERE deleted_at IS NOT NULL`
 ] as const
 
+/** listLiveNodeRefs / listLiveEdgeRefs / listNodeIds / listEdgeIds 走覆盖索引（将 deleted_at 纳入索引键，避免 SQLite 回表扫 embedding 大 BLOB 溢出页） */
+export const GRAPH_NODES_LIVE_REF_INDEX_SQL = `CREATE INDEX IF NOT EXISTS graph_nodes_vault_live_ref ON graph_nodes(vault_id, deleted_at, shard_month, id)`
+
+export const GRAPH_EDGES_LIVE_REF_INDEX_SQL = `CREATE INDEX IF NOT EXISTS graph_edges_vault_live_ref ON graph_edges(vault_id, deleted_at, shard_month, id)`
+
 export const GRAPH_INDEXES_SQL = [
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_id_type ON graph_nodes(vault_id, node_type)`,
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_name_norm ON graph_nodes(vault_id, name_normalized)`,
@@ -216,13 +227,15 @@ export const GRAPH_INDEXES_SQL = [
   `DROP INDEX IF EXISTS graph_nodes_vault_type_name_live`,
   `CREATE UNIQUE INDEX IF NOT EXISTS graph_nodes_vault_type_name_live ON graph_nodes(vault_id, node_type, name_normalized, discriminator) WHERE deleted_at IS NULL AND node_type != 'entry'`,
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_embed_state ON graph_nodes (vault_id, model_id, dimension) WHERE deleted_at IS NULL`,
+  GRAPH_NODES_LIVE_REF_INDEX_SQL,
   `CREATE INDEX IF NOT EXISTS graph_node_aliases_vault_alias ON graph_node_aliases(vault_id, alias_normalized)`,
   `CREATE INDEX IF NOT EXISTS graph_node_aliases_node ON graph_node_aliases(node_id)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_from ON graph_edges(from_id)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_to ON graph_edges(to_id)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_type_current ON graph_edges(vault_id, edge_type, is_current)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_source_ref ON graph_edges(vault_id, source_ref)`,
-  `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_shard_month ON graph_edges(vault_id, shard_month)`
+  `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_shard_month ON graph_edges(vault_id, shard_month)`,
+  GRAPH_EDGES_LIVE_REF_INDEX_SQL
 ] as const
 
 /**

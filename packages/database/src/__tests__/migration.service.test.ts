@@ -259,12 +259,17 @@ describe('MigrationService', () => {
       const indexNames = indexes.map((row) => row.name)
       expect(indexNames).toContain('memory_embeddings_vault_id_source')
       expect(indexNames).toContain('memory_embeddings_vault_id_dim_source')
+      expect(indexNames).toContain('memory_embeddings_source_type_id')
     })
 
-    it('runMigrations fast path should backfill memory_embeddings_vault_id_dim_source index idempotently', async () => {
+    it('runMigrations fast path should backfill memory_embeddings and graph live_ref indexes idempotently', async () => {
       const db = dbManager.getDb()
       await (service as any)._ensureMemoryEmbeddingsTable()
+      await (service as any)._ensureGraphTables()
       await db.run(sql`DROP INDEX IF EXISTS memory_embeddings_vault_id_dim_source`)
+      await db.run(sql`DROP INDEX IF EXISTS memory_embeddings_source_type_id`)
+      await db.run(sql`DROP INDEX IF EXISTS graph_nodes_vault_live_ref`)
+      await db.run(sql`DROP INDEX IF EXISTS graph_edges_vault_live_ref`)
       await db.run(sql`
         CREATE VIRTUAL TABLE agent_messages_fts USING fts5(
           part_id UNINDEXED,
@@ -294,9 +299,21 @@ describe('MigrationService', () => {
       await service.runMigrations()
 
       const indexes = (await db.all(sql`
-        SELECT name FROM sqlite_master WHERE type='index' AND name='memory_embeddings_vault_id_dim_source'
+        SELECT name FROM sqlite_master
+        WHERE type='index'
+          AND name IN (
+            'memory_embeddings_vault_id_dim_source',
+            'memory_embeddings_source_type_id',
+            'graph_nodes_vault_live_ref',
+            'graph_edges_vault_live_ref'
+          )
       `)) as Array<{ name: string }>
-      expect(indexes).toHaveLength(1)
+      expect(indexes.map((row) => row.name).sort()).toEqual([
+        'graph_edges_vault_live_ref',
+        'graph_nodes_vault_live_ref',
+        'memory_embeddings_source_type_id',
+        'memory_embeddings_vault_id_dim_source'
+      ])
     })
 
     it('_retireDiaryEmbedJobsTable migrates leftover jobs into embed_ledger without file hashes then drops the table', async () => {
