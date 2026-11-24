@@ -11,6 +11,10 @@ import {
   type GraphSyncEmbedder,
   FsVersionManager,
   bindPendingReextractCollaborators,
+  hasVaultBackfillCompleted,
+  loadDerivedHydrationState,
+  markVaultBackfillCompleted,
+  saveDerivedHydrationState,
   type IVersionManager,
   type RawDataSourceManager,
   type GraphRawManager,
@@ -354,10 +358,9 @@ export async function backfillMemoryJsonlFromEmbeddings(options: {
     updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
       options.hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
   })
-  // Also patch metadata for chat/memory backfilled rows (and any pre-existing JSONL)
-  // when migrateManual ran with empty manual set — ensure patch still runs once.
+  // 仅当 chat/memory 本次实际补写了 JSONL 且 manual 为空时补写一次元数据，避免每次启动全表刷 UPDATE
   let metadataPatched = manual.metadataPatched
-  if (manualChunks.length === 0) {
+  if (manualChunks.length === 0 && (r1.written > 0 || r2.written > 0)) {
     metadataPatched = await service.patchMetadataFromJsonl((sourceType, sourceId, metadataJson) =>
       options.hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
     )
@@ -478,14 +481,35 @@ export async function runDerivedIndexHydration(
       logger.warn(`[RawData] embedding adapter unavailable (${reason}):`, e as Error)
     }
 
-    const backfill = await backfillMemoryJsonlFromEmbeddings({
-      hsRepo,
-      vaultId: activeVault.id
-    })
-    const legacyCopy = await copyLegacyManualMemoriesAcrossVaults({
-      hsRepo,
-      embeddingAdapter
-    })
+    let hydrationState = await loadDerivedHydrationState(clientExecutor)
+    let hydrationStateDirty = false
+    let backfill = { written: 0, skipped: 0, normalized: 0, metadataPatched: 0 }
+    if (!hasVaultBackfillCompleted(hydrationState, activeVault.id)) {
+      backfill = await backfillMemoryJsonlFromEmbeddings({
+        hsRepo,
+        vaultId: activeVault.id
+      })
+      hydrationState = markVaultBackfillCompleted(hydrationState, activeVault.id)
+      hydrationStateDirty = true
+    }
+
+    let legacyCopy = { originals: 0, copied: 0, skipped: 0 }
+    const multiVaultCount = vaultService.getAllVaults().filter((v) => v.id && v.name).length
+    if (
+      multiVaultCount > 1 &&
+      (!hydrationState.legacyManualCopyDone || backfill.written > 0 || backfill.normalized > 0)
+    ) {
+      legacyCopy = await copyLegacyManualMemoriesAcrossVaults({
+        hsRepo,
+        embeddingAdapter
+      })
+      hydrationState = { ...hydrationState, legacyManualCopyDone: true }
+      hydrationStateDirty = true
+    }
+
+    if (hydrationStateDirty) {
+      await saveDerivedHydrationState(clientExecutor, hydrationState)
+    }
     const memory = await syncMemoryPendingIndex({
       hsRepo,
       embeddingAdapter,

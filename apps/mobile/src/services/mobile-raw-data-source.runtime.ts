@@ -8,6 +8,10 @@ import {
   MemorySyncService,
   GraphSyncService,
   FsVersionManager,
+  hasVaultBackfillCompleted,
+  loadDerivedHydrationState,
+  markVaultBackfillCompleted,
+  saveDerivedHydrationState,
   type RawDataSourceManager,
   type GraphRawManager,
   type IFileSystem,
@@ -313,62 +317,90 @@ export async function runMobileDerivedIndexHydration(options: {
       )
     }
 
-    let legacyCopy = { copied: 0, skipped: 0 }
-    if (options.syncMemory !== false) {
-      const backfill = new MemoryJsonlBackfillService(runtime.memoryManager)
-      const chatChunks = await hsRepo.listEmbeddingChunksByType('chat', {
-        vaultId: options.vaultId
-      })
-      const memoryChunks = await hsRepo.listEmbeddingChunksByType('memory', {
-        vaultId: options.vaultId
-      })
-      const manualChunks = await hsRepo.listEmbeddingChunksByType('manual', {
-        vaultId: options.vaultId
-      })
-      const vaultName = options.vaultName ?? options.vaultId
-      const chatBackfill = await backfill.backfillFromChunks(chatChunks, vaultName)
-      const memoryBackfill = await backfill.backfillFromChunks(memoryChunks, vaultName)
-      await backfill.migrateManualAndPatchMetadata(manualChunks, vaultName, {
-        normalizeManualToMemory: (params) =>
-          hsRepo.normalizeManualToMemory({
-            vaultId: options.vaultId,
-            sourceIds: 'sourceIds' in params ? params.sourceIds : undefined
-          }),
-        updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
-          hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
-      })
-      if (manualChunks.length === 0 && (chatBackfill.written > 0 || memoryBackfill.written > 0)) {
-        await backfill.patchMetadataFromJsonl((sourceType, sourceId, metadataJson) =>
-          hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
-        )
-      }
-      await hsRepo.normalizeManualToMemory({ vaultId: options.vaultId })
+    const isColdStartDeferredClean =
+      options.reason === 'cold-start-deferred' &&
+      !(options.deletedShardPaths && options.deletedShardPaths.length > 0)
 
-      // V1.6：遗留手动记忆复制到各仓库
+    let legacyCopy = { copied: 0, skipped: 0 }
+    let backfillRan = false
+    let legacyCopyRan = false
+    if (options.syncMemory !== false) {
+      const vaultName = options.vaultName ?? options.vaultId
+      let hydrationState = await loadDerivedHydrationState(clientExecutor)
+      let hydrationStateDirty = false
+      let manualMigratedCount = 0
+
+      // 一次性历史迁移：仅在当前仓库未记录完成印记时扫描旧向量表回填 JSONL，避免每次冷启动全表扫描与刷写
+      if (!hasVaultBackfillCompleted(hydrationState, options.vaultId)) {
+        backfillRan = true
+        const backfill = new MemoryJsonlBackfillService(runtime.memoryManager)
+        const chatChunks = await hsRepo.listEmbeddingChunksByType('chat', {
+          vaultId: options.vaultId
+        })
+        const memoryChunks = await hsRepo.listEmbeddingChunksByType('memory', {
+          vaultId: options.vaultId
+        })
+        const manualChunks = await hsRepo.listEmbeddingChunksByType('manual', {
+          vaultId: options.vaultId
+        })
+        const chatBackfill = await backfill.backfillFromChunks(chatChunks, vaultName)
+        const memoryBackfill = await backfill.backfillFromChunks(memoryChunks, vaultName)
+        const manualResult = await backfill.migrateManualAndPatchMetadata(manualChunks, vaultName, {
+          normalizeManualToMemory: (params) =>
+            hsRepo.normalizeManualToMemory({
+              vaultId: options.vaultId,
+              sourceIds: 'sourceIds' in params ? params.sourceIds : undefined
+            }),
+          updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
+            hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
+        })
+        if (manualChunks.length === 0 && (chatBackfill.written > 0 || memoryBackfill.written > 0)) {
+          await backfill.patchMetadataFromJsonl((sourceType, sourceId, metadataJson) =>
+            hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
+          )
+        }
+        const leftoverNormalized = await hsRepo.normalizeManualToMemory({
+          vaultId: options.vaultId
+        })
+        manualMigratedCount = manualResult.written + manualResult.normalized + leftoverNormalized
+        hydrationState = markVaultBackfillCompleted(hydrationState, options.vaultId)
+        hydrationStateDirty = true
+      }
+
+      // V1.6：遗留手动记忆复制到各仓库（仅多仓一次性执行；后续冷启动不再遍历全部仓库 Memory/）
       const vaults =
         options.vaults && options.vaults.length > 0
           ? options.vaults
           : [{ id: options.vaultId, name: vaultName }]
-      const activeId = options.vaultId
-      legacyCopy = await new LegacyManualMemoryCopyService().copyToOtherVaults({
-        vaults,
-        getManager: (vault) => {
-          if (vault.id === activeId) return runtime!.memoryManager
-          return createVaultScopedMemoryManager(vault.name)
-        },
-        afterWrite: async (vault, manager) => {
-          if (!embeddingAdapter?.isConfigured) return
-          const memorySync = new MemorySyncService(
-            manager,
-            createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
-          )
-          await memorySync.syncPendingIndex({
-            vaultId: vault.id,
-            vaultName: vault.name,
-            embedMissing: false
-          })
-        }
-      })
+      if (vaults.length > 1 && (!hydrationState.legacyManualCopyDone || manualMigratedCount > 0)) {
+        legacyCopyRan = true
+        const activeId = options.vaultId
+        legacyCopy = await new LegacyManualMemoryCopyService().copyToOtherVaults({
+          vaults,
+          getManager: (vault) => {
+            if (vault.id === activeId) return runtime!.memoryManager
+            return createVaultScopedMemoryManager(vault.name)
+          },
+          afterWrite: async (vault, manager) => {
+            if (!embeddingAdapter?.isConfigured) return
+            const memorySync = new MemorySyncService(
+              manager,
+              createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
+            )
+            await memorySync.syncPendingIndex({
+              vaultId: vault.id,
+              vaultName: vault.name,
+              embedMissing: false
+            })
+          }
+        })
+        hydrationState = { ...hydrationState, legacyManualCopyDone: true }
+        hydrationStateDirty = true
+      }
+
+      if (hydrationStateDirty) {
+        await saveDerivedHydrationState(clientExecutor, hydrationState)
+      }
 
       const memorySync = new MemorySyncService(
         runtime.memoryManager,
@@ -377,7 +409,8 @@ export async function runMobileDerivedIndexHydration(options: {
       await memorySync.syncPendingIndex({
         vaultId: options.vaultId,
         vaultName: options.vaultName,
-        embedMissing: false
+        embedMissing: false,
+        skipOrphanSweepWhenClean: isColdStartDeferredClean
       })
     }
 
@@ -393,12 +426,13 @@ export async function runMobileDerivedIndexHydration(options: {
       })
       await graphSync.syncPendingIndex({
         vaultId: options.vaultId,
-        deletedShardPaths: options.deletedShardPaths
+        deletedShardPaths: options.deletedShardPaths,
+        absentSweep: isColdStartDeferredClean ? 'when-pending' : 'shard-present'
       })
     }
 
     logger.info(
-      `[RawData] mobile derived hydration done (${options.reason}): legacyCopy=${legacyCopy.copied}/${legacyCopy.skipped}`
+      `[RawData] mobile derived hydration done (${options.reason}): backfillRan=${backfillRan} legacyCopyRan=${legacyCopyRan} legacyCopy=${legacyCopy.copied}/${legacyCopy.skipped}`
     )
   } catch (e) {
     logger.warn(`[RawData] mobile derived hydration failed (${options.reason}):`, e as Error)

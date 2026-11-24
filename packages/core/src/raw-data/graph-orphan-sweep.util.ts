@@ -1,7 +1,7 @@
 import { isValidGraphMonth } from '@baishou/shared'
 import { isPresentNotebookGraphShardKey } from './notebook-graph-shard-key.util'
 
-export type GraphAbsentSweepMode = 'shard-present' | 'off'
+export type GraphAbsentSweepMode = 'shard-present' | 'when-pending' | 'off'
 
 export type GraphShardCollection = 'nodes' | 'edges'
 

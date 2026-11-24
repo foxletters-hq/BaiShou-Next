@@ -271,4 +271,186 @@ describe('GraphSyncService write→index order', () => {
     expect(result.nodesUpserted).toBe(1)
     expect(applyRawNodesBatch).toHaveBeenCalledTimes(1)
   })
+
+  it('reuses prefetched live node/edge refs when no pending shards changed DB', async () => {
+    const vaultId = createRandomVaultId()
+    const now = Date.now()
+    const written = await graphManager.writeRecord(
+      nodeRecord({ id: 'n1', vaultId, name: 'Anson', now }),
+      { collection: 'nodes' }
+    )
+    await graphManager.commitIndexed('nodes', written.relativePath, written.contentHash)
+
+    const softDeleteNode = vi.fn().mockResolvedValue(undefined)
+    const listLiveNodeRefs = vi.fn().mockResolvedValue([
+      { id: 'n1', shardMonth: '2026-07' },
+      { id: 'ghost-present', shardMonth: '2026-07' }
+    ])
+    const listLiveEdgeRefs = vi.fn().mockResolvedValue([])
+    const repo = {
+      applyRawNode: vi.fn(),
+      softDeleteNode,
+      applyRawEdge: vi.fn(),
+      softDeleteEdge: vi.fn(),
+      listNodeIds: vi.fn(),
+      listEdgeIds: vi.fn(),
+      listLiveNodeRefs,
+      listLiveEdgeRefs
+    } as unknown as GraphRepository
+
+    const result = await new GraphSyncService(graphManager, repo, null).syncPendingIndex({
+      vaultId
+    })
+
+    expect(result.shards).toBe(0)
+    expect(result.deleted).toBe(1)
+    expect(softDeleteNode).toHaveBeenCalledWith('ghost-present')
+    expect(listLiveNodeRefs).toHaveBeenCalledTimes(1)
+    expect(listLiveEdgeRefs).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-queries live refs during absentSweep when pending shards were applied', async () => {
+    const vaultId = createRandomVaultId()
+    const now = Date.now()
+    await graphManager.writeRecord(nodeRecord({ id: 'n1', vaultId, name: 'Anson', now }), {
+      collection: 'nodes'
+    })
+
+    const listLiveNodeRefs = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: 'existing', shardMonth: '2026-07' }])
+      .mockResolvedValueOnce([
+        { id: 'existing', shardMonth: '2026-07' },
+        { id: 'n1', shardMonth: '2026-07' }
+      ])
+    const listLiveEdgeRefs = vi.fn().mockResolvedValue([])
+    const softDeleteNode = vi.fn().mockResolvedValue(undefined)
+    const repo = {
+      applyRawNode: vi.fn().mockResolvedValue(undefined),
+      softDeleteNode,
+      applyRawEdge: vi.fn(),
+      softDeleteEdge: vi.fn(),
+      listNodeIds: vi.fn(),
+      listEdgeIds: vi.fn(),
+      listLiveNodeRefs,
+      listLiveEdgeRefs
+    } as unknown as GraphRepository
+
+    const result = await new GraphSyncService(graphManager, repo, null).syncPendingIndex({
+      vaultId
+    })
+
+    expect(result.shards).toBe(1)
+    expect(result.nodesUpserted).toBe(1)
+    expect(listLiveNodeRefs).toHaveBeenCalledTimes(2)
+    expect(listLiveEdgeRefs).toHaveBeenCalledTimes(2)
+    expect(softDeleteNode).toHaveBeenCalledWith('existing')
+  })
+
+  it('skips reading unchanged shards when absentSweep is when-pending and no shards are pending', async () => {
+    const vaultId = createRandomVaultId()
+    const now = Date.now()
+    const written = await graphManager.writeRecord(
+      nodeRecord({ id: 'n1', vaultId, name: 'Anson', now }),
+      { collection: 'nodes' }
+    )
+    await graphManager.commitIndexed('nodes', written.relativePath, written.contentHash)
+
+    const readSpy = vi.spyOn(graphManager, 'readShardRecords')
+    const softDeleteNode = vi.fn()
+    const repo = {
+      applyRawNode: vi.fn(),
+      softDeleteNode,
+      applyRawEdge: vi.fn(),
+      softDeleteEdge: vi.fn(),
+      listNodeIds: vi.fn(),
+      listEdgeIds: vi.fn(),
+      listLiveNodeRefs: vi.fn().mockResolvedValue([{ id: 'n1', shardMonth: '2026-07' }]),
+      listLiveEdgeRefs: vi.fn().mockResolvedValue([])
+    } as unknown as GraphRepository
+
+    const result = await new GraphSyncService(graphManager, repo, null).syncPendingIndex({
+      vaultId,
+      absentSweep: 'when-pending'
+    })
+
+    expect(result.shards).toBe(0)
+    expect(result.deleted).toBe(0)
+    expect(readSpy).not.toHaveBeenCalled()
+    expect(softDeleteNode).not.toHaveBeenCalled()
+  })
+
+  it('uses lightweight hasAnyLiveNodeOrEdge check instead of full ref scans on clean when-pending sync', async () => {
+    const vaultId = createRandomVaultId()
+    const now = Date.now()
+    const written = await graphManager.writeRecord(
+      nodeRecord({ id: 'n1', vaultId, name: 'Anson', now }),
+      { collection: 'nodes' }
+    )
+    await graphManager.commitIndexed('nodes', written.relativePath, written.contentHash)
+
+    const hasAnyLiveNodeOrEdge = vi.fn().mockResolvedValue(true)
+    const listLiveNodeRefs = vi.fn()
+    const listLiveEdgeRefs = vi.fn()
+    const repo = {
+      applyRawNode: vi.fn(),
+      softDeleteNode: vi.fn(),
+      applyRawEdge: vi.fn(),
+      softDeleteEdge: vi.fn(),
+      listNodeIds: vi.fn(),
+      listEdgeIds: vi.fn(),
+      hasAnyLiveNodeOrEdge,
+      listLiveNodeRefs,
+      listLiveEdgeRefs
+    } as unknown as GraphRepository
+
+    const result = await new GraphSyncService(graphManager, repo, null).syncPendingIndex({
+      vaultId,
+      absentSweep: 'when-pending'
+    })
+
+    expect(result.shards).toBe(0)
+    expect(hasAnyLiveNodeOrEdge).toHaveBeenCalledTimes(1)
+    expect(hasAnyLiveNodeOrEdge).toHaveBeenCalledWith(vaultId)
+    expect(listLiveNodeRefs).not.toHaveBeenCalled()
+    expect(listLiveEdgeRefs).not.toHaveBeenCalled()
+  })
+
+  it('invalidates indexed hashes and rebuilds when hasAnyLiveNodeOrEdge reports an empty DB', async () => {
+    const vaultId = createRandomVaultId()
+    const now = Date.now()
+    const written = await graphManager.writeRecord(
+      nodeRecord({ id: 'n1', vaultId, name: 'Anson', now }),
+      { collection: 'nodes' }
+    )
+    await graphManager.commitIndexed('nodes', written.relativePath, written.contentHash)
+
+    const hasAnyLiveNodeOrEdge = vi.fn().mockResolvedValue(false)
+    const applyRawNode = vi.fn().mockResolvedValue(undefined)
+    const listLiveNodeRefs = vi.fn().mockResolvedValue([{ id: 'n1', shardMonth: '2026-07' }])
+    const listLiveEdgeRefs = vi.fn().mockResolvedValue([])
+    const repo = {
+      applyRawNode,
+      softDeleteNode: vi.fn(),
+      applyRawEdge: vi.fn(),
+      softDeleteEdge: vi.fn(),
+      listNodeIds: vi.fn(),
+      listEdgeIds: vi.fn(),
+      hasAnyLiveNodeOrEdge,
+      listLiveNodeRefs,
+      listLiveEdgeRefs
+    } as unknown as GraphRepository
+
+    const result = await new GraphSyncService(graphManager, repo, null).syncPendingIndex({
+      vaultId,
+      absentSweep: 'when-pending'
+    })
+
+    expect(hasAnyLiveNodeOrEdge).toHaveBeenCalledTimes(1)
+    expect(result.shards).toBe(1)
+    expect(result.nodesUpserted).toBe(1)
+    expect(applyRawNode).toHaveBeenCalledTimes(1)
+    expect(listLiveNodeRefs).toHaveBeenCalledTimes(1)
+    expect(listLiveEdgeRefs).toHaveBeenCalledTimes(1)
+  })
 })

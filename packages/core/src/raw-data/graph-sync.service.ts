@@ -119,17 +119,34 @@ export class GraphSyncService implements GraphPendingIndexSync {
     deleted: number
     skippedNoVaultId: number
   }> {
+    let prefetchedVaultId: string | null = null
+    let prefetchedLiveNodes: Array<{ id: string; shardMonth: string }> | null = null
+    let prefetchedLiveEdges: Array<{ id: string; shardMonth: string }> | null = null
+
     if (opts?.absentSweep !== 'off' && opts?.vaultId && this.graphManager.invalidateIndexedHashes) {
-      const liveNodes =
-        typeof this.repo.listLiveNodeRefs === 'function'
-          ? await this.repo.listLiveNodeRefs(opts.vaultId)
-          : []
-      const liveEdges =
-        typeof this.repo.listLiveEdgeRefs === 'function'
-          ? await this.repo.listLiveEdgeRefs(opts.vaultId)
-          : []
-      if (liveNodes.length === 0 && liveEdges.length === 0) {
-        await this.graphManager.invalidateIndexedHashes()
+      const normalizedVaultId = opts.vaultId.trim()
+      if (typeof this.repo.hasAnyLiveNodeOrEdge === 'function') {
+        const hasLive = await this.repo.hasAnyLiveNodeOrEdge(opts.vaultId)
+        if (!hasLive) {
+          await this.graphManager.invalidateIndexedHashes()
+        }
+      } else {
+        const liveNodes =
+          typeof this.repo.listLiveNodeRefs === 'function'
+            ? await this.repo.listLiveNodeRefs(opts.vaultId)
+            : null
+        const liveEdges =
+          typeof this.repo.listLiveEdgeRefs === 'function'
+            ? await this.repo.listLiveEdgeRefs(opts.vaultId)
+            : null
+        if ((liveNodes?.length ?? 0) === 0 && (liveEdges?.length ?? 0) === 0) {
+          await this.graphManager.invalidateIndexedHashes()
+        }
+        if (normalizedVaultId) {
+          prefetchedVaultId = normalizedVaultId
+          prefetchedLiveNodes = liveNodes
+          prefetchedLiveEdges = liveEdges
+        }
       }
     }
 
@@ -363,7 +380,11 @@ export class GraphSyncService implements GraphPendingIndexSync {
       await this.graphManager.commitIndexed(collection!, shard.relativePath, shard.contentHash)
     }
 
-    if (opts?.absentSweep === 'off') {
+    const hasDeletedShardPaths = (opts?.deletedShardPaths?.length ?? 0) > 0
+    if (
+      opts?.absentSweep === 'off' ||
+      (opts?.absentSweep === 'when-pending' && pending.length === 0 && !hasDeletedShardPaths)
+    ) {
       return {
         shards: pending.length,
         nodesUpserted,
@@ -421,15 +442,24 @@ export class GraphSyncService implements GraphPendingIndexSync {
     const scopedVault = opts?.vaultId?.trim()
     if (scopedVault && isVaultId(scopedVault)) vaults.add(scopedVault)
 
+    // 本轮无 pending 分片且未变更过 DB 时，直接复用入口预查的存活引用，避免冷启动重复扫库拿锁
+    const canReusePrefetchedRefs =
+      pending.length === 0 && nodesUpserted === 0 && edgesUpserted === 0 && deleted === 0
     for (const vault of vaults) {
       const liveNodes = liveNodeIdsByVault.get(vault) ?? new Set<string>()
-      const nodeRefs = await this.repo.listLiveNodeRefs(vault)
+      const nodeRefs =
+        canReusePrefetchedRefs && prefetchedVaultId === vault && prefetchedLiveNodes !== null
+          ? prefetchedLiveNodes
+          : await this.repo.listLiveNodeRefs(vault)
       for (const id of collectAbsentDeleteIds(nodeRefs, liveNodes, presentNodes)) {
         await this.repo.softDeleteNode(id)
         deleted += 1
       }
       const liveEdges = liveEdgeIdsByVault.get(vault) ?? new Set<string>()
-      const edgeRefs = await this.repo.listLiveEdgeRefs(vault)
+      const edgeRefs =
+        canReusePrefetchedRefs && prefetchedVaultId === vault && prefetchedLiveEdges !== null
+          ? prefetchedLiveEdges
+          : await this.repo.listLiveEdgeRefs(vault)
       for (const id of collectAbsentDeleteIds(edgeRefs, liveEdges, presentEdges)) {
         await this.repo.softDeleteEdge(id)
         deleted += 1
