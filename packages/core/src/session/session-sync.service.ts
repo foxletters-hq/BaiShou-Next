@@ -1,6 +1,10 @@
 import { SessionRepository } from '@baishou/database'
 import { deriveLegacyVaultId } from '@baishou/shared'
 import { SessionFileService } from './session-file.service'
+import {
+  partitionSessionFilesByActiveVault,
+  statAndSortSessionFilesNewestFirst
+} from './session-sync-order.util'
 import type { DiskResyncOptions } from '../vault/disk-resync.types'
 
 function toEpochMs(value: unknown): number | undefined {
@@ -23,6 +27,11 @@ const yieldMacroTask = (): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, 0)
   })
+
+function extractActualSessionId(sessionData: unknown): string {
+  const id = (sessionData as { session?: { id?: unknown } } | null | undefined)?.session?.id
+  return typeof id === 'string' ? id.trim() : ''
+}
 
 export class SessionSyncService {
   constructor(
@@ -84,32 +93,56 @@ export class SessionSyncService {
       dbCount: allDbSessions.length
     })
 
-    // 逆向覆写：将存在于 File 系统的数据全部更新倒入 SQLite 中
+    // 逆向覆写：先处理当前活跃工作区，并按磁盘 mtime 降序优先导入最近会话
     let upserted = 0
     let skipped = 0
-    for (const f of allFiles) {
-      const vaultName = 'vaultName' in f ? f.vaultName : undefined
-      try {
-        if (maxBytes != null) {
-          const byteSize = await this.fileService.getSessionFileByteSize(f.id, vaultName)
-          if (byteSize != null && byteSize > maxBytes) {
+    let skippedAlias = 0
+    const canonicalFileIds = new Set(allFiles.map((f) => f.id))
+    const appliedSessionIds = new Set<string>()
+    const partitions = partitionSessionFilesByActiveVault(allFiles, options?.activeVaultName)
+    for (const partition of partitions) {
+      const ordered = await statAndSortSessionFilesNewestFirst(partition, this.fileService, {
+        needSize: maxBytes != null
+      })
+      for (const { file: f, size: byteSize } of ordered) {
+        const vaultName = 'vaultName' in f ? f.vaultName : undefined
+        try {
+          if (maxBytes != null && byteSize != null && byteSize > maxBytes) {
             console.warn(
               `[SessionSyncService] skip oversized session ${f.id} (${byteSize} bytes, limit ${maxBytes})`
             )
             skipped++
             continue
           }
+          const sessionData = await this.fileService.readSession(f.id, vaultName)
+          if (sessionData) {
+            const actualSessionId = extractActualSessionId(sessionData)
+            if (!actualSessionId) {
+              skipped++
+              continue
+            }
+            if (
+              appliedSessionIds.has(actualSessionId) ||
+              (actualSessionId !== f.id && canonicalFileIds.has(actualSessionId))
+            ) {
+              skippedAlias++
+              continue
+            }
+            await bgRepo.upsertAggregate(sessionData)
+            appliedSessionIds.add(actualSessionId)
+            upserted++
+            options?.onSessionImported?.({
+              sessionId: actualSessionId,
+              vaultName,
+              importedCount: upserted
+            })
+            // 每落库 1 个会话主动让出宏任务，让挂起的前台 UI 事件与 high 优先级 DB 请求立即插队拿锁
+            await yieldMacroTask()
+          }
+        } catch (e: any) {
+          skipped++
+          console.warn(`[SessionSyncService] 同步会话 ${f.id} 失败，跳过（非致命）:`, e)
         }
-        const sessionData = await this.fileService.readSession(f.id, vaultName)
-        if (sessionData) {
-          await bgRepo.upsertAggregate(sessionData)
-          upserted++
-          // 每落库 1 个会话主动让出宏任务，让挂起的前台 UI 事件与 high 优先级 DB 请求立即插队拿锁
-          await yieldMacroTask()
-        }
-      } catch (e: any) {
-        skipped++
-        console.warn(`[SessionSyncService] 同步会话 ${f.id} 失败，跳过（非致命）:`, e)
       }
     }
 
@@ -118,6 +151,7 @@ export class SessionSyncService {
     console.warn('[SessionSync][FullScan] done', {
       upserted,
       skipped,
+      skippedAlias,
       deletedGhosts
     })
   }
@@ -149,41 +183,75 @@ export class SessionSyncService {
     let upserted = 0
     let skippedUnchanged = 0
     let skipped = 0
+    let skippedAlias = 0
+    const canonicalFileIds = new Set(allFiles.map((f) => f.id))
+    const appliedSessionIds = new Set<string>()
 
-    for (const f of allFiles) {
-      const vaultName = 'vaultName' in f ? f.vaultName : undefined
-      try {
-        if (maxBytes != null) {
-          const byteSize = await this.fileService.getSessionFileByteSize(f.id, vaultName)
-          if (byteSize != null && byteSize > maxBytes) {
+    // 当前活跃工作区优先，分区内按 mtime 降序导入，同时复用单次 stat 避免重复外部存储往返
+    const partitions = partitionSessionFilesByActiveVault(allFiles, options?.activeVaultName)
+    for (const partition of partitions) {
+      const ordered = await statAndSortSessionFilesNewestFirst(partition, this.fileService, {
+        needSize: maxBytes != null
+      })
+      for (const { file: f, size: byteSize, mtimeMs: diskMtimeMs } of ordered) {
+        const vaultName = 'vaultName' in f ? f.vaultName : undefined
+        try {
+          if (maxBytes != null && byteSize != null && byteSize > maxBytes) {
             console.warn(
               `[SessionSyncService] skip oversized session ${f.id} (${byteSize} bytes, limit ${maxBytes})`
             )
             skipped++
             continue
           }
-        }
 
-        const dbRecord = dbById.get(f.id)
-        if (dbRecord) {
-          const diskMtimeMs = await this.fileService.getSessionFileMtimeMs(f.id, vaultName)
-          const dbUpdatedMs = toEpochMs(dbRecord.updatedAt)
-          if (diskMtimeMs != null && dbUpdatedMs != null && diskMtimeMs <= dbUpdatedMs) {
-            skippedUnchanged++
-            continue
+          const dbRecord = dbById.get(f.id)
+          if (dbRecord) {
+            const dbUpdatedMs = toEpochMs(dbRecord.updatedAt)
+            if (diskMtimeMs != null && dbUpdatedMs != null && diskMtimeMs <= dbUpdatedMs) {
+              skippedUnchanged++
+              continue
+            }
           }
-        }
 
-        const sessionData = await this.fileService.readSession(f.id, vaultName)
-        if (sessionData) {
-          await bgRepo.upsertAggregate(sessionData)
-          upserted++
-          // 每落库 1 个会话主动让出宏任务，让挂起的前台 UI 事件与 high 优先级 DB 请求立即插队拿锁
-          await yieldMacroTask()
+          const sessionData = await this.fileService.readSession(f.id, vaultName)
+          if (sessionData) {
+            const actualSessionId = extractActualSessionId(sessionData)
+            if (!actualSessionId) {
+              skipped++
+              continue
+            }
+            if (
+              appliedSessionIds.has(actualSessionId) ||
+              (actualSessionId !== f.id && canonicalFileIds.has(actualSessionId))
+            ) {
+              skippedAlias++
+              continue
+            }
+            if (actualSessionId !== f.id) {
+              const existingAliasDb = dbById.get(actualSessionId)
+              if (existingAliasDb) {
+                const dbUpdatedMs = toEpochMs(existingAliasDb.updatedAt)
+                if (diskMtimeMs != null && dbUpdatedMs != null && diskMtimeMs <= dbUpdatedMs) {
+                  skippedUnchanged++
+                  continue
+                }
+              }
+            }
+            await bgRepo.upsertAggregate(sessionData)
+            appliedSessionIds.add(actualSessionId)
+            upserted++
+            options?.onSessionImported?.({
+              sessionId: actualSessionId,
+              vaultName,
+              importedCount: upserted
+            })
+            // 每落库 1 个会话主动让出宏任务，让挂起的前台 UI 事件与 high 优先级 DB 请求立即插队拿锁
+            await yieldMacroTask()
+          }
+        } catch (e: any) {
+          skipped++
+          console.warn(`[SessionSyncService] reconcile 会话 ${f.id} 失败，跳过（非致命）:`, e)
         }
-      } catch (e: any) {
-        skipped++
-        console.warn(`[SessionSyncService] reconcile 会话 ${f.id} 失败，跳过（非致命）:`, e)
       }
     }
 
@@ -193,6 +261,7 @@ export class SessionSyncService {
       upserted,
       skippedUnchanged,
       skipped,
+      skippedAlias,
       deletedGhosts
     })
   }

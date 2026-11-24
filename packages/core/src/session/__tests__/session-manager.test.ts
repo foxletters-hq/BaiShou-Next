@@ -252,6 +252,121 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     expect(mockSyncService.fullScanArchives).not.toHaveBeenCalled()
   })
 
+  it('hydrateSessionsFromDiskIfNeeded() skips overwriting existing DB session for aliased conflict files and caches alias map', async () => {
+    const dbRows = [{ id: 'chat-canonical', vaultId: deriveLegacyVaultId('Personal') }] as any
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue(dbRows)
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      {
+        id: 'chat-canonical',
+        fullPath: '/Personal/Sessions/chat-canonical.json',
+        vaultName: 'Personal'
+      },
+      {
+        id: 'chat-canonical (conflict)',
+        fullPath: '/Personal/Sessions/chat-canonical (conflict).json',
+        vaultName: 'Personal'
+      }
+    ])
+    mockFileService.readSession.mockResolvedValue({
+      session: { id: 'chat-canonical', title: 'Stale Copy', vaultName: 'Personal' },
+      messages: []
+    })
+
+    const onSessionImported = vi.fn()
+    let savedAliases: Record<string, string> = {}
+    const onAliasMapUpdated = vi.fn((next: Record<string, string>) => {
+      savedAliases = next
+    })
+
+    // 首次冷启动：发现别名文件，严禁覆盖 DB 会话，也不触发 UI 增量刷新，并记录别名映射
+    const first = await manager.hydrateSessionsFromDiskIfNeeded({
+      activeVaultName: 'Personal',
+      diskVaultNames: ['Personal'],
+      knownSessionFileAliases: {},
+      onAliasMapUpdated,
+      onSessionImported
+    })
+
+    expect(first.hydrated).toBe(false)
+    expect(first.reason).toBe('aliases-only')
+    expect(first.missingCount).toBe(1)
+    expect(mockFileService.readSession).toHaveBeenCalledTimes(1)
+    expect(mockRepo.upsertAggregate).not.toHaveBeenCalled()
+    expect(onSessionImported).not.toHaveBeenCalled()
+    expect(onAliasMapUpdated).toHaveBeenCalledTimes(1)
+    expect(savedAliases).toEqual({
+      'Personal::chat-canonical (conflict)': 'chat-canonical'
+    })
+
+    // 第二次冷启动：命中已知别名且目标会话仍在 DB 中，零读盘直接跳过
+    mockFileService.readSession.mockClear()
+    onAliasMapUpdated.mockClear()
+    const second = await manager.hydrateSessionsFromDiskIfNeeded({
+      activeVaultName: 'Personal',
+      diskVaultNames: ['Personal'],
+      knownSessionFileAliases: savedAliases,
+      onAliasMapUpdated,
+      onSessionImported
+    })
+
+    expect(second.hydrated).toBe(false)
+    expect(second.reason).toBe('db-caught-up')
+    expect(second.missingCount).toBe(0)
+    expect(mockFileService.readSession).not.toHaveBeenCalled()
+    expect(onAliasMapUpdated).not.toHaveBeenCalled()
+
+    // 若库内会话被删（如重建库），即使存在别名缓存也应重新检查并补录
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValueOnce([]).mockResolvedValueOnce(dbRows)
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      {
+        id: 'chat-canonical (conflict)',
+        fullPath: '/Personal/Sessions/chat-canonical (conflict).json',
+        vaultName: 'Personal'
+      }
+    ])
+    const third = await manager.hydrateSessionsFromDiskIfNeeded({
+      activeVaultName: 'Personal',
+      diskVaultNames: ['Personal'],
+      knownSessionFileAliases: savedAliases,
+      onAliasMapUpdated,
+      onSessionImported
+    })
+
+    expect(third.hydrated).toBe(true)
+    expect(mockFileService.readSession).toHaveBeenCalledTimes(1)
+    expect(mockRepo.upsertAggregate).toHaveBeenCalledTimes(1)
+    expect(onSessionImported).toHaveBeenCalledWith({
+      sessionId: 'chat-canonical',
+      vaultName: 'Personal',
+      importedCount: 1
+    })
+  })
+
+  it('hydrateSessionsFromDiskIfNeeded() prunes deleted alias files in scanned vaults while preserving unscanned vaults', async () => {
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'chat-1', vaultId: deriveLegacyVaultId('Personal') }
+    ] as any)
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      { id: 'chat-1', fullPath: '/Personal/Sessions/chat-1.json', vaultName: 'Personal' }
+    ])
+
+    const onAliasMapUpdated = vi.fn()
+    const result = await manager.hydrateSessionsFromDiskIfNeeded({
+      activeVaultName: 'Personal',
+      diskVaultNames: ['Personal'],
+      knownSessionFileAliases: {
+        'Personal::removed-conflict': 'chat-1',
+        'Work::other-conflict': 'chat-work'
+      },
+      onAliasMapUpdated
+    })
+
+    expect(result.reason).toBe('db-caught-up')
+    expect(onAliasMapUpdated).toHaveBeenCalledWith({
+      'Work::other-conflict': 'chat-work'
+    })
+  })
+
   it('flushSessionToDisk() re-flushes when session is dirtied while an earlier write is in flight and awaits async onBeforeWrite', async () => {
     const events: string[] = []
     let resolveFirstWrite!: () => void

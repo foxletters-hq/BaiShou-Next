@@ -7,7 +7,11 @@ export const SETTINGS_SYNC_EXCLUDED_KEYS = new Set([
   /** 桌面全局快捷键：按安装实例保存在 userData，不随工作区共享 */
   'hotkey_config',
   /** 桌面 MCP 服务（端口/令牌）：按安装实例保存，避免 dev/稳定版互相覆盖 */
-  'mcp_server_config'
+  'mcp_server_config',
+  /** 本机一次性衍生数据迁移/回填完成标记，不随工作区配置跨端同步 */
+  '__derived_hydration_state_v1',
+  /** 本机会话文件名→内部 session.id 别名缓存，仅用于避免冷启动重复读盘，不跨端同步 */
+  '__session_file_aliases_v1'
 ])
 
 const DOMAIN_FILE_BY_KEY: Record<string, string> = {

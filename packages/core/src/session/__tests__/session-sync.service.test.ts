@@ -242,4 +242,97 @@ describe('SessionSyncService', () => {
     expect(lowRepo.upsertAggregate).toHaveBeenCalledTimes(3)
     expect(mockRepo.upsertAggregate).not.toHaveBeenCalled()
   })
+
+  it('reconcileFromDisks prioritizes active vault and newest mtimeMs first using single stat', async () => {
+    const getSessionFileStat = vi.fn(async (id: string) => {
+      const map: Record<string, { size: number; mtimeMs: number }> = {
+        'other-newest': { size: 100, mtimeMs: 9_000 },
+        'other-older': { size: 100, mtimeMs: 2_000 },
+        'active-older': { size: 100, mtimeMs: 3_000 },
+        'active-newest': { size: 100, mtimeMs: 8_000 },
+        'active-oversized': { size: 5_000, mtimeMs: 10_000 }
+      }
+      return map[id]
+    })
+    ;(mockFileService as any).getSessionFileStat = getSessionFileStat
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      { id: 'other-older', fullPath: '/Other/Sessions/other-older.json', vaultName: 'Other' },
+      { id: 'other-newest', fullPath: '/Other/Sessions/other-newest.json', vaultName: 'Other' },
+      { id: 'active-older', fullPath: '/Work/Sessions/active-older.json', vaultName: 'Work' },
+      { id: 'active-newest', fullPath: '/Work/Sessions/active-newest.json', vaultName: 'Work' },
+      {
+        id: 'active-oversized',
+        fullPath: '/Work/Sessions/active-oversized.json',
+        vaultName: 'Work'
+      }
+    ])
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([])
+    mockFileService.readSession.mockImplementation(async (id: string) => ({
+      session: { id },
+      messages: []
+    }))
+
+    const importedOrder: string[] = []
+    const callbackEvents: Array<{ sessionId: string; importedCount: number }> = []
+    mockRepo.upsertAggregate.mockImplementation(async (data: any) => {
+      importedOrder.push(data.session.id)
+    })
+
+    await service.reconcileFromDisks({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Other', 'Work'],
+      maxSessionJsonReadBytes: 1_000,
+      onSessionImported: (info) =>
+        callbackEvents.push({ sessionId: info.sessionId, importedCount: info.importedCount })
+    })
+
+    expect(importedOrder).toEqual(['active-newest', 'active-older', 'other-newest', 'other-older'])
+    expect(callbackEvents).toEqual([
+      { sessionId: 'active-newest', importedCount: 1 },
+      { sessionId: 'active-older', importedCount: 2 },
+      { sessionId: 'other-newest', importedCount: 3 },
+      { sessionId: 'other-older', importedCount: 4 }
+    ])
+    expect(getSessionFileStat).toHaveBeenCalledTimes(5)
+    expect(mockFileService.getSessionFileByteSize).not.toHaveBeenCalled()
+    expect(mockFileService.getSessionFileMtimeMs).not.toHaveBeenCalled()
+  })
+
+  it('reconcileFromDisks and fullScanArchives prevent non-canonical alias files from overwriting canonical sessions', async () => {
+    const dbUpdatedAt = new Date('2026-07-01T12:00:00.000Z')
+    ;(mockFileService as any).getSessionFileStat = vi.fn(async (id: string) => {
+      if (id === 's1') return { size: 200, mtimeMs: dbUpdatedAt.getTime() }
+      // 模拟同步冲突副本具有更新的磁盘 mtime，但内部 session.id 仍指向 s1
+      if (id === 's1 (conflict)') return { size: 150, mtimeMs: dbUpdatedAt.getTime() + 60_000 }
+      return undefined
+    })
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      { id: 's1', fullPath: '/Work/Sessions/s1.json', vaultName: 'Work' },
+      { id: 's1 (conflict)', fullPath: '/Work/Sessions/s1 (conflict).json', vaultName: 'Work' }
+    ])
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 's1', vaultName: 'Work', updatedAt: dbUpdatedAt }
+    ] as any)
+    mockFileService.readSession.mockImplementation(async (id: string) => ({
+      session: { id: 's1', title: id === 's1' ? 'Canonical' : 'Stale Conflict' },
+      messages: []
+    }))
+
+    await service.reconcileFromDisks({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Work']
+    })
+    expect(mockRepo.upsertAggregate).not.toHaveBeenCalled()
+
+    await service.fullScanArchives({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Work']
+    })
+    expect(mockRepo.upsertAggregate).toHaveBeenCalledTimes(1)
+    expect(mockRepo.upsertAggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        session: expect.objectContaining({ id: 's1', title: 'Canonical' })
+      })
+    )
+  })
 })

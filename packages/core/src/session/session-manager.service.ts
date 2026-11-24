@@ -8,6 +8,15 @@ import { resolveSessionFlushTargetVault } from '@baishou/shared'
 import { SessionSyncService } from './session-sync.service'
 import { SessionFileService } from './session-file.service'
 import {
+  areSessionFileAliasMapsEqual,
+  extractVaultFromSessionFileAliasKey,
+  sessionFileAliasKey
+} from './session-file-alias.util'
+import {
+  partitionSessionFilesByActiveVault,
+  statAndSortSessionFilesNewestFirst
+} from './session-sync-order.util'
+import {
   SessionDiskPersistenceService,
   type SessionDiskFlushUrgency,
   type SessionDiskPersistenceHooks
@@ -364,6 +373,16 @@ export class SessionManagerService {
     activeVaultName?: string | null
     diskVaultNames?: string[] | null
     maxSessionJsonReadBytes?: number
+    /** 已知的「文件名 → 内部 session.id」别名映射（目标会话仍在库中时跳过重复读盘） */
+    knownSessionFileAliases?: Readonly<Record<string, string>>
+    /** 别名映射有新增或陈旧项清理时回调，供调用方持久化到本机设置 */
+    onAliasMapUpdated?: (nextAliases: Record<string, string>) => Promise<void> | void
+    /** 每成功导入一条缺失会话后的回调，供前端增量刷新列表 */
+    onSessionImported?: (info: {
+      sessionId: string
+      vaultName?: string
+      importedCount: number
+    }) => void
     /** @deprecated 不再触发全量 upsert；保留参数以免调用方报错 */
     force?: boolean
   }): Promise<{
@@ -400,11 +419,24 @@ export class SessionManagerService {
     const dbCount = dbSessions.length
     const diskCount = diskSessions.length
 
-    // 每个 id 只取一份（优先活跃 vault）
+    const knownAliases = options?.knownSessionFileAliases ?? {}
+    const nextAliases: Record<string, string> = {}
+    const scannedVaults = new Set<string>(diskVaultNames)
+    if (activeVaultName) scannedVaults.add(activeVaultName)
+    let skippedKnownAlias = 0
+
+    // 每个 id 只取一份（优先活跃 vault）；已知别名且目标会话仍在 DB 时免读盘直接跳过
     const missingById = new Map<string, { id: string; vaultName?: string }>()
     for (const file of diskSessions) {
-      if (dbIds.has(file.id)) continue
       const vaultName = 'vaultName' in file ? file.vaultName : undefined
+      if (dbIds.has(file.id)) continue
+      const aliasKey = sessionFileAliasKey(vaultName, file.id)
+      const mappedId = knownAliases[aliasKey]
+      if (mappedId && dbIds.has(mappedId)) {
+        nextAliases[aliasKey] = mappedId
+        skippedKnownAlias++
+        continue
+      }
       const existing = missingById.get(file.id)
       if (!existing) {
         missingById.set(file.id, { id: file.id, vaultName })
@@ -421,17 +453,38 @@ export class SessionManagerService {
     const missing = [...missingById.values()]
     const missingCount = missing.length
 
+    const persistUpdatedAliases = async () => {
+      if (!options?.onAliasMapUpdated) return
+      for (const [key, value] of Object.entries(knownAliases)) {
+        if (Object.prototype.hasOwnProperty.call(nextAliases, key)) continue
+        const keyVault = extractVaultFromSessionFileAliasKey(key)
+        if (keyVault && scannedVaults.size > 0 && !scannedVaults.has(keyVault)) {
+          nextAliases[key] = value
+        }
+      }
+      if (areSessionFileAliasMapsEqual(knownAliases, nextAliases)) return
+      try {
+        await options.onAliasMapUpdated(nextAliases)
+      } catch (e) {
+        console.warn('[IncrementalSync][SessionHydrate] persist-aliases-failed', {
+          error: e instanceof Error ? e.message : String(e)
+        })
+      }
+    }
+
     console.warn('[IncrementalSync][SessionHydrate] check', {
       force: Boolean(options?.force),
       dbCount,
       diskCount,
       uniqueDiskIds: new Set(diskSessions.map((s) => s.id)).size,
       missingCount,
+      skippedKnownAlias,
       diskVaultCount: diskVaultNames.length,
       activeVaultName: activeVaultName ?? null
     })
 
     if (missingCount === 0) {
+      await persistUpdatedAliases()
       return { hydrated: false, reason: 'db-caught-up', dbCount, diskCount, missingCount: 0 }
     }
 
@@ -442,33 +495,71 @@ export class SessionManagerService {
     const maxBytes = options?.maxSessionJsonReadBytes
     let upserted = 0
     let skipped = 0
-    for (const item of missing) {
-      try {
-        if (maxBytes != null) {
-          const byteSize = await this.fileService.getSessionFileByteSize(item.id, item.vaultName)
-          if (byteSize != null && byteSize > maxBytes) {
+    let skippedAlias = 0
+    const aliasSamples: string[] = []
+    // 优先补齐当前活跃工作区且按磁盘 mtime 降序导入，避免崩溃中断后丢失最近对话
+    const partitions = partitionSessionFilesByActiveVault(missing, activeVaultName)
+    for (const partition of partitions) {
+      const ordered = await statAndSortSessionFilesNewestFirst(partition, this.fileService, {
+        needSize: maxBytes != null
+      })
+      for (const { file: item, size: byteSize } of ordered) {
+        try {
+          if (maxBytes != null && byteSize != null && byteSize > maxBytes) {
             skipped++
             continue
           }
-        }
-        const sessionData = await this.fileService.readSession(item.id, item.vaultName)
-        if (sessionData) {
-          await bgRepo.upsertAggregate(sessionData)
-          upserted++
-          await new Promise<void>((resolve) => setTimeout(resolve, 0))
-        } else {
+          const sessionData = await this.fileService.readSession(item.id, item.vaultName)
+          if (sessionData) {
+            const rawSessionId = sessionData?.session?.id
+            const actualSessionId = typeof rawSessionId === 'string' ? rawSessionId.trim() : ''
+            if (!actualSessionId) {
+              skipped++
+              continue
+            }
+            const aliasKey = sessionFileAliasKey(item.vaultName, item.id)
+            if (dbIds.has(actualSessionId)) {
+              // 文件名与内部 session.id 不一致（如同步冲突副本或重复文件），库中已有该会话：
+              // 禁止覆盖库中会话，记录别名映射，避免后续冷启动反复读盘并触发 UI 重载。
+              skippedAlias++
+              if (actualSessionId !== item.id) {
+                nextAliases[aliasKey] = actualSessionId
+                if (aliasSamples.length < 5) {
+                  aliasSamples.push(`${item.id}->${actualSessionId}`)
+                }
+              }
+              continue
+            }
+            await bgRepo.upsertAggregate(sessionData)
+            dbIds.add(actualSessionId)
+            if (actualSessionId !== item.id) {
+              nextAliases[aliasKey] = actualSessionId
+              if (aliasSamples.length < 5) {
+                aliasSamples.push(`${item.id}->${actualSessionId}`)
+              }
+            }
+            upserted++
+            options?.onSessionImported?.({
+              sessionId: actualSessionId,
+              vaultName: item.vaultName,
+              importedCount: upserted
+            })
+            await new Promise<void>((resolve) => setTimeout(resolve, 0))
+          } else {
+            skipped++
+          }
+        } catch (e) {
           skipped++
+          console.warn('[IncrementalSync][SessionHydrate] upsert-failed', {
+            sessionId: item.id,
+            vaultName: item.vaultName ?? null,
+            error: e instanceof Error ? e.message : String(e)
+          })
         }
-      } catch (e) {
-        skipped++
-        console.warn('[IncrementalSync][SessionHydrate] upsert-failed', {
-          sessionId: item.id,
-          vaultName: item.vaultName ?? null,
-          error: e instanceof Error ? e.message : String(e)
-        })
       }
     }
 
+    await persistUpdatedAliases()
     const afterDb = (await this.sessionRepo.findAllSessionsAcrossVaults(-1)).length
     console.warn('[IncrementalSync][SessionHydrate] done', {
       dbCountBefore: dbCount,
@@ -476,11 +567,14 @@ export class SessionManagerService {
       missingCount,
       upserted,
       skipped,
+      skippedAlias,
+      skippedKnownAlias,
+      aliasSamples: aliasSamples.length > 0 ? aliasSamples : undefined,
       dbCountAfter: afterDb
     })
     return {
       hydrated: upserted > 0,
-      reason: 'missing-ids',
+      reason: upserted > 0 ? 'missing-ids' : skippedAlias > 0 ? 'aliases-only' : 'missing-ids',
       dbCount: afterDb,
       diskCount,
       missingCount

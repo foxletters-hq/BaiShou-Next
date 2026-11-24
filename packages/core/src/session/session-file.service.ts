@@ -85,6 +85,22 @@ export class SessionFileService {
     }
   }
 
+  /** 一次 stat 同时取回大小与 mtime，避免对慢速外部存储重复两次 stat */
+  async getSessionFileStat(
+    sessionId: string,
+    vaultName?: string | null
+  ): Promise<{ size?: number; mtimeMs?: number } | undefined> {
+    const dir = await this.getDirectory(vaultName)
+    const fullPath = path.join(dir, `${sessionId}.json`)
+    try {
+      const stat = await this.fileSystem.stat(fullPath)
+      if (!stat.isFile) return undefined
+      return { size: stat.size, mtimeMs: stat.mtimeMs }
+    } catch {
+      return undefined
+    }
+  }
+
   async getSessionFileByteSize(
     sessionId: string,
     vaultName?: string | null
