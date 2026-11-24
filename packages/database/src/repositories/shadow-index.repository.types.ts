@@ -53,6 +53,8 @@ export interface UpsertShadowIndexPayload {
   hasMedia: boolean
   /** raw markdown content 用于 FTS 索引 */
   rawContent: string
+  /** 可选正文 SHA-256 哈希；缺省由仓储按 rawContent 自动计算并持久化 */
+  embedContentHash?: string | null
   /** 逗号分隔的标签字符串 */
   tags: string
   /** frontmatter tag_colors JSON */
@@ -77,12 +79,19 @@ export type ShadowJournalRow = ShadowJournalRecord & {
   tagColors?: string | null
 }
 
-/** 待嵌入检测瘦行：不含 journals_index.content_hash，正文只取 raw_content */
+/** 待嵌入检测瘦行：不含 journals_index.content_hash，正文取 raw_content 与可选 embedContentHash */
 export interface ShadowEmbedDetectionRow {
   id: number
   date: string
   updatedAt: string
   rawContent: string
+  /** 已持久化的正文 SHA-256 哈希；存在时可直接用于待嵌入对比而免重算 */
+  embedContentHash?: string | null
+}
+
+export interface ShadowEmbedDetectionListOptions {
+  /** 为 true 时，已有 embed_content_hash 的行不传输 raw_content 全文，降低跨桥内存与 GC 压力 */
+  omitRawContentWhenHashed?: boolean
 }
 
 export interface DiaryListFilterOptions {

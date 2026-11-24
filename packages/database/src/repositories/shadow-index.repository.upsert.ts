@@ -1,4 +1,4 @@
-import { isJournalPathUnderSkippedDir } from '@baishou/shared'
+import { hashEmbedSourceContent, isJournalPathUnderSkippedDir } from '@baishou/shared'
 import { eq, sql, and, or, like } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
@@ -135,6 +135,7 @@ function buildUpsertSet(
   tags: string,
   tagColors: string | null
 ) {
+  const embedContentHash = indexData.embedContentHash?.trim() || hashEmbedSourceContent(rawContent)
   return {
     vaultId,
     filePath,
@@ -151,6 +152,7 @@ function buildUpsertSet(
     isFavorite: indexData.isFavorite,
     hasMedia: indexData.hasMedia,
     rawContent,
+    embedContentHash,
     tags,
     tagColors
   }
@@ -249,6 +251,7 @@ async function upsertOne(
     ...indexData,
     filePath,
     rawContent,
+    embedContentHash: indexData.embedContentHash?.trim() || hashEmbedSourceContent(rawContent),
     tags,
     tagColors: serializedTagColors
   }
@@ -337,6 +340,7 @@ function upsertOneSync(
     ...indexData,
     filePath,
     rawContent,
+    embedContentHash: indexData.embedContentHash?.trim() || hashEmbedSourceContent(rawContent),
     tags,
     tagColors: serializedTagColors
   }
@@ -556,6 +560,54 @@ export class ShadowIndexUpsertOps {
             like(shadowJournalIndexTable.date, `${dateStr}%`)
           )
         )
+    })
+  }
+
+  /** 批量回填 journals_index.embed_content_hash（旧库升级一次性回填，避免每次冷启动重算正文 SHA-256） */
+  async updateEmbedContentHashes(
+    entries: Array<{ id: number; embedContentHash: string }>
+  ): Promise<void> {
+    const valid = entries.filter((item) => item.embedContentHash.trim().length > 0)
+    if (valid.length === 0) return
+
+    return this.withWriteLock(async () => {
+      const driver = detectSqliteDriver(this.database)
+      const CHUNK = 200
+      for (let i = 0; i < valid.length; i += CHUNK) {
+        const chunk = valid.slice(i, i + CHUNK)
+        if (driver === 'better-sqlite' || driver === 'expo-sync') {
+          await this.database.transaction(async (tx) => {
+            for (const item of chunk) {
+              tx.update(shadowJournalIndexTable)
+                .set({ embedContentHash: item.embedContentHash })
+                .where(
+                  and(
+                    eq(shadowJournalIndexTable.vaultId, this.vaultId),
+                    eq(shadowJournalIndexTable.id, item.id)
+                  )
+                )
+                .run()
+            }
+          })
+        } else {
+          await this.database.transaction(async (tx) => {
+            for (const item of chunk) {
+              await tx
+                .update(shadowJournalIndexTable)
+                .set({ embedContentHash: item.embedContentHash })
+                .where(
+                  and(
+                    eq(shadowJournalIndexTable.vaultId, this.vaultId),
+                    eq(shadowJournalIndexTable.id, item.id)
+                  )
+                )
+            }
+          })
+        }
+        if (i + CHUNK < valid.length) {
+          await new Promise((resolve) => setTimeout(resolve, 0))
+        }
+      }
     })
   }
 

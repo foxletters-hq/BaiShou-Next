@@ -8,6 +8,7 @@ export type {
   UpsertShadowIndexPayload,
   ShadowFTSResult,
   ShadowEmbedDetectionRow,
+  ShadowEmbedDetectionListOptions,
   DiaryListFilterOptions
 } from './shadow-index.repository.types'
 
@@ -80,6 +81,12 @@ export class ShadowIndexRepository {
 
   async updateFileStat(...args: Parameters<ShadowIndexUpsertOps['updateFileStat']>) {
     return this.upsertOps.updateFileStat(...args)
+  }
+
+  async updateEmbedContentHashes(
+    ...args: Parameters<ShadowIndexUpsertOps['updateEmbedContentHashes']>
+  ) {
+    return this.upsertOps.updateEmbedContentHashes(...args)
   }
 
   async getAllRecords(...args: Parameters<ShadowIndexQueryOps['getAllRecords']>) {

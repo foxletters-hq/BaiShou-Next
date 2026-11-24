@@ -13,6 +13,7 @@ import {
   extractEmbedContentHashFromMetadata,
   mergeEmbedContentHashIntoMetadata,
   hashEmbedSourceContent,
+  resolveDiaryEmbedDetectionRows,
   toDiaryEmbedDetectionRow,
   countPendingMemoriesAgainstLedger,
   isDiaryRagEntry,
@@ -366,5 +367,54 @@ describe('countPendingMemoriesAgainstLedger', () => {
       ['a', { contentHash: hashEmbedSourceContent('hello'), status: 'embedded' }]
     ])
     expect(countPendingMemoriesAgainstLedger(live, ledger)).toBe(0)
+  })
+
+  it('toDiaryEmbedDetectionRow reuses persisted embedContentHash even when rawContent is omitted', () => {
+    const precomputed = hashEmbedSourceContent('持久化正文')
+    const row = toDiaryEmbedDetectionRow({
+      id: 42,
+      date: '2026-11-25',
+      rawContent: '',
+      embedContentHash: precomputed
+    })
+    expect(row.contentHash).toBe(precomputed)
+  })
+
+  it('resolveDiaryEmbedDetectionRows backfills missing hashes in chunks and skips persist when all hashed', async () => {
+    const persisted: Array<{ id: number; embedContentHash: string }> = []
+    const hashed = hashEmbedSourceContent('already-hashed')
+    const fastRows = await resolveDiaryEmbedDetectionRows(
+      [{ id: 1, date: '2026-11-24', rawContent: '', embedContentHash: hashed }],
+      {
+        persistComputedHashes: async (entries) => {
+          persisted.push(...entries)
+        }
+      }
+    )
+    expect(fastRows[0]?.contentHash).toBe(hashed)
+    expect(persisted).toHaveLength(0)
+
+    const mixedRows = await resolveDiaryEmbedDetectionRows(
+      [
+        { id: 1, date: '2026-11-24', rawContent: '', embedContentHash: hashed },
+        { id: 2, date: '2026-11-25', rawContent: 'legacy-body-1', embedContentHash: null },
+        { id: 3, date: '2026-11-26', rawContent: 'legacy-body-2', embedContentHash: '' }
+      ],
+      {
+        chunkSize: 1,
+        persistComputedHashes: async (entries) => {
+          persisted.push(...entries)
+        }
+      }
+    )
+    expect(mixedRows.map((r) => r.contentHash)).toEqual([
+      hashed,
+      hashEmbedSourceContent('legacy-body-1'),
+      hashEmbedSourceContent('legacy-body-2')
+    ])
+    expect(persisted).toEqual([
+      { id: 2, embedContentHash: hashEmbedSourceContent('legacy-body-1') },
+      { id: 3, embedContentHash: hashEmbedSourceContent('legacy-body-2') }
+    ])
   })
 })

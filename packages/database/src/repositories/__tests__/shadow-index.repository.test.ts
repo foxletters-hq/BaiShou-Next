@@ -490,5 +490,44 @@ describe('ShadowIndexRepository', () => {
       expect(rows).toHaveLength(1)
       expect(rows[0]?.rawContent).toBe('real diary')
     })
+
+    it('persists embed_content_hash on upsert, omits raw_content when requested, and supports batch backfill', async () => {
+      const id = await repo.upsert(generateDummyPayload('2026-10-01T00:00:00.000Z', 'fresh diary'))
+      const slim = await repo.listForEmbedDetection({ omitRawContentWhenHashed: true })
+      const freshRow = slim.find((r) => r.id === id)
+      expect(freshRow?.embedContentHash).toMatch(/^[0-9a-f]{64}$/)
+      expect(freshRow?.rawContent).toBe('')
+
+      // 模拟旧库无 embed_content_hash 的裸行
+      const client = manager.getClient()
+      await client.execute({
+        sql: `INSERT INTO journals_index
+          (vault_id, file_path, date, created_at, updated_at, content_hash, is_favorite, has_media, raw_content)
+          VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+        args: [
+          TEST_VAULT_NAME,
+          'journals/2026-10-02.md',
+          '2026-10-02T00:00:00.000Z',
+          '2026-10-02T00:00:00.000Z',
+          '2026-10-02T00:00:00.000Z',
+          'legacy-md5',
+          'legacy body'
+        ]
+      })
+
+      const beforeBackfill = await repo.listForEmbedDetection({ omitRawContentWhenHashed: true })
+      const legacyBefore = beforeBackfill.find((r) => r.date.startsWith('2026-10-02'))!
+      expect(legacyBefore.embedContentHash).toBeNull()
+      expect(legacyBefore.rawContent).toBe('legacy body')
+
+      await repo.updateEmbedContentHashes([
+        { id: legacyBefore.id, embedContentHash: 'a'.repeat(64) }
+      ])
+
+      const afterBackfill = await repo.listForEmbedDetection({ omitRawContentWhenHashed: true })
+      const legacyAfter = afterBackfill.find((r) => r.id === legacyBefore.id)!
+      expect(legacyAfter.embedContentHash).toBe('a'.repeat(64))
+      expect(legacyAfter.rawContent).toBe('')
+    })
   })
 })

@@ -158,16 +158,28 @@ export class ShadowIndexListOps {
   }
 
   /**
-   * 待嵌入检测瘦查询：只取 id / date / updated_at / raw_content，无 LIMIT，不读文件级 content_hash。
+   * 待嵌入检测瘦查询：只取 id / date / updated_at / embed_content_hash / raw_content，无 LIMIT，不读文件级 content_hash。
+   * 当 omitRawContentWhenHashed 为 true 时，已有 embed_content_hash 的行不传 raw_content 正文，降低跨桥内存压力。
    * 与日记统计一致，排除 Archives 等总结目录里误入影子索引的记录。
    */
-  async listForEmbedDetection(): Promise<ShadowEmbedDetectionRow[]> {
+  async listForEmbedDetection(options?: {
+    omitRawContentWhenHashed?: boolean
+  }): Promise<ShadowEmbedDetectionRow[]> {
+    const rawContentSelect = options?.omitRawContentWhenHashed
+      ? sql<
+          string | null
+        >`CASE WHEN ${shadowJournalIndexTable.embedContentHash} IS NULL OR ${shadowJournalIndexTable.embedContentHash} = '' THEN ${shadowJournalIndexTable.rawContent} ELSE '' END`.as(
+          'raw_content'
+        )
+      : shadowJournalIndexTable.rawContent
+
     const rows = await this.ctx.database
       .select({
         id: shadowJournalIndexTable.id,
         date: shadowJournalIndexTable.date,
         updatedAt: shadowJournalIndexTable.updatedAt,
-        rawContent: shadowJournalIndexTable.rawContent
+        rawContent: rawContentSelect,
+        embedContentHash: shadowJournalIndexTable.embedContentHash
       })
       .from(shadowJournalIndexTable)
       .where(this.ctx.withVault(this.ctx.journalPathNotUnderSkippedDirs()))
@@ -177,7 +189,8 @@ export class ShadowIndexListOps {
       id: row.id,
       date: row.date,
       updatedAt: row.updatedAt,
-      rawContent: row.rawContent ?? ''
+      rawContent: row.rawContent ?? '',
+      embedContentHash: row.embedContentHash ?? null
     }))
   }
 

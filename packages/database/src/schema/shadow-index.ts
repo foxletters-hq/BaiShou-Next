@@ -36,6 +36,8 @@ export const shadowJournalIndexTable = sqliteTable(
     // ── FTS 辅助字段（在主表冗余存储，方便 FTS 虚拟表触发器同步） ──
     /** 原始 Markdown 正文（不含 Frontmatter） */
     rawContent: text('raw_content'),
+    /** 正文 SHA-256 哈希缓存（与 embed_ledger.content_hash 算法一致，避免冷启动重算） */
+    embedContentHash: text('embed_content_hash'),
     /** 以逗号分隔的标签字符串（eg: "日记,美食,旅行"） */
     tags: text('tags'),
     /** frontmatter tag_colors JSON 缓存 */

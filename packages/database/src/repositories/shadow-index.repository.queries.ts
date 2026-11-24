@@ -181,8 +181,10 @@ export class ShadowIndexQueryOps {
     return this.listOps.listAllWithFTS(options)
   }
 
-  listForEmbedDetection(): Promise<ShadowEmbedDetectionRow[]> {
-    return this.listOps.listForEmbedDetection()
+  listForEmbedDetection(options?: {
+    omitRawContentWhenHashed?: boolean
+  }): Promise<ShadowEmbedDetectionRow[]> {
+    return this.listOps.listForEmbedDetection(options)
   }
 
   listAll(options?: {

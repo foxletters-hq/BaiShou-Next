@@ -36,6 +36,7 @@ export const JOURNALS_INDEX_CREATE_SQL = `
     is_favorite     INTEGER NOT NULL DEFAULT 0,
     has_media       INTEGER NOT NULL DEFAULT 0,
     raw_content     TEXT,
+    embed_content_hash TEXT,
     tags            TEXT,
     tag_colors      TEXT
   )
@@ -225,6 +226,13 @@ async function ensureFileStatColumns(client: unknown, logPrefix: string): Promis
   }
 }
 
+async function ensureEmbedContentHashColumn(client: unknown, logPrefix: string): Promise<void> {
+  if (!(await tableExists(client, 'journals_index'))) return
+  if (await tableHasColumn(client, 'journals_index', 'embed_content_hash')) return
+  logger.info(`${logPrefix} journals_index 添加 embed_content_hash 列（正文嵌入哈希缓存）`)
+  await executeRawSql(client, 'ALTER TABLE journals_index ADD COLUMN embed_content_hash TEXT')
+}
+
 /**
  * 桌面 / 移动端共用的影子索引建表与迁移入口。
  */
@@ -240,6 +248,7 @@ export async function ensureShadowIndexSchema(
   await executeRawSql(client, JOURNALS_INDEX_VAULT_FILE_PATH_UNIQUE_SQL)
   await ensureTagColorsColumn(client, logPrefix)
   await ensureFileStatColumns(client, logPrefix)
+  await ensureEmbedContentHashColumn(client, logPrefix)
   await createJournalsFts(client, logPrefix)
 
   await executeRawSql(client, `PRAGMA user_version = ${SHADOW_INDEX_SCHEMA_VERSION}`)

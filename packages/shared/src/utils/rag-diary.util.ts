@@ -128,12 +128,13 @@ function resolveCachedDiaryContentHash(
   return contentHash
 }
 
-/** 从影子索引瘦行生成检测行：只哈希 raw_content 正文，忽略文件级 content_hash。 */
+/** 从影子索引瘦行生成检测行：优先复用已持久化的正文 embedContentHash，缺失时回退按 raw_content 哈希。 */
 export function toDiaryEmbedDetectionRow(input: {
   id: number
   date: string | Date
   updatedAt?: string | Date | null
   rawContent?: string | null
+  embedContentHash?: string | null
 }): DiaryEmbedDetectionRow {
   const date =
     typeof input.date === 'string' ? parseDateStr(String(input.date).split('T')[0]!) : input.date
@@ -144,7 +145,8 @@ export function toDiaryEmbedDetectionRow(input: {
     : undefined
   const updatedAt = rawUpdatedAt && !Number.isNaN(rawUpdatedAt.getTime()) ? rawUpdatedAt : undefined
   const rawContent = input.rawContent ?? ''
-  let resolvedHash: string | undefined
+  const persistedHash = input.embedContentHash?.trim() || ''
+  let resolvedHash: string | undefined = persistedHash || undefined
 
   return {
     id: input.id,
@@ -157,6 +159,80 @@ export function toDiaryEmbedDetectionRow(input: {
       return resolvedHash
     }
   }
+}
+
+const DEFAULT_EMBED_HASH_BACKFILL_CHUNK_SIZE = 20
+
+function yieldEmbedHashBackfillTick(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+/**
+ * 批量构造待嵌入检测行：
+ * - 若所有行均已持久化 embedContentHash，直接零哈希同步返回；
+ * - 若存在缺失 embedContentHash 的旧行，按小批次分片让出事件循环计算正文哈希，避免在移动端冻结 JS 主线程，
+ *   并在提供 persistComputedHashes 时回写持久化，使后续冷启动彻底免重算。
+ */
+export async function resolveDiaryEmbedDetectionRows(
+  rows: ReadonlyArray<{
+    id: number
+    date: string | Date
+    updatedAt?: string | Date | null
+    rawContent?: string | null
+    embedContentHash?: string | null
+  }>,
+  options?: {
+    chunkSize?: number
+    persistComputedHashes?: (
+      entries: Array<{ id: number; embedContentHash: string }>
+    ) => Promise<void>
+  }
+): Promise<DiaryEmbedDetectionRow[]> {
+  let hasMissingHash = false
+  for (const row of rows) {
+    if (!row.embedContentHash?.trim()) {
+      hasMissingHash = true
+      break
+    }
+  }
+  if (!hasMissingHash) {
+    return rows.map((row) => toDiaryEmbedDetectionRow(row))
+  }
+
+  const chunkSize = Math.max(1, options?.chunkSize ?? DEFAULT_EMBED_HASH_BACKFILL_CHUNK_SIZE)
+  const resolvedRows: DiaryEmbedDetectionRow[] = new Array(rows.length)
+  const computedToPersist: Array<{ id: number; embedContentHash: string }> = []
+  let hashedInCurrentChunk = 0
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i]!
+    const existing = row.embedContentHash?.trim() || ''
+    if (existing) {
+      resolvedRows[i] = toDiaryEmbedDetectionRow(row)
+      continue
+    }
+
+    const detection = toDiaryEmbedDetectionRow(row)
+    const computedHash = detection.contentHash
+    computedToPersist.push({ id: row.id, embedContentHash: computedHash })
+    resolvedRows[i] = detection
+    hashedInCurrentChunk += 1
+
+    if (hashedInCurrentChunk >= chunkSize && i + 1 < rows.length) {
+      hashedInCurrentChunk = 0
+      await yieldEmbedHashBackfillTick()
+    }
+  }
+
+  if (computedToPersist.length > 0 && options?.persistComputedHashes) {
+    try {
+      await options.persistComputedHashes(computedToPersist)
+    } catch (error) {
+      logger.warn('[RagDiary] Failed to persist backfilled embed_content_hash:', error as Error)
+    }
+  }
+
+  return resolvedRows
 }
 
 export function countPendingMemoriesAgainstLedger(
