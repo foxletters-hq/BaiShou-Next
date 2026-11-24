@@ -128,8 +128,6 @@ export async function bootstrapMobileSyncLayer(
   const updaterService = new MobileUpdaterService(settingsManager)
   const pricingService = mobilePricingService
 
-  void pricingService.ensureLoaded()
-
   const toolRegistry = new ToolRegistry()
   const registry = AIProviderRegistry.getInstance()
   registry.initializeDefaultProviders()

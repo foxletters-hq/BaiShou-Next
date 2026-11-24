@@ -199,6 +199,10 @@ export async function commitMobileBaishouReadyState(
           void connectKnowledgeDbDeferred()
         }
       }, 400)
+      setTimeout(() => {
+        if (!isMounted()) return
+        void pricingService.ensureLoaded()
+      }, 8000)
     })
   }
 }

@@ -14,6 +14,29 @@ import {
 } from '@baishou/shared'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
+import { notifyMobileSessionChanged } from './mobile-session-events'
+
+const SESSION_IMPORT_NOTIFY_THROTTLE_MS = 1_500
+
+/** 批量导入会话时节流广播刷新：前几条最新会话立即可见，后续按 1.5s 节流避免抖动 */
+export function createThrottledSessionImportNotifier(): (info: {
+  sessionId: string
+  importedCount: number
+}) => void {
+  let lastNotifiedAt = 0
+  return ({ sessionId, importedCount }) => {
+    const now = Date.now()
+    if (
+      importedCount === 1 ||
+      importedCount === 3 ||
+      importedCount === 5 ||
+      now - lastNotifiedAt >= SESSION_IMPORT_NOTIFY_THROTTLE_MS
+    ) {
+      lastNotifiedAt = now
+      notifyMobileSessionChanged(sessionId)
+    }
+  }
+}
 
 export type MobileBootstrapperStatus = 'idle' | 'running'
 
@@ -264,6 +287,7 @@ export class MobileDataBootstrapper {
       ...(activeVaultId ? { activeVaultId } : {}),
       maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
       skipUnchangedByMtime: !options?.forceFullRestore,
+      onSessionImported: createThrottledSessionImportNotifier(),
       ...(diskVaultNames.length > 0 ? { diskVaultNames } : {}),
       ...(Object.keys(vaultIdByName).length > 0 ? { vaultIdByName } : {})
     }

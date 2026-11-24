@@ -74,7 +74,10 @@ import {
   type FlutterLegacyMigrationPending
 } from '../../services/mobile-legacy-migration.service'
 import { getMobileInstallInstanceId } from '../../services/install-instance.service'
-import { isExternalStorageRequiredError } from '../../services/storage-permission.service'
+import {
+  isExternalStorageRequiredError,
+  readStoragePermissionState
+} from '../../services/storage-permission.service'
 import { createSharedContextBuilders } from './shared-context-builders'
 import { bootstrapMobileSyncLayer } from './bootstrap-mobile-sync-layer'
 import { finalizeVaultRuntimeHandlers } from './finalize-vault-runtime-handlers'
@@ -304,6 +307,17 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     let storageReady = Platform.OS !== 'android'
     let summaryConfig: Record<string, unknown> = {}
     if (Platform.OS === 'android') {
+      try {
+        logger.info(
+          '[BaishouProvider] Android storage permission state:',
+          readStoragePermissionState()
+        )
+      } catch (permLogErr) {
+        logger.warn(
+          '[BaishouProvider] Failed to read Android storage permission state:',
+          permLogErr as Error
+        )
+      }
       try {
         const [stack, summaryConfigRaw] = await Promise.all([
           initVaultLayer(vaultRuntimeDeps),

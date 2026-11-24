@@ -23,15 +23,19 @@ const migratedVaultRoots = new Set<string>()
 let cachedShortcutsRoot: string | null = null
 let cachedShortcutsValue: PromptShortcut[] | null = null
 let cacheGeneration = 0
+let inFlightListPromise: Promise<PromptShortcut[]> | null = null
+let inFlightListGeneration = -1
 
 subscribeMobileSkillsChanged(() => {
   cacheGeneration += 1
   cachedShortcutsValue = null
+  inFlightListPromise = null
 })
 
 export function invalidateMobileSkillsCache(): void {
   cacheGeneration += 1
   cachedShortcutsValue = null
+  inFlightListPromise = null
 }
 
 function joinPath(base: string, ...parts: string[]): string {
@@ -69,6 +73,20 @@ async function readSkillsFromRoot(
 
 export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
   const gen = cacheGeneration
+  if (inFlightListPromise && inFlightListGeneration === gen) {
+    return inFlightListPromise
+  }
+  const promise = loadMobileSkillShortcutsUnlocked(gen).finally(() => {
+    if (inFlightListPromise === promise) {
+      inFlightListPromise = null
+    }
+  })
+  inFlightListGeneration = gen
+  inFlightListPromise = promise
+  return promise
+}
+
+async function loadMobileSkillShortcutsUnlocked(gen: number): Promise<PromptShortcut[]> {
   const runtime = agentDbRuntimeRef.current
   const roots: Array<{ path: string; source: AgentSkill['source'] }> = []
   let activeCacheKey: string | null = null

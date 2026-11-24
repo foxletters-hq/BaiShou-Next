@@ -25,6 +25,8 @@ import { applyShortcutDisplayOrder } from './prompt-shortcut-order.util'
 
 const PROMPT_SHORTCUTS_KEY = 'prompt_shortcuts_v2'
 const PROMPT_SHORTCUT_ORDER_KEY = 'prompt_shortcut_order_v1'
+/** 从后台切回前台时刷新技能缓存的最小冷却间隔，避免小窗/通知栏抖动反复全盘扫描外部存储 */
+const APP_RESUME_SKILLS_RELOAD_COOLDOWN_MS = 60_000
 
 function isSkillShortcut(shortcut: PromptShortcut): boolean {
   return shortcut.source === 'software' || shortcut.source === 'workspace'
@@ -51,6 +53,9 @@ export function useMobilePromptShortcuts() {
   const shortcutsRef = useRef<PromptShortcut[]>([])
   const orderIdsRef = useRef<string[] | null>(null)
   const loadGenRef = useRef(0)
+  const inFlightLoadRef = useRef(false)
+  const appStateRef = useRef(AppState.currentState)
+  const lastResumeReloadAtRef = useRef(0)
   shortcutsRef.current = shortcuts
 
   const publish = (skills: PromptShortcut[], user: PromptShortcut[]) => {
@@ -63,65 +68,75 @@ export function useMobilePromptShortcuts() {
     return next
   }
 
-  const loadShortcuts = useCallback(async () => {
-    if (!dbReady || !services) {
-      logger.warn(`[${SHORTCUT_TRACE_CHAIN}] MobileHook.load.skip`, {
-        dbReady,
-        hasServices: Boolean(services)
-      })
-      return
-    }
-
-    const gen = ++loadGenRef.current
-
-    try {
-      const items = await traceCall(
-        SHORTCUT_TRACE_CHAIN,
-        'MobileHook.load',
-        async () => {
-          let loaded =
-            (await services.settingsManager.get<PromptShortcut[]>(PROMPT_SHORTCUTS_KEY)) ?? []
-          if (!Array.isArray(loaded)) {
-            loaded = []
-          }
-          if (!loaded.length) {
-            const legacy =
-              (await services.settingsManager.get<PromptShortcut[]>('prompt_shortcuts')) ?? []
-            if (Array.isArray(legacy) && legacy.length) {
-              loaded = legacy
-              await services.settingsManager.set(PROMPT_SHORTCUTS_KEY, legacy)
-            }
-          }
-          invalidateMobileSkillsCache()
-          const skills = await mobileListSkillShortcuts().catch(() => [])
-          const savedOrder =
-            (await services.settingsManager.get<string[]>(PROMPT_SHORTCUT_ORDER_KEY)) ?? null
-          return {
-            skills,
-            user: loaded.filter((item) => !isSkillShortcut(item)),
-            orderIds: Array.isArray(savedOrder)
-              ? savedOrder.filter((id) => typeof id === 'string')
-              : null
-          }
-        },
-        { key: PROMPT_SHORTCUTS_KEY, gen }
-      )
-      if (gen !== loadGenRef.current) {
-        logger.info(`[${SHORTCUT_TRACE_CHAIN}] MobileHook.load.stale`, {
-          gen,
-          current: loadGenRef.current
+  const loadShortcuts = useCallback(
+    async (options?: { forceSkillsReload?: boolean }) => {
+      if (!dbReady || !services) {
+        logger.warn(`[${SHORTCUT_TRACE_CHAIN}] MobileHook.load.skip`, {
+          dbReady,
+          hasServices: Boolean(services)
         })
         return
       }
-      orderIdsRef.current = items.orderIds
-      publish(items.skills, items.user)
-    } catch (error) {
-      if (gen !== loadGenRef.current) return
-      console.warn('[useMobilePromptShortcuts] load failed', error)
-      orderIdsRef.current = null
-      publish([], [])
-    }
-  }, [dbReady, services])
+
+      const gen = ++loadGenRef.current
+      inFlightLoadRef.current = true
+
+      try {
+        const items = await traceCall(
+          SHORTCUT_TRACE_CHAIN,
+          'MobileHook.load',
+          async () => {
+            let loaded =
+              (await services.settingsManager.get<PromptShortcut[]>(PROMPT_SHORTCUTS_KEY)) ?? []
+            if (!Array.isArray(loaded)) {
+              loaded = []
+            }
+            if (!loaded.length) {
+              const legacy =
+                (await services.settingsManager.get<PromptShortcut[]>('prompt_shortcuts')) ?? []
+              if (Array.isArray(legacy) && legacy.length) {
+                loaded = legacy
+                await services.settingsManager.set(PROMPT_SHORTCUTS_KEY, legacy)
+              }
+            }
+            if (options?.forceSkillsReload) {
+              invalidateMobileSkillsCache()
+            }
+            const skills = await mobileListSkillShortcuts().catch(() => [])
+            const savedOrder =
+              (await services.settingsManager.get<string[]>(PROMPT_SHORTCUT_ORDER_KEY)) ?? null
+            return {
+              skills,
+              user: loaded.filter((item) => !isSkillShortcut(item)),
+              orderIds: Array.isArray(savedOrder)
+                ? savedOrder.filter((id) => typeof id === 'string')
+                : null
+            }
+          },
+          { key: PROMPT_SHORTCUTS_KEY, gen }
+        )
+        if (gen !== loadGenRef.current) {
+          logger.info(`[${SHORTCUT_TRACE_CHAIN}] MobileHook.load.stale`, {
+            gen,
+            current: loadGenRef.current
+          })
+          return
+        }
+        orderIdsRef.current = items.orderIds
+        publish(items.skills, items.user)
+      } catch (error) {
+        if (gen !== loadGenRef.current) return
+        console.warn('[useMobilePromptShortcuts] load failed', error)
+        orderIdsRef.current = null
+        publish([], [])
+      } finally {
+        if (gen === loadGenRef.current) {
+          inFlightLoadRef.current = false
+        }
+      }
+    },
+    [dbReady, services]
+  )
 
   useEffect(() => {
     void loadShortcuts()
@@ -137,9 +152,20 @@ export function useMobilePromptShortcuts() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        void loadShortcuts()
+      const prevState = appStateRef.current
+      appStateRef.current = nextState
+      if (prevState !== 'background' || nextState !== 'active') {
+        return
       }
+      if (inFlightLoadRef.current) {
+        return
+      }
+      const now = Date.now()
+      if (now - lastResumeReloadAtRef.current < APP_RESUME_SKILLS_RELOAD_COOLDOWN_MS) {
+        return
+      }
+      lastResumeReloadAtRef.current = now
+      void loadShortcuts({ forceSkillsReload: true })
     })
     return () => {
       subscription.remove()
@@ -346,12 +372,17 @@ export function useMobilePromptShortcuts() {
     [persistShortcuts]
   )
 
+  const reloadShortcuts = useCallback(
+    () => loadShortcuts({ forceSkillsReload: true }),
+    [loadShortcuts]
+  )
+
   return {
     shortcuts,
     addShortcut,
     updateShortcut,
     deleteShortcut,
     reorderShortcuts,
-    reloadShortcuts: loadShortcuts
+    reloadShortcuts
   }
 }

@@ -86,7 +86,13 @@ export async function runMobileIncrementalAfterSync(
     if (needsSessionHydrate && deps.sessionManager) {
       deps.reportPostSync('data_sync.progress_hydrate_sessions', ++step, totalSteps)
       try {
-        const { listDiskVaultFolderNames } = await import('@baishou/core-mobile')
+        const { listDiskVaultFolderNames, loadSessionFileAliases, saveSessionFileAliases } =
+          await import('@baishou/core-mobile')
+        const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+        const sqlExecutor = agentDbRuntimeRef.current?.sqlExecutor
+        const knownSessionFileAliases = sqlExecutor
+          ? await loadSessionFileAliases(sqlExecutor)
+          : undefined
         const syncRoot = await deps.pathService.getRootDirectory()
         const diskVaultNames = await listDiskVaultFolderNames(deps.fileSystem, syncRoot)
         let activeVaultName: string | null = null
@@ -100,7 +106,11 @@ export async function runMobileIncrementalAfterSync(
         await deps.sessionManager.hydrateSessionsFromDiskIfNeeded({
           activeVaultName,
           diskVaultNames,
-          maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+          maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
+          knownSessionFileAliases,
+          onAliasMapUpdated: sqlExecutor
+            ? (nextAliases) => saveSessionFileAliases(sqlExecutor, nextAliases)
+            : undefined
         })
         // 本次下载的会话定点灌库（不 fullScan、不 flushPending 写盘）
         if (cls.sessionRefs.length > 0) {
