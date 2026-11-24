@@ -20,6 +20,7 @@ export const ARCHIVE_SKIP_TOP_LEVEL = new Set([
   'config',
   'manifest.json',
   'user-data',
+  '.nomedia',
   ...ARCHIVE_RUNTIME_SQLITE_DB_NAMES
 ])
 

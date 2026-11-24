@@ -15,6 +15,7 @@ import {
   resolveLegacySandboxSnapshotsDirectory,
   resolveMobileSnapshotsDirectory
 } from './mobile-snapshot-path.util'
+import { migrateSnapshotsFromDirectory } from './mobile-snapshot-migrate.util'
 import {
   EXTERNAL_STORAGE_ROOT,
   ExternalStorageRequiredError,
@@ -29,6 +30,12 @@ import {
   requiresAllFilesAccessForPath
 } from './android-external-fs'
 import { ensureAndroidNoMediaMarker } from './android-nomedia.util'
+import {
+  invalidateCachedVerifiedRoot,
+  isRootNoMediaEnsured,
+  markRootNoMediaEnsured,
+  resolveRootWithInFlightDedup
+} from './mobile-root-dir-cache.util'
 
 export { EXTERNAL_STORAGE_ROOT }
 
@@ -71,6 +78,11 @@ export class MobileStoragePathService implements IStoragePathService {
   public async updateRootDirectory(newPath: string): Promise<void> {
     const normalized = normalizeStoragePath(normalizeExternalStoragePath(newPath))
     await AsyncStorage.setItem(this.customRootKey, normalized)
+    invalidateCachedVerifiedRoot(this.fileSystem, true)
+  }
+
+  public invalidateRootDirectoryCache(): void {
+    invalidateCachedVerifiedRoot(this.fileSystem, false)
   }
 
   /** V2-D6：本机活跃仓 id（AsyncStorage，不进同步） */
@@ -161,25 +173,35 @@ export class MobileStoragePathService implements IStoragePathService {
     } catch {
       // ignore cleanup errors
     }
+    // Android 根目录写入 0 字节 .nomedia，避免系统媒体库把工作区 .md 暴露进第三方应用的「文档」列表
+    if (Platform.OS === 'android' && !isRootNoMediaEnsured(this.fileSystem, dir)) {
+      await ensureAndroidNoMediaMarker(dir, this.fileSystem)
+      markRootNoMediaEnsured(this.fileSystem, dir)
+    }
     return dir
   }
 
   private async getSandboxRootDirectory(): Promise<string> {
     const base = getAppDocumentDirectory()
-    const internalFallback = `${base}Vaults`
-    return this.ensureWritableDirectory(internalFallback)
+    return this.ensureWritableDirectory(`${base}Vaults`)
   }
 
   public async getRootDirectory(): Promise<string> {
+    return resolveRootWithInFlightDedup(this.fileSystem, () => this.resolveVerifiedRootDirectory())
+  }
+
+  private async resolveVerifiedRootDirectory(): Promise<string> {
     if (Platform.OS === 'android') {
       const customPath = await this.getCustomRootPath()
       if (customPath?.trim()) {
         if (requiresAllFilesAccessForPath(customPath) && !(await hasStoragePermission())) {
+          invalidateCachedVerifiedRoot(this.fileSystem)
           throw new ExternalStorageRequiredError()
         }
         try {
           return await this.ensureWritableDirectory(customPath)
         } catch (e) {
+          invalidateCachedVerifiedRoot(this.fileSystem)
           // 不得 removeItem / 静默改写为默认根，否则用户目录会「突然变回默认」
           console.warn(
             `StoragePathService: Custom path ${customPath} inaccessible; keeping preference.`,
@@ -190,11 +212,12 @@ export class MobileStoragePathService implements IStoragePathService {
       }
 
       if (!(await hasStoragePermission())) {
+        invalidateCachedVerifiedRoot(this.fileSystem)
         throw new ExternalStorageRequiredError()
       }
 
       const root = await this.ensureWritableDirectory(EXTERNAL_STORAGE_ROOT)
-      void this.updateRootDirectory(EXTERNAL_STORAGE_ROOT)
+      await AsyncStorage.setItem(this.customRootKey, root).catch(() => {})
       return root
     }
 
@@ -203,7 +226,6 @@ export class MobileStoragePathService implements IStoragePathService {
       try {
         return await this.ensureWritableDirectory(customPath)
       } catch (e) {
-        // 保留用户选择；本次回退沙盒/默认根，避免清掉 preference 后永久丢目录
         console.warn(
           `StoragePathService: Custom path ${customPath} inaccessible; keeping preference.`,
           e
@@ -335,46 +357,13 @@ export class MobileStoragePathService implements IStoragePathService {
     const root = normalizeStoragePath(await this.getRootDirectory())
     const dir = resolveMobileSnapshotsDirectory(root)
     await this.ensureDir(dir)
-    await this.migrateSnapshotsFromDirectory(
+    await migrateSnapshotsFromDirectory(
+      this.fileSystem,
       resolveLegacySandboxSnapshotsDirectory(getAppDocumentDirectory()),
       dir
     )
-    await this.migrateSnapshotsFromDirectory(joinStoragePath(root, '.snapshots'), dir)
+    await migrateSnapshotsFromDirectory(this.fileSystem, joinStoragePath(root, '.snapshots'), dir)
     return dir
-  }
-
-  private async migrateSnapshotsFromDirectory(sourceDir: string, targetDir: string): Promise<void> {
-    try {
-      const normalizedSource = normalizeStoragePath(sourceDir)
-      const normalizedTarget = normalizeStoragePath(targetDir)
-      if (
-        normalizedSource === normalizedTarget ||
-        !(await this.fileSystem.exists(normalizedSource))
-      ) {
-        return
-      }
-
-      const files = await this.fileSystem.readdir(normalizedSource)
-      for (const name of files) {
-        if (!name || !name.startsWith('snapshot_') || !name.endsWith('.zip')) continue
-        const src = joinStoragePath(normalizedSource, name)
-        const dest = joinStoragePath(normalizedTarget, name)
-        if (await this.fileSystem.exists(dest)) continue
-        try {
-          await this.fileSystem.copyFile(src, dest)
-          await this.fileSystem.unlink(src).catch(() => {})
-        } catch (e) {
-          console.warn('[StoragePath] Failed to migrate snapshot', name, e)
-        }
-      }
-
-      const remaining = await this.fileSystem.readdir(normalizedSource).catch(() => [] as string[])
-      if (remaining.length === 0) {
-        await this.fileSystem.rm(normalizedSource, { recursive: true, force: true }).catch(() => {})
-      }
-    } catch (e) {
-      console.warn('[StoragePath] Snapshot migration skipped', sourceDir, e)
-    }
   }
 
   public async getJournalsBaseDirectory(): Promise<string> {

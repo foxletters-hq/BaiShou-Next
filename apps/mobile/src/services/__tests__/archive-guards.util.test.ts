@@ -245,6 +245,7 @@ describe('mobile archive restore shadow index invariants', () => {
     expect(ARCHIVE_SKIP_TOP_LEVEL.has('baishou_agent.db')).toBe(true)
     expect(ARCHIVE_SKIP_TOP_LEVEL.has('knowledge.db')).toBe(true)
     expect(ARCHIVE_SKIP_TOP_LEVEL.has('shadow_index_v2.db')).toBe(true)
+    expect(ARCHIVE_SKIP_TOP_LEVEL.has('.nomedia')).toBe(true)
     expect(ARCHIVE_SKIP_TOP_LEVEL.has('Personal')).toBe(false)
   })
 })

@@ -5,6 +5,8 @@ import {
   countJournalMarkdownInTree,
   countSummaryMarkdownInArchivesTree,
   probeJournalShadowResyncNeeded,
+  loadSessionFileAliases,
+  saveSessionFileAliases,
   path,
   type IFileSystem,
   type IStoragePathService,
@@ -15,7 +17,13 @@ import {
 } from '@baishou/core-mobile'
 import { logger, deriveLegacyVaultId } from '@baishou/shared'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
-import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
+import {
+  createThrottledSessionImportNotifier,
+  mobileDataBootstrapper,
+  type MobileBootstrapperDeps
+} from './mobile-bootstrapper.service'
+import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
+import { notifyMobileSessionChanged } from './mobile-session-events'
 import { scheduleVaultEcosystemResync } from './mobile-vault-resync.service'
 import type { MobileExternalPathService } from './mobile-external-vault-paths.service'
 import type { VaultBoundDiaryStack } from './mobile-vault-runtime.types'
@@ -278,6 +286,38 @@ export async function runVaultBootstrap(
           )
         }
         await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
+        // 快路径仅说明日记影子表已对齐；若上次导入在日记完成后、会话完成前被系统强杀，
+        // 仍需在后台低优先级核对并补齐磁盘上缺失入库的会话（先活跃仓、按最新优先）。
+        const fastPathGeneration = getVaultRuntimeGeneration()
+        void (async () => {
+          try {
+            const diskVaultNames = await deps.bootstrapDeps.getDiskVaultNames?.().catch(() => [])
+            const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+            const sqlExecutor = agentDbRuntimeRef.current?.sqlExecutor
+            const knownSessionFileAliases = sqlExecutor
+              ? await loadSessionFileAliases(sqlExecutor)
+              : undefined
+            const result = await deps.bootstrapDeps.sessionManager.hydrateSessionsFromDiskIfNeeded({
+              activeVaultName: activeVault?.name,
+              diskVaultNames:
+                diskVaultNames && diskVaultNames.length > 0 ? diskVaultNames : undefined,
+              maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
+              knownSessionFileAliases,
+              onAliasMapUpdated: sqlExecutor
+                ? (nextAliases) => saveSessionFileAliases(sqlExecutor, nextAliases)
+                : undefined,
+              onSessionImported: createThrottledSessionImportNotifier()
+            })
+            if (result.hydrated) {
+              notifyMobileSessionChanged('__bootstrap_hydrate__')
+              if (isVaultRuntimeGenerationCurrent(fastPathGeneration)) {
+                options?.onResyncComplete?.()
+              }
+            }
+          } catch (e) {
+            logger.warn('[VaultRuntime] fast-path missing session hydration failed:', e as Error)
+          }
+        })()
         if (activeVault) {
           void (async () => {
             try {
